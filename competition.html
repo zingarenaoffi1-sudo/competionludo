@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ZingArena - Competition</title>
+    
+    <!-- 🔥 CSS YAHAN MIX KAR DIYA HAI 🔥 -->
+    <style>
+        body { margin: 0; padding: 0; font-family: 'Arial', sans-serif; background-color: #121212; color: white; }
+        .header { background: linear-gradient(to right, #1a237e, #311b92); padding: 15px; text-align: center; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
+        .logo { font-size: 24px; font-weight: 900; color: #ff9900; letter-spacing: 2px; }
+        
+        .dashboard { padding: 15px; } 
+        .wallet-container { display: flex; justify-content: space-between; margin-bottom: 20px; }
+        .wallet-box { background: #1e1e1e; padding: 15px; border-radius: 10px; width: 45%; text-align: center; border: 1px solid #333; }
+        .wallet-title { font-size: 12px; color: #aaa; text-transform: uppercase; margin-bottom: 5px; }
+        .wallet-amount { font-size: 20px; font-weight: bold; color: #4CAF50; }
+        .weekly-score { color: #2196F3; }
+        .aura-badge { background: #ff9900; color: black; padding: 3px 8px; border-radius: 15px; font-size: 12px; font-weight: bold; display: inline-block; }
+        
+        .btn-google { background: white; color: black; padding: 12px; width: 90%; border-radius: 25px; font-weight: bold; margin: 30px auto; display: block; border: none; font-size: 16px; cursor: pointer; }
+        .menu-btn { display: block; margin: 20px auto; background: #333; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; }
+        .btn-ad { background: linear-gradient(to right, #ff416c, #ff4b2b); color: white; padding: 12px; width: 100%; border-radius: 10px; font-weight: bold; border: none; margin-bottom: 20px; cursor: pointer; box-shadow: 0 4px 15px rgba(255, 75, 43, 0.4); }
+        
+        .match-card { background: #2a2a2a; padding: 15px; border-radius: 10px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; border-left: 5px solid #ff9900; }
+        .match-info h3 { margin: 0 0 5px 0; color: #fff; }
+        .match-info p { margin: 0; font-size: 12px; color: #aaa; }
+        .btn-play { background: #4CAF50; color: white; border: none; padding: 10px 20px; border-radius: 5px; font-weight: bold; cursor: pointer; }
+        
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <div class="logo">ZINGARENA PRO</div>
+    </div>
+
+    <!-- 1. LOGIN SECTION -->
+    <div id="login-section">
+        <h2 style="text-align: center; margin-top: 50px; color: #ff9900;">🏆 Join the Competition</h2>
+        <p style="text-align: center; color: #ddd; font-size: 16px; padding: 0 20px; line-height: 1.6; margin-bottom: 30px;">
+            To join the competitive arena and play against real players, please log in securely. This ensures your tokens, rank, and aura are safely backed up.
+        </p>
+        <button class="btn-google" onclick="mockGoogleLogin()">🔒 Secure Login with Google</button>
+        
+        <button class="menu-btn" onclick="window.location.href='index.html'">⬅ Back to Main Menu</button>
+    </div>
+
+    <!-- 2. MAIN DASHBOARD SECTION -->
+    <div id="dashboard-section" class="dashboard hidden">
+        <div style="text-align: center; margin-bottom: 20px;">
+            <h3 id="player-name">Player Name</h3>
+            <span class="aura-badge">Rookie Aura</span>
+        </div>
+
+        <div class="wallet-container">
+            <div class="wallet-box">
+                <div class="wallet-title">Main Wallet</div>
+                <div class="wallet-amount">🪙 <span id="token-balance">0</span></div>
+            </div>
+            <div class="wallet-box">
+                <div class="wallet-title">Weekly Winnings</div>
+                <div class="wallet-amount weekly-score">🏆 <span id="weekly-winnings">0</span></div>
+            </div>
+        </div>
+
+        <button class="btn-ad" onclick="showRewardedAdForTokens()">📺 Watch Ad for +100 Tokens</button>
+
+        <h3 style="border-bottom: 1px solid #333; padding-bottom: 10px;">Select Match</h3>
+        
+        <!-- MATCH OPTIONS -->
+        <div class="match-card">
+            <div class="match-info">
+                <h3>Beginner Battle</h3>
+                <p>Entry: 100 Tokens | Win: 200 Tokens</p>
+            </div>
+            <!-- Logic: joinMatch(EntryFee, WinAmount, LeaderboardPoints) -->
+            <button class="btn-play" onclick="joinMatch(100, 200, 100)">Play 100</button>
+        </div>
+
+        <div class="match-card" style="border-left-color: #2196F3;">
+            <div class="match-info">
+                <h3>Pro League</h3>
+                <p>Entry: 500 Tokens | Win: 1000 Tokens</p>
+            </div>
+            <button class="btn-play" onclick="joinMatch(500, 1000, 500)">Play 500</button>
+        </div>
+
+        <button class="menu-btn" onclick="window.location.href='index.html'">⬅ Back to Main Menu</button>
+    </div>
+
+    <!-- 🔥 JS LOGIC YAHAN MIX KAR DIYA HAI 🔥 -->
+    <script>
+        let myTokens = 0; 
+        let myWeeklyWinnings = 0;
+
+        function mockGoogleLogin() {
+            document.getElementById('login-section').classList.add('hidden');
+            document.getElementById('dashboard-section').classList.remove('hidden');
+            
+            document.getElementById('player-name').innerText = "Zing Master";
+            myTokens = 500; 
+            myWeeklyWinnings = 0;
+            updateWalletUI();
+
+            initAdMobRewards();
+        }
+
+        function updateWalletUI() {
+            document.getElementById('token-balance').innerText = myTokens;
+            document.getElementById('weekly-winnings').innerText = myWeeklyWinnings;
+        }
+
+        function joinMatch(entryFee, winAmount, leaderboardPoints) {
+            if (myTokens >= entryFee) {
+                myTokens -= entryFee; 
+                updateWalletUI();
+                alert(`Match Started! ${entryFee} tokens deducted. Good luck!`);
+                
+                setTimeout(() => {
+                    let didWin = confirm(`[TEST SIMULATION] Did you win the match?`);
+                    if (didWin) {
+                        myTokens += winAmount; 
+                        myWeeklyWinnings += leaderboardPoints; 
+                        updateWalletUI();
+                        alert(`Victory! You won ${winAmount} Tokens. (+${leaderboardPoints} to Weekly Score)`);
+                    } else {
+                        alert(`You lost! Better luck next time.`);
+                    }
+                }, 1500);
+
+            } else {
+                alert("Not enough tokens! Please watch an ad to get free tokens.");
+            }
+        }
+
+        async function initAdMobRewards() {
+            if (window.Capacitor && Capacitor.Plugins.AdMob) {
+                const { AdMob } = Capacitor.Plugins;
+                try {
+                    await AdMob.initialize({ initializeForTesting: true });
+                    AdMob.addListener('onRewardedVideoAdReward', () => {
+                        myTokens += 100;
+                        updateWalletUI();
+                        alert("Reward Received: +100 Tokens added to your wallet! 🪙");
+                    });
+                } catch(e) { console.log("AdMob Init Failed", e); }
+            }
+        }
+
+        async function showRewardedAdForTokens() {
+            if (window.Capacitor && Capacitor.Plugins.AdMob) {
+                const { AdMob } = Capacitor.Plugins;
+                try {
+                    await AdMob.prepareRewardVideoAd({
+                        adId: 'ca-app-pub-3940256099942544/5224354917',
+                        isTesting: true
+                    });
+                    await AdMob.showRewardVideoAd();
+                } catch(e) {
+                    alert("Ad is loading or failed. Try again in a moment.");
+                }
+            } else {
+                alert("[PC TEST MODE] Ad Skipped. Adding 100 Tokens directly.");
+                myTokens += 100;
+                updateWalletUI();
+            }
+        }
+    </script>
+</body>
+</html>
