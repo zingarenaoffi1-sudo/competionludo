@@ -1,37 +1,69 @@
-name: Build Android APK (ZingArena Pro)
+name: Build ZingArena APK
 
 on:
   push:
     branches:
-      - main # Agar teri branch ka naam master hai, toh isko master kar dena
-  workflow_dispatch: # Isse tu manually button dabakar bhi APK bana sakega
+      - main
+      - master
+  workflow_dispatch:
 
 jobs:
-  build-android:
-    runs-on: ubuntu-latest
+  build:
+    runs-on: ubuntu-22.04
 
     steps:
-      - name: Checkout Code
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: 20
 
-      - name: Setup Java (For Android Build)
-        uses: actions/setup-java@v3
+      - name: Setup Java
+        uses: actions/setup-java@v4
         with:
-          distribution: 'zulu'
-          java-version: '17'
+          distribution: temurin
+          java-version: '21'
 
-      - name: Install NPM Dependencies
-        run: npm install
+      - name: Prepare www
+        run: |
+          rm -rf www
+          mkdir -p www
+          rsync -a \
+            --exclude='www' \
+            --exclude='node_modules' \
+            --exclude='.git' \
+            --exclude='.github' \
+            --exclude='android' \
+            ./ ./www/
 
-      - name: Sync Capacitor Android
-        run: npx cap sync android
+      # 🚀 YAHAN HAI LOGO, ADMOB & NAYA FIREBASE WALA MAGIC
+      - name: Install Capacitor Android, Logo, AdMob & Firebase
+        run: |
+          npm init -y
+          npm install @capacitor/core @capacitor/cli @capacitor/android @capacitor/assets
+          npm install @capacitor-community/admob
+          
+          # 🔥 NAYA ADDITION: Google Login aur Firebase ke plugins 🔥
+          npm install firebase @capacitor-firebase/authentication
+          
+          npx cap init "ZingArena" "com.zingarena.app" --web-dir www
+          npx cap add android
+          
+          # Logo dalne ka code
+          mkdir -p assets
+          cp icon.png assets/icon.png
+          npx capacitor-assets generate --android
 
-      # 🔥 FIREBASE SECURITY SECRET INJECTION 🔥
+          # AndroidManifest mein AdMob Test App ID dalne ka EK DUM SAFE code
+          sed -i 's|</application>|    <meta-data android:name="com.google.android.gms.ads.APPLICATION_ID" android:value="ca-app-pub-3940256099942544~3347511713"/>\n    </application>|' android/app/src/main/AndroidManifest.xml
+
+      - name: Sync Capacitor
+        run: |
+          npx cap sync android
+
+      # 🔥 NAYA ADDITION: FIREBASE SECURITY SECRET INJECTION 🔥
       - name: Inject Google Services JSON
         env:
           GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
@@ -39,15 +71,35 @@ jobs:
           echo "$GOOGLE_SERVICES_JSON" > android/app/google-services.json
           echo "Firebase JSON successfully injected!"
 
-      - name: Grant Execute Permission to Gradle
-        run: chmod +x android/gradlew
+      - name: Configure Gradle
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew wrapper --gradle-version 8.9
+          echo "org.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=1g" >> gradle.properties
+          echo "org.gradle.daemon=false" >> gradle.properties
+          echo "org.gradle.parallel=false" >> gradle.properties
+          echo "org.gradle.caching=false" >> gradle.properties
+          
+          cat <<EOF >> build.gradle
+          allprojects {
+              configurations.all {
+                  resolutionStrategy {
+                      force 'org.jetbrains.kotlin:kotlin-stdlib:1.8.22'
+                      force 'org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.8.22'
+                      force 'org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.8.22'
+                  }
+              }
+          }
+          EOF
 
-      - name: Build Android APK (Debug)
-        run: cd android && ./gradlew assembleDebug
+      - name: Build Debug APK
+        run: |
+          cd android
+          ./gradlew assembleDebug --no-daemon --max-workers=2
 
-      # 📦 APK DOWNLOAD KARNE KE LIYE
-      - name: Upload APK to GitHub Artifacts
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: ZingArena-Pro-APK
+          name: ZingArena-APK
           path: android/app/build/outputs/apk/debug/app-debug.apk
