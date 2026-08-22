@@ -1,0 +1,53 @@
+name: Build Android APK (ZingArena Pro)
+
+on:
+  push:
+    branches:
+      - main # Agar teri branch ka naam master hai, toh isko master kar dena
+  workflow_dispatch: # Isse tu manually button dabakar bhi APK bana sakega
+
+jobs:
+  build-android:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Setup Java (For Android Build)
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Install NPM Dependencies
+        run: npm install
+
+      - name: Sync Capacitor Android
+        run: npx cap sync android
+
+      # 🔥 FIREBASE SECURITY SECRET INJECTION 🔥
+      - name: Inject Google Services JSON
+        env:
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        run: |
+          echo "$GOOGLE_SERVICES_JSON" > android/app/google-services.json
+          echo "Firebase JSON successfully injected!"
+
+      - name: Grant Execute Permission to Gradle
+        run: chmod +x android/gradlew
+
+      - name: Build Android APK (Debug)
+        run: cd android && ./gradlew assembleDebug
+
+      # 📦 APK DOWNLOAD KARNE KE LIYE
+      - name: Upload APK to GitHub Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ZingArena-Pro-APK
+          path: android/app/build/outputs/apk/debug/app-debug.apk
