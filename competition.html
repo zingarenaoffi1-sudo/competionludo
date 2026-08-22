@@ -5,11 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>ZingArena - Competition</title>
     
-    <!-- 🔥 LUDO BOARD KI CSS YAHAN LINK KARNI ZAROORI HAI 🔥 -->
     <link rel="stylesheet" href="style.css">
     
     <style>
-        /* Competition Menu UI CSS */
         body { margin: 0; padding: 0; font-family: 'Arial', sans-serif; background-color: #121212; color: white; }
         .header { background: linear-gradient(to right, #1a237e, #311b92); padding: 15px; text-align: center; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
         .logo { font-size: 24px; font-weight: 900; color: #ff9900; letter-spacing: 2px; }
@@ -44,9 +42,10 @@
     <div id="login-section">
         <h2 style="text-align: center; margin-top: 50px; color: #ff9900;">🏆 Join the Competition</h2>
         <p style="text-align: center; color: #ddd; font-size: 16px; padding: 0 20px; line-height: 1.6; margin-bottom: 30px;">
-            To join the competitive arena and play against real players, please log in securely. This ensures your tokens, rank, and aura are safely backed up.
+            To join the competitive arena and play against real players, please log in securely.
         </p>
-        <button class="btn-google" onclick="mockGoogleLogin()">🔒 Secure Login with Google</button>
+        <!-- 🔥 YAHAN REAL GOOGLE LOGIN FUNCTION LAGAYA HAI 🔥 -->
+        <button class="btn-google" onclick="realGoogleLogin()">🔒 Secure Login with Google</button>
         
         <button class="menu-btn" onclick="window.location.href='index.html'">⬅ Back to Main Menu</button>
     </div>
@@ -55,7 +54,7 @@
     <div id="dashboard-section" class="dashboard hidden">
         <div style="text-align: center; margin-bottom: 20px;">
             <h3 id="player-name">Player Name</h3>
-            <span class="aura-badge">Rookie Aura</span>
+            <span class="aura-badge">Pro Player</span>
         </div>
 
         <div class="wallet-container">
@@ -73,7 +72,6 @@
 
         <h3 style="border-bottom: 1px solid #333; padding-bottom: 10px;">Select Match</h3>
         
-        <!-- MATCH OPTIONS (Client sirf Entry Fee bhejega, Server khud prize dega) -->
         <div class="match-card">
             <div class="match-info">
                 <h3>Beginner Battle</h3>
@@ -93,17 +91,15 @@
         <button class="menu-btn" onclick="window.location.href='index.html'">⬅ Back to Main Menu</button>
     </div>
 
-    <!-- 3. LUDO GAME UI (Jab match lagega toh yeh dikhega) -->
+    <!-- 3. LUDO GAME UI -->
     <div id="ludo-wrapper" class="hidden">
         <div id="my-identity-badge" class="hidden" style="text-align:center; padding: 5px; font-weight: bold; margin-bottom: 10px;"></div>
-        
         <div id="turn-text" style="text-align:center; margin: 10px 0; font-size: 18px; font-weight: bold;">WAITING...</div>
         <div id="timer-text" style="text-align:center; margin: 5px 0; color: #ff4d4d; font-weight: bold;">⏳ Time left: 25s</div>
         
         <div id="ludo-board"></div>
         <div id="dice-container" style="text-align: center; font-size: 50px; margin: 20px; cursor: pointer;">🎲</div>
         
-        <!-- Player Profiles (Dikhane ke liye) -->
         <div class="profiles-container" style="display: flex; justify-content: space-around; margin-top: 10px;">
             <div id="profile-red" class="player-profile" style="color: #ff2a2a; opacity: 0.3;">🔴 Red</div>
             <div id="profile-green" class="player-profile" style="color: #00cc00; opacity: 0.3;">🟢 Green</div>
@@ -112,11 +108,7 @@
         </div>
     </div>
 
-    <!-- 🔥 JAVASCRIPT LINKS (Ekdum Clean) 🔥 -->
-    <!-- 1. Pehle Socket.io chahiye server se baat karne ke liye -->
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
-    
-    <!-- 2. Phir teri competition.js (Jisme Ludo + Secure Tokens ka engine hai) -->
     <script src="competition.js"></script>
 
 </body>
