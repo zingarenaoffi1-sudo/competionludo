@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Ultra Ludo - Online</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="game-wrapper">
+        <div class="game-header">
+            <div class="logo-text">ULTRA LUDO (ONLINE)</div>
+            <button class="menu-btn" onclick="window.location.href='index.html'">Main Menu</button>
+        </div>
+
+        <div id="my-identity-badge" class="hidden" style="text-align: center; background: #ff9900; color: #000; font-weight: 900; padding: 5px; margin: 5px 10px; border-radius: 5px; text-transform: uppercase;"></div>
+
+        <!-- Players HUD & Board -->
+        <div class="player-hud"><div class="player-profile" id="profile-red"><div class="avatar red-bg">1</div><div class="player-name">Player 1 (Red)</div></div><div class="player-profile" id="profile-green"><div class="avatar green-bg">2</div><div class="player-name">Player 2 (Green)</div></div></div>
+        <div class="board-container"><div id="ludo-board"></div></div>
+        <div class="player-hud"><div class="player-profile" id="profile-blue"><div class="avatar blue-bg">4</div><div class="player-name">Player 4 (Blue)</div></div><div class="player-profile" id="profile-yellow"><div class="avatar yellow-bg">3</div><div class="player-name">Player 3 (Yellow)</div></div></div>
+
+        <!-- Footer -->
+        <div class="game-footer">
+            <div style="display: flex; flex-direction: column;"><div class="turn-indicator" id="turn-text">WAITING TO START...</div><div id="timer-text" style="font-size: 13px; color: #ffeb3b; font-weight: bold; margin-top: 3px;">⏳ Time left: 25s</div></div>
+            <div class="dice-wrapper"><div id="dice-container">🎲</div></div>
+        </div>
+
+        <!-- ONLINE MODALS -->
+        <div id="online-modal" class="modal">
+            <div class="modal-content">
+                <h2 style="color: #ff9900; margin-bottom: 15px;">ONLINE MULTIPLAYER</h2>
+                <div id="online-main-options">
+                    <button class="ultra-roll-btn" onclick="showQuickMatch()" style="width: 100%; margin-bottom: 10px;">Quick Match</button>
+                    <button class="ultra-roll-btn" onclick="showCreateRoomOptions()" style="width: 100%; margin-bottom: 10px; background: linear-gradient(to bottom, #2196F3, #0D47A1);">Create Room</button>
+                    <button class="ultra-roll-btn" onclick="showJoinRoomInput()" style="width: 100%; margin-bottom: 15px; background: linear-gradient(to bottom, #9C27B0, #4A148C);">Join Room</button>
+                    <button class="menu-btn" onclick="window.location.href='index.html'" style="width: 100%; padding: 8px;">Back to Main Menu</button>
+                </div>
+
+                <div id="quick-match-sub" class="hidden">
+                    <p style="color: #ddd; margin-bottom: 10px;">Select Match Size</p>
+                    <div id="quick-match-display" style="color: #00ff00; margin: 10px 0; font-size: 14px; font-weight: bold; min-height: 20px;"></div>
+                    <button class="ultra-roll-btn" onclick="findOnlineMatch(2)" style="width: 100%; margin-bottom: 8px;">2 Players</button>
+                    <button class="ultra-roll-btn" onclick="findOnlineMatch(3)" style="width: 100%; margin-bottom: 8px;">3 Players</button>
+                    <button class="ultra-roll-btn" onclick="findOnlineMatch(4)" style="width: 100%; margin-bottom: 8px;">4 Players</button>
+                    <button class="menu-btn" onclick="backToOnlineMain()" style="width: 100%; padding: 8px; margin-top: 5px;">Back</button>
+                </div>
+
+                <div id="create-room-sub" class="hidden">
+                    <p style="color: #ddd; margin-bottom: 10px;">Select Room Capacity</p>
+                    <button class="ultra-roll-btn" onclick="createPrivateRoom(2)" style="width: 100%; margin-bottom: 8px;">2 Player Room</button>
+                    <button class="ultra-roll-btn" onclick="createPrivateRoom(3)" style="width: 100%; margin-bottom: 8px;">3 Player Room</button>
+                    <button class="ultra-roll-btn" onclick="createPrivateRoom(4)" style="width: 100%; margin-bottom: 8px;">4 Player Room</button>
+                    <div id="room-created-display" style="color: #00ff00; margin: 10px 0; font-size: 14px; font-weight: bold;"></div>
+                    <button class="menu-btn" onclick="backToOnlineMain()" style="width: 100%; padding: 8px; margin-top: 5px;">Back</button>
+                </div>
+
+                <div id="join-room-sub" class="hidden">
+                    <p style="color: #ddd; margin-bottom: 10px;">Enter Room ID</p>
+                    <input type="text" id="room-id-input" placeholder="e.g. LUDO_1234" style="width: 100%; padding: 10px; margin-bottom: 10px; border-radius: 5px; border: none; text-align: center; font-weight: bold;">
+                    <button class="ultra-roll-btn" onclick="joinPrivateRoom()" style="width: 100%; margin-bottom: 8px; background: linear-gradient(to bottom, #4CAF50, #2E7D32);">Join Now</button>
+                    <button class="menu-btn" onclick="backToOnlineMain()" style="width: 100%; padding: 8px; margin-top: 5px;">Back</button>
+                </div>
+            </div>
+        </div>
+        <div id="mode-selection-modal" class="hidden"></div><div id="startup-modal" class="hidden"></div>
+    </div>
+
+    <!-- NATIVE ADMOB ONLINE LOGIC (Odd/Even Logic) -->
+    <script>
+        // AdMob Initialize
+        document.addEventListener('DOMContentLoaded', async () => {
+            if (window.Capacitor && Capacitor.Plugins.AdMob) {
+                await Capacitor.Plugins.AdMob.initialize({ initializeForTesting: true });
+            }
+        });
+
+        let onlineAdCount = 0;
+        window.showAd = function() {
+            if (onlineAdCount % 2 === 0) {
+                playActualAd(); // Ad aayega
+            }
+            onlineAdCount++;
+        };
+
+        async function playActualAd() {
+            if (window.Capacitor && Capacitor.Plugins.AdMob) {
+                const { AdMob } = Capacitor.Plugins;
+                try {
+                    // Test Interstitial ID
+                    await AdMob.prepareInterstitial({
+                        adId: 'ca-app-pub-3940256099942544/1033173712',
+                        isTesting: true
+                    });
+                    await AdMob.showInterstitial();
+                } catch(e) {
+                    console.log("Ad failed to load", e);
+                }
+            } else {
+                console.log("AdMob only works in the compiled APK!");
+            }
+        }
+    </script>
+    <script src="https://zingarena-ludo.onrender.com/socket.io/socket.io.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
