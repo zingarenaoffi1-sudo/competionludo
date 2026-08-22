@@ -5,8 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>ZingArena - Competition</title>
     
-    <!-- 🔥 CSS YAHAN MIX KAR DIYA HAI 🔥 -->
+    <!-- 🔥 LUDO BOARD KI CSS YAHAN LINK KARNI ZAROORI HAI 🔥 -->
+    <link rel="stylesheet" href="style.css">
+    
     <style>
+        /* Competition Menu UI CSS */
         body { margin: 0; padding: 0; font-family: 'Arial', sans-serif; background-color: #121212; color: white; }
         .header { background: linear-gradient(to right, #1a237e, #311b92); padding: 15px; text-align: center; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
         .logo { font-size: 24px; font-weight: 900; color: #ff9900; letter-spacing: 2px; }
@@ -70,14 +73,13 @@
 
         <h3 style="border-bottom: 1px solid #333; padding-bottom: 10px;">Select Match</h3>
         
-        <!-- MATCH OPTIONS -->
+        <!-- MATCH OPTIONS (Client sirf Entry Fee bhejega, Server khud prize dega) -->
         <div class="match-card">
             <div class="match-info">
                 <h3>Beginner Battle</h3>
                 <p>Entry: 100 Tokens | Win: 200 Tokens</p>
             </div>
-            <!-- Logic: joinMatch(EntryFee, WinAmount, LeaderboardPoints) -->
-            <button class="btn-play" onclick="joinMatch(100, 200, 100)">Play 100</button>
+            <button class="btn-play" onclick="joinMatch(100)">Play 100</button>
         </div>
 
         <div class="match-card" style="border-left-color: #2196F3;">
@@ -85,89 +87,37 @@
                 <h3>Pro League</h3>
                 <p>Entry: 500 Tokens | Win: 1000 Tokens</p>
             </div>
-            <button class="btn-play" onclick="joinMatch(500, 1000, 500)">Play 500</button>
+            <button class="btn-play" onclick="joinMatch(500)">Play 500</button>
         </div>
 
         <button class="menu-btn" onclick="window.location.href='index.html'">⬅ Back to Main Menu</button>
     </div>
 
-    <!-- 🔥 JS LOGIC YAHAN MIX KAR DIYA HAI 🔥 -->
-    <script>
-        let myTokens = 0; 
-        let myWeeklyWinnings = 0;
+    <!-- 3. LUDO GAME UI (Jab match lagega toh yeh dikhega) -->
+    <div id="ludo-wrapper" class="hidden">
+        <div id="my-identity-badge" class="hidden" style="text-align:center; padding: 5px; font-weight: bold; margin-bottom: 10px;"></div>
+        
+        <div id="turn-text" style="text-align:center; margin: 10px 0; font-size: 18px; font-weight: bold;">WAITING...</div>
+        <div id="timer-text" style="text-align:center; margin: 5px 0; color: #ff4d4d; font-weight: bold;">⏳ Time left: 25s</div>
+        
+        <div id="ludo-board"></div>
+        <div id="dice-container" style="text-align: center; font-size: 50px; margin: 20px; cursor: pointer;">🎲</div>
+        
+        <!-- Player Profiles (Dikhane ke liye) -->
+        <div class="profiles-container" style="display: flex; justify-content: space-around; margin-top: 10px;">
+            <div id="profile-red" class="player-profile" style="color: #ff2a2a; opacity: 0.3;">🔴 Red</div>
+            <div id="profile-green" class="player-profile" style="color: #00cc00; opacity: 0.3;">🟢 Green</div>
+            <div id="profile-yellow" class="player-profile" style="color: #ffcc00; opacity: 0.3;">🟡 Yellow</div>
+            <div id="profile-blue" class="player-profile" style="color: #1a53ff; opacity: 0.3;">🔵 Blue</div>
+        </div>
+    </div>
 
-        function mockGoogleLogin() {
-            document.getElementById('login-section').classList.add('hidden');
-            document.getElementById('dashboard-section').classList.remove('hidden');
-            
-            document.getElementById('player-name').innerText = "Zing Master";
-            myTokens = 500; 
-            myWeeklyWinnings = 0;
-            updateWalletUI();
+    <!-- 🔥 JAVASCRIPT LINKS (Ekdum Clean) 🔥 -->
+    <!-- 1. Pehle Socket.io chahiye server se baat karne ke liye -->
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    
+    <!-- 2. Phir teri competition.js (Jisme Ludo + Secure Tokens ka engine hai) -->
+    <script src="competition.js"></script>
 
-            initAdMobRewards();
-        }
-
-        function updateWalletUI() {
-            document.getElementById('token-balance').innerText = myTokens;
-            document.getElementById('weekly-winnings').innerText = myWeeklyWinnings;
-        }
-
-        function joinMatch(entryFee, winAmount, leaderboardPoints) {
-            if (myTokens >= entryFee) {
-                myTokens -= entryFee; 
-                updateWalletUI();
-                alert(`Match Started! ${entryFee} tokens deducted. Good luck!`);
-                
-                setTimeout(() => {
-                    let didWin = confirm(`[TEST SIMULATION] Did you win the match?`);
-                    if (didWin) {
-                        myTokens += winAmount; 
-                        myWeeklyWinnings += leaderboardPoints; 
-                        updateWalletUI();
-                        alert(`Victory! You won ${winAmount} Tokens. (+${leaderboardPoints} to Weekly Score)`);
-                    } else {
-                        alert(`You lost! Better luck next time.`);
-                    }
-                }, 1500);
-
-            } else {
-                alert("Not enough tokens! Please watch an ad to get free tokens.");
-            }
-        }
-
-        async function initAdMobRewards() {
-            if (window.Capacitor && Capacitor.Plugins.AdMob) {
-                const { AdMob } = Capacitor.Plugins;
-                try {
-                    await AdMob.initialize({ initializeForTesting: true });
-                    AdMob.addListener('onRewardedVideoAdReward', () => {
-                        myTokens += 100;
-                        updateWalletUI();
-                        alert("Reward Received: +100 Tokens added to your wallet! 🪙");
-                    });
-                } catch(e) { console.log("AdMob Init Failed", e); }
-            }
-        }
-
-        async function showRewardedAdForTokens() {
-            if (window.Capacitor && Capacitor.Plugins.AdMob) {
-                const { AdMob } = Capacitor.Plugins;
-                try {
-                    await AdMob.prepareRewardVideoAd({
-                        adId: 'ca-app-pub-3940256099942544/5224354917',
-                        isTesting: true
-                    });
-                    await AdMob.showRewardVideoAd();
-                } catch(e) {
-                    alert("Ad is loading or failed. Try again in a moment.");
-                }
-            } else {
-                alert("[PC TEST MODE] Ad Skipped. Adding 100 Tokens directly.");
-                myTokens += 100;
-                updateWalletUI();
-            }
-        }
-    </script>
 </body>
 </html>
