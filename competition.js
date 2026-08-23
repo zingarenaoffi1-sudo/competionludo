@@ -133,7 +133,7 @@ async function realGoogleLogin() {
         document.getElementById('dashboard-section').classList.remove('hidden');
         document.getElementById('player-name').innerText = user.displayName || "Zing Master";
 
-        socket = io('https://zingarenaoffi1-sudo-github-io.onrender.com');
+        socket = io('https://zingarena-ludo.onrender.com');
         socket.emit('authenticate-user', { uid: user.uid, name: user.displayName });
 
         socket.on('update-wallet', (data) => {
