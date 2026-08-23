@@ -35,6 +35,8 @@
         .reward-tiers { font-size: 11px; color: #888; text-align: center; margin-top: 10px; line-height: 1.6; }
         
         .hidden { display: none !important; }
+        .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); display: flex; justify-content: center; align-items: center; z-index: 1000; }
+        .modal-content { background: #1e1e1e; padding: 20px; border-radius: 10px; border: 2px solid #ff9900; width: 90%; }
     </style>
 </head>
 <body>
@@ -49,9 +51,7 @@
         <p style="text-align: center; color: #ddd; font-size: 16px; padding: 0 20px; line-height: 1.6; margin-bottom: 30px;">
             To join the competitive arena and play against real players, please log in securely.
         </p>
-        <!-- 🔥 YAHAN REAL GOOGLE LOGIN FUNCTION LAGAYA HAI 🔥 -->
         <button class="btn-google" onclick="realGoogleLogin()">🔒 Secure Login with Google</button>
-        
         <button class="menu-btn" onclick="window.location.href='index.html'">⬅ Back to Main Menu</button>
     </div>
 
@@ -160,8 +160,8 @@
         </div>
     </div>
 
-  <script src="https://zingarenaoffi1-sudo-github-io.onrender.com/socket.io/socket.io.js"></script>
-    <script src="competetion.js"></script>
+    <script src="https://zingarenaoffi1-sudo-github-io.onrender.com/socket.io/socket.io.js"></script>
+    <script src="competition.js"></script>
 
 </body>
 </html>
