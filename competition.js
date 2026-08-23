@@ -1,6 +1,6 @@
 /* =========================================
    ZINGARENA PRO - COMPETITIVE LOGIC ENGINE 
-   (Server-Side Tokens + Live Timer + AdMob + Google Login)
+   (Tokens + Leaderboard + Live Timer + Interstitial Ads + Google Login)
 ========================================= */
 
 // 1. GAME ECONOMY VARIABLES
@@ -86,7 +86,6 @@ async function showRewardedAdForTokens() {
     if (window.Capacitor && Capacitor.Plugins.AdMob) {
         const { AdMob } = Capacitor.Plugins;
         try {
-            // 🔥 Using Official AdMob Rewarded Test ID
             await AdMob.prepareRewardVideoAd({
                 adId: 'ca-app-pub-3940256099942544/5224354917',
                 isTesting: true
@@ -96,7 +95,6 @@ async function showRewardedAdForTokens() {
             alert("Ad is loading or failed. Try again in a moment.");
         }
     } else {
-        // PC TEST MODE: Bypass Native Ad and ask server for reward
         alert("[PC TEST MODE] Ad simulated. Asking Server for 100 Tokens...");
         setTimeout(() => { if (socket) socket.emit('claim-ad-reward'); }, 2000);
     }
@@ -122,29 +120,22 @@ async function realGoogleLogin() {
     try {
         let user;
         
-        // 1. Google Login Plugin Check
         if (window.Capacitor && Capacitor.Plugins.FirebaseAuthentication) {
             const { FirebaseAuthentication } = Capacitor.Plugins;
             const result = await FirebaseAuthentication.signInWithGoogle();
             user = result.user; 
         } else {
-            // PC TEST MODE
             user = { uid: "pc_test_" + Math.floor(Math.random()*1000), displayName: "Zing PC Player" };
             console.log("Running in PC Mode (Firebase Auth Skipped)");
         }
 
-        // 2. UI Transition
         document.getElementById('login-section').classList.add('hidden');
         document.getElementById('dashboard-section').classList.remove('hidden');
         document.getElementById('player-name').innerText = user.displayName || "Zing Master";
 
-        // 3. Connect to Render Server
         socket = io('https://zingarenaoffi1-sudo-github-io.onrender.com');
-
-        // 4. Send Auth Data to Server (Trigger 1000 Welcome Bonus if new)
         socket.emit('authenticate-user', { uid: user.uid, name: user.displayName });
 
-        // 5. Server Wallet Synchronizer
         socket.on('update-wallet', (data) => {
             myTokens = data.tokens;
             myWeeklyWinnings = data.score;
@@ -153,7 +144,9 @@ async function realGoogleLogin() {
 
         socket.on('error-msg', (msg) => { alert("❌ " + msg); });
 
-        // 6. Multi-Betting Match Start Listener
+        // Leaderboard listener added here
+        socket.on('leaderboard-data', renderLeaderboard);
+
         socket.on('start-online-game', (data) => {
             if (data.mode === 'comp') {
                 document.getElementById("dashboard-section").classList.add("hidden");
@@ -171,11 +164,9 @@ async function realGoogleLogin() {
             }
         });
 
-        // 7. Game Engine Listeners
         socket.on('remote-dice-rolled', handleRemoteDice);
         socket.on('remote-token-moved', handleRemoteTokenMove);
         
-        // 8. Winning Declaration Listener
         socket.on('game-over-broadcast', (data) => {
             if (data.winnerId === socket.id) {
                 alert(`🎉 Congratulations! You won ${data.prize} Tokens! Added to Wallet.`);
@@ -184,7 +175,6 @@ async function realGoogleLogin() {
             }
         });
 
-        // 9. Init Ads
         initAdMobRewards();
 
     } catch (error) {
@@ -193,21 +183,51 @@ async function realGoogleLogin() {
     }
 }
 
-// 🔥 DYNAMIC ENTRY FEE MATCHMAKING
-async function joinMatch(entryFee) {
+// 🔥 DYNAMIC ENTRY FEE MATCHMAKING (Handles 2, 3, 4 Players)
+async function joinMatch(entryFee, playersRequired) {
     if (!socket) { alert("Please login first!"); return; }
     
     if (myTokens >= entryFee) {
         await triggerInterstitialAd("Entering Pro Match"); 
-        alert(`⏳ Deducting ${entryFee} tokens & searching for opponent...`);
-        socket.emit('find-comp-match', { entryFee: entryFee });
+        alert(`⏳ Deducting ${entryFee} tokens & searching for ${playersRequired} players...`);
+        socket.emit('find-comp-match', { entryFee: entryFee, playersRequired: playersRequired });
     } else {
         alert("Not enough tokens! Watch Ad for free tokens.");
     }
 }
 
 // ==========================================
-// 🎲 LUDO GAMEPLAY LOGIC (Unchanged)
+// 📊 LEADERBOARD UI LOGIC
+// ==========================================
+function showLeaderboard() {
+    if (!socket) { alert("Please login first!"); return; }
+    socket.emit('get-leaderboard');
+}
+
+function renderLeaderboard(data) {
+    const container = document.getElementById('leaderboard-list');
+    const modal = document.getElementById('leaderboard-modal');
+    if (!container || !modal) return;
+
+    if (!data || data.length === 0) {
+        container.innerHTML = '<p style="text-align:center; color:#aaa;">Abhi tak koi winnings nahi hai.</p>';
+    } else {
+        const medals = ['🥇', '🥈', '🥉'];
+        container.innerHTML = data.map((p, i) => {
+            const rankLabel = medals[i] || `#${i + 1}`;
+            return `<div class="leaderboard-row"><span>${rankLabel} ${p.name}</span><span>🏆 ${p.weeklyWinnings}</span></div>`;
+        }).join('');
+    }
+    modal.classList.remove('hidden');
+}
+
+function closeLeaderboard() {
+    const modal = document.getElementById('leaderboard-modal');
+    if (modal) modal.classList.add('hidden');
+}
+
+// ==========================================
+// 🎲 LUDO GAMEPLAY LOGIC 
 // ==========================================
 
 function initGameSession() {
