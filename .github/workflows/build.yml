@@ -26,24 +26,36 @@ jobs:
           distribution: temurin
           java-version: '21'
 
-      # 🔥 MAGIC 1: FINGERPRINT KO LOCK (CACHE) KARNA 🔥
-      - name: Cache Android Keystore
-        uses: actions/cache@v4
-        with:
-          path: ~/.android
-          key: zingarena-keystore-lock
-
-      # 🔥 MAGIC 2: FINGERPRINT (SHA-1) BANANA AUR PRINT KARNA 🔥
-      - name: Generate and Print SHA-1 Fingerprint
+      # 🚀 🔥 FINGERPRINT KO ZINDAGI BHAR SAME RAKHNE WALA MAGIC 🔥 🚀
+      - name: Setup Permanent Keystore
         run: |
-          if [ ! -f ~/.android/debug.keystore ]; then
-            mkdir -p ~/.android
+          mkdir -p ~/.android
+          
+          # 1. Agar tune GitHub repo mein debug.keystore daal di hai, toh usko use karega (Permanent)
+          if [ -f debug.keystore ]; then
+            echo "✅ Repo se Keystore mil gayi! Using SAME FINGERPRINT forever."
+            cp debug.keystore ~/.android/debug.keystore
+          
+          # 2. Agar nahi hai, toh nayi banayega
+          else
+            echo "⚠️ Nayi Keystore bana rahe hain..."
             keytool -genkey -v -keystore ~/.android/debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
           fi
+          
           echo "========================================================="
-          echo "🔥🔥🔥 COPY THIS SHA-1 FINGERPRINT (NEECHE LIKHA HAI) 🔥🔥🔥"
+          echo "🔥🔥🔥 COPY THIS SHA-1 FINGERPRINT 🔥🔥🔥"
           keytool -list -v -keystore ~/.android/debug.keystore -alias androiddebugkey -storepass android -keypass android | grep "SHA1:"
           echo "========================================================="
+          
+          # Isko bahar copy kar rahe hain taaki tu isko download kar sake
+          cp ~/.android/debug.keystore ./debug.keystore
+
+      # 💾 Keystore ko download karne ke liye Artifact banayenge
+      - name: Upload Keystore for Permanent Save
+        uses: actions/upload-artifact@v4
+        with:
+          name: Download-This-Keystore
+          path: debug.keystore
 
       - name: Prepare www
         run: |
@@ -55,6 +67,7 @@ jobs:
             --exclude='.git' \
             --exclude='.github' \
             --exclude='android' \
+            --exclude='debug.keystore' \
             ./ ./www/
 
       - name: Install Capacitor Android, Logo, AdMob & Firebase
@@ -111,6 +124,12 @@ jobs:
           echo "org.gradle.daemon=false" >> gradle.properties
           echo "org.gradle.parallel=false" >> gradle.properties
           echo "org.gradle.caching=false" >> gradle.properties
+          
+          if ! grep -q "gms:google-services" build.gradle; then
+            sed -i '/dependencies {/a \        classpath '\''com.google.gms:google-services:4.4.2'\''' build.gradle
+          fi
+
+          echo "apply plugin: 'com.google.gms.google-services'" >> app/build.gradle
           
           cat <<EOF >> build.gradle
           allprojects {
