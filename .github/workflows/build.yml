@@ -26,6 +26,25 @@ jobs:
           distribution: temurin
           java-version: '21'
 
+      # 🔥 MAGIC 1: FINGERPRINT KO LOCK (CACHE) KARNA 🔥
+      - name: Cache Android Keystore
+        uses: actions/cache@v4
+        with:
+          path: ~/.android
+          key: zingarena-keystore-lock
+
+      # 🔥 MAGIC 2: FINGERPRINT (SHA-1) BANANA AUR PRINT KARNA 🔥
+      - name: Generate and Print SHA-1 Fingerprint
+        run: |
+          if [ ! -f ~/.android/debug.keystore ]; then
+            mkdir -p ~/.android
+            keytool -genkey -v -keystore ~/.android/debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
+          fi
+          echo "========================================================="
+          echo "🔥🔥🔥 COPY THIS SHA-1 FINGERPRINT (NEECHE LIKHA HAI) 🔥🔥🔥"
+          keytool -list -v -keystore ~/.android/debug.keystore -alias androiddebugkey -storepass android -keypass android | grep "SHA1:"
+          echo "========================================================="
+
       - name: Prepare www
         run: |
           rm -rf www
@@ -38,22 +57,17 @@ jobs:
             --exclude='android' \
             ./ ./www/
 
-      # 🚀 YAHAN HAI LOGO, ADMOB & NAYA FIREBASE WALA MAGIC
       - name: Install Capacitor Android, Logo, AdMob & Firebase
         run: |
           npm init -y
           npm install @capacitor/core @capacitor/cli @capacitor/android @capacitor/assets
           npm install @capacitor-community/admob
-          
-          # 🔥 NAYA ADDITION: Google Login aur Firebase ke plugins 🔥
           npm install firebase @capacitor-firebase/authentication
           
           npx cap init "ZingArena" "com.zingarena.app" --web-dir www
           
-          # 🔥 FIX: Auto-generated .ts file ko delete kar rahe hain taaki .json chale 🔥
           rm -f capacitor.config.ts
           
-          # 🔥 YAHAN TERE CODE KE ANDAR GOOGLE PROVIDER ADD KIYA HAI 🔥
           cat <<EOF > capacitor.config.json
           {
             "appId": "com.zingarena.app",
@@ -71,19 +85,16 @@ jobs:
           
           npx cap add android
           
-          # Logo dalne ka code
           mkdir -p assets
           cp icon.png assets/icon.png
           npx capacitor-assets generate --android
 
-          # AndroidManifest mein AdMob Test App ID dalne ka EK DUM SAFE code
           sed -i 's|</application>|    <meta-data android:name="com.google.android.gms.ads.APPLICATION_ID" android:value="ca-app-pub-3940256099942544~3347511713"/>\n    </application>|' android/app/src/main/AndroidManifest.xml
 
       - name: Sync Capacitor
         run: |
           npx cap sync android
 
-      # 🔥 NAYA ADDITION: FIREBASE SECURITY SECRET INJECTION 🔥
       - name: Inject Google Services JSON
         env:
           GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
