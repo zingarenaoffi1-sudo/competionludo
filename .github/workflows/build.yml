@@ -49,6 +49,23 @@ jobs:
           npm install firebase @capacitor-firebase/authentication
           
           npx cap init "ZingArena" "com.zingarena.app" --web-dir www
+          
+          # 🔥 YAHAN TERE CODE KE ANDAR GOOGLE PROVIDER ADD KIYA HAI 🔥
+          cat <<EOF > capacitor.config.json
+          {
+            "appId": "com.zingarena.app",
+            "appName": "ZingArena",
+            "webDir": "www",
+            "bundledWebRuntime": false,
+            "plugins": {
+              "FirebaseAuthentication": {
+                "skipNativeAuth": false,
+                "providers": ["google.com"]
+              }
+            }
+          }
+          EOF
+          
           npx cap add android
           
           # Logo dalne ka code
