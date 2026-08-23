@@ -72,31 +72,50 @@ async function initAdMobRewards() {
         try {
             await AdMob.initialize({ initializeForTesting: true });
             AdMob.addListener('onRewardedVideoAdReward', () => {
-                myTokens += 100;
-                updateWalletUI();
-                alert("Reward Received: +100 Tokens added to your wallet! 🪙");
+                // Ad poori dekh li gayi — ab SERVER se coins maango.
+                // Client khud kabhi apne aap coins add NAHI karta (isse hacking possible thi).
+                claimAdRewardFromServer();
             });
         } catch(e) { console.log("AdMob Init Failed", e); }
     }
 }
 
+let currentAdSessionId = null;
+
 async function showRewardedAdForTokens() {
-    if (window.Capacitor && Capacitor.Plugins.AdMob) {
-        const { AdMob } = Capacitor.Plugins;
-        try {
-            await AdMob.prepareRewardVideoAd({
-                adId: 'ca-app-pub-3940256099942544/5224354917',
-                isTesting: true
-            });
-            await AdMob.showRewardVideoAd();
-        } catch(e) {
-            alert("Ad is loading or failed. Try again in a moment.");
+    if (!socket) { alert("Please login first!"); return; }
+
+    // 🔒 STEP 1: Ad dikhane se PEHLE server se ek session maango
+    socket.emit('request-ad-reward');
+    socket.once('ad-reward-session', async (data) => {
+        currentAdSessionId = data.sessionId;
+
+        if (window.Capacitor && Capacitor.Plugins.AdMob) {
+            const { AdMob } = Capacitor.Plugins;
+            try {
+                await AdMob.prepareRewardVideoAd({
+                    adId: 'ca-app-pub-3940256099942544/5224354917',
+                    isTesting: true
+                });
+                await AdMob.showRewardVideoAd();
+                // Reward yahan se nahi milega — 'onRewardedVideoAdReward' listener
+                // tabhi chalega jab user poori ad dekh lega, tabhi claim hoga
+            } catch(e) {
+                alert("Ad is loading or failed. Try again in a moment.");
+            }
+        } else {
+            // PC TEST MODE — asli ad nahi dikha sakte, isliye thodi der wait karke
+            // asli server flow (Firestore tak) test kar lete hain
+            alert("[PC TEST MODE] Ad simulate ho rahi hai (9 second wait)...");
+            setTimeout(() => claimAdRewardFromServer(), 9000);
         }
-    } else {
-        alert("[PC TEST MODE] Ad Skipped. Adding 100 Tokens directly.");
-        myTokens += 100;
-        updateWalletUI();
-    }
+    });
+}
+
+function claimAdRewardFromServer() {
+    if (!currentAdSessionId || !socket) return;
+    socket.emit('claim-ad-reward', { sessionId: currentAdSessionId });
+    currentAdSessionId = null;
 }
 
 function updateWalletUI() {
@@ -118,12 +137,14 @@ document.addEventListener("DOMContentLoaded", () => {
 async function realGoogleLogin() {
     try {
         let user;
+        let idToken = null;
         
         // 1. Google Login Plugin Check
         if (window.Capacitor && Capacitor.Plugins.FirebaseAuthentication) {
             const { FirebaseAuthentication } = Capacitor.Plugins;
             const result = await FirebaseAuthentication.signInWithGoogle();
             user = result.user; // Firebase se asli data mil gaya!
+            idToken = result.credential ? result.credential.idToken : null;
         } else {
             // PC TEST MODE
             user = { uid: "pc_test_" + Math.floor(Math.random()*1000), displayName: "Zing PC Player" };
@@ -137,13 +158,25 @@ async function realGoogleLogin() {
 
         // 3. Server connection aur Auth bhej do
         socket = io('https://zingarenaoffi1-sudo-github-io.onrender.com');
-        socket.emit('authenticate-user', { uid: user.uid, name: user.displayName });
+
+        // 🔒 SECURITY: idToken bhejo taaki server khud verify kare ki yeh user asli mein
+        // kaun hai — sirf uid bhejna unsafe hai, koi bhi kisi ka bhi uid bol sakta tha
+        if (idToken) {
+            socket.emit('authenticate-user', { idToken: idToken });
+        } else {
+            // ⚠️ Yeh sirf PC test mode hai — real security nahi hai isme
+            socket.emit('authenticate-user', { testUid: user.uid, name: user.displayName });
+        }
 
         // 4. Server Wallet Update Listener
         socket.on('update-wallet', (data) => {
             myTokens = data.tokens;
             myWeeklyWinnings = data.score;
             updateWalletUI();
+        });
+
+        socket.on('ad-reward-granted', () => {
+            alert("Reward Received: +100 Tokens added to your wallet! 🪙");
         });
 
         socket.on('error-msg', (msg) => { alert("❌ " + msg); });
@@ -172,10 +205,15 @@ async function realGoogleLogin() {
         socket.on('game-over-broadcast', (data) => {
             if (data.winnerId === socket.id) {
                 alert(`🎉 Congratulations! You received ${data.prize} Tokens in your Wallet!`);
+            } else {
+                alert(`😔 You lost this match. Better luck next time!`);
             }
         });
 
-        // 7. Initialize AdMob for free tokens
+        // 7. Leaderboard listener
+        socket.on('leaderboard-data', renderLeaderboard);
+
+        // 8. Initialize AdMob for free tokens
         initAdMobRewards();
 
     } catch (error) {
@@ -184,16 +222,45 @@ async function realGoogleLogin() {
     }
 }
 
-async function joinMatch(entryFee) {
+async function joinMatch(entryFee, playersRequired) {
     if (!socket) { alert("Please login first!"); return; }
     
     if (myTokens >= entryFee) {
         await triggerInterstitialAd("Entering Pro Match"); 
-        alert("Wait, deducting tokens & searching for opponent... ⏳");
-        socket.emit('find-comp-match', { entryFee: entryFee });
+        socket.emit('find-comp-match', { entryFee: entryFee, playersRequired: playersRequired });
     } else {
         alert("Not enough tokens! Watch Ad for free tokens.");
     }
+}
+
+// ==========================================
+// 📊 LEADERBOARD UI
+// ==========================================
+function showLeaderboard() {
+    if (!socket) { alert("Please login first!"); return; }
+    socket.emit('get-leaderboard');
+}
+
+function renderLeaderboard(data) {
+    const container = document.getElementById('leaderboard-list');
+    const modal = document.getElementById('leaderboard-modal');
+    if (!container || !modal) return;
+
+    if (!data || data.length === 0) {
+        container.innerHTML = '<p style="text-align:center; color:#aaa;">Abhi tak koi winnings nahi hai.</p>';
+    } else {
+        const medals = ['🥇', '🥈', '🥉'];
+        container.innerHTML = data.map((p, i) => {
+            const rankLabel = medals[i] || `#${i + 1}`;
+            return `<div class="leaderboard-row"><span>${rankLabel} ${p.name}</span><span>🏆 ${p.weeklyWinnings}</span></div>`;
+        }).join('');
+    }
+    modal.classList.remove('hidden');
+}
+
+function closeLeaderboard() {
+    const modal = document.getElementById('leaderboard-modal');
+    if (modal) modal.classList.add('hidden');
 }
 
 // ==========================================
