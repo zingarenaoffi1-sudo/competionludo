@@ -24,10 +24,15 @@
         .menu-btn { display: block; margin: 20px auto; background: #333; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; }
         .btn-ad { background: linear-gradient(to right, #ff416c, #ff4b2b); color: white; padding: 12px; width: 100%; border-radius: 10px; font-weight: bold; border: none; margin-bottom: 20px; cursor: pointer; box-shadow: 0 4px 15px rgba(255, 75, 43, 0.4); }
         
-        .match-card { background: #2a2a2a; padding: 15px; border-radius: 10px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; border-left: 5px solid #ff9900; }
+        .match-card { background: #2a2a2a; padding: 15px; border-radius: 10px; margin-bottom: 15px; border-left: 5px solid #ff9900; }
         .match-info h3 { margin: 0 0 5px 0; color: #fff; }
         .match-info p { margin: 0; font-size: 12px; color: #aaa; }
-        .btn-play { background: #4CAF50; color: white; border: none; padding: 10px 20px; border-radius: 5px; font-weight: bold; cursor: pointer; }
+        .player-count-row { display: flex; justify-content: space-between; gap: 8px; margin-top: 12px; }
+        .btn-play-small { flex: 1; background: #4CAF50; color: white; border: none; padding: 8px 4px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 13px; line-height: 1.4; }
+        .btn-play-small span { display: block; font-size: 10px; font-weight: normal; opacity: 0.85; }
+        .btn-leaderboard { background: linear-gradient(to right, #ffd700, #ff9900); color: #111; padding: 12px; width: 100%; border-radius: 10px; font-weight: bold; border: none; margin-bottom: 15px; cursor: pointer; }
+        .leaderboard-row { display: flex; justify-content: space-between; padding: 10px 5px; border-bottom: 1px solid #333; font-size: 14px; }
+        .reward-tiers { font-size: 11px; color: #888; text-align: center; margin-top: 10px; line-height: 1.6; }
         
         .hidden { display: none !important; }
     </style>
@@ -69,26 +74,73 @@
         </div>
 
         <button class="btn-ad" onclick="showRewardedAdForTokens()">📺 Watch Ad for +100 Tokens</button>
+        <button class="btn-leaderboard" onclick="showLeaderboard()">🏆 Weekly Leaderboard</button>
 
         <h3 style="border-bottom: 1px solid #333; padding-bottom: 10px;">Select Match</h3>
-        
+
         <div class="match-card">
             <div class="match-info">
-                <h3>Beginner Battle</h3>
-                <p>Entry: 100 Tokens | Win: 200 Tokens</p>
+                <h3>100 Tokens Table</h3>
+                <p>Entry: 100 Tokens per player</p>
             </div>
-            <button class="btn-play" onclick="joinMatch(100)">Play 100</button>
+            <div class="player-count-row">
+                <button class="btn-play-small" onclick="joinMatch(100, 2)">2 Players<span>Win 200</span></button>
+                <button class="btn-play-small" onclick="joinMatch(100, 3)">3 Players<span>Win 300</span></button>
+                <button class="btn-play-small" onclick="joinMatch(100, 4)">4 Players<span>Win 400</span></button>
+            </div>
         </div>
 
         <div class="match-card" style="border-left-color: #2196F3;">
             <div class="match-info">
-                <h3>Pro League</h3>
-                <p>Entry: 500 Tokens | Win: 1000 Tokens</p>
+                <h3>200 Tokens Table</h3>
+                <p>Entry: 200 Tokens per player</p>
             </div>
-            <button class="btn-play" onclick="joinMatch(500)">Play 500</button>
+            <div class="player-count-row">
+                <button class="btn-play-small" onclick="joinMatch(200, 2)">2 Players<span>Win 400</span></button>
+                <button class="btn-play-small" onclick="joinMatch(200, 3)">3 Players<span>Win 600</span></button>
+                <button class="btn-play-small" onclick="joinMatch(200, 4)">4 Players<span>Win 800</span></button>
+            </div>
+        </div>
+
+        <div class="match-card" style="border-left-color: #9C27B0;">
+            <div class="match-info">
+                <h3>500 Tokens Table</h3>
+                <p>Entry: 500 Tokens per player</p>
+            </div>
+            <div class="player-count-row">
+                <button class="btn-play-small" onclick="joinMatch(500, 2)">2 Players<span>Win 1000</span></button>
+                <button class="btn-play-small" onclick="joinMatch(500, 3)">3 Players<span>Win 1500</span></button>
+                <button class="btn-play-small" onclick="joinMatch(500, 4)">4 Players<span>Win 2000</span></button>
+            </div>
+        </div>
+
+        <div class="match-card" style="border-left-color: #f44336;">
+            <div class="match-info">
+                <h3>1000 Tokens Table</h3>
+                <p>Entry: 1000 Tokens per player</p>
+            </div>
+            <div class="player-count-row">
+                <button class="btn-play-small" onclick="joinMatch(1000, 2)">2 Players<span>Win 2000</span></button>
+                <button class="btn-play-small" onclick="joinMatch(1000, 3)">3 Players<span>Win 3000</span></button>
+                <button class="btn-play-small" onclick="joinMatch(1000, 4)">4 Players<span>Win 4000</span></button>
+            </div>
         </div>
 
         <button class="menu-btn" onclick="window.location.href='index.html'">⬅ Back to Main Menu</button>
+    </div>
+
+    <!-- 🏆 LEADERBOARD MODAL -->
+    <div id="leaderboard-modal" class="modal hidden">
+        <div class="modal-content" style="max-width: 340px;">
+            <h2 style="color: #ffd700; margin-bottom: 5px;">🏆 Weekly Leaderboard</h2>
+            <p style="color: #aaa; font-size: 12px; margin-bottom: 15px;">Har Monday reset hota hai</p>
+            <div id="leaderboard-list" style="text-align: left; max-height: 300px; overflow-y: auto;"></div>
+            <div class="reward-tiers">
+                1st: 50k &nbsp;2nd: 45k &nbsp;3rd: 40k &nbsp;4th: 35k &nbsp;5th: 30k<br>
+                6th: 25k &nbsp;7th: 20k &nbsp;8th: 15k &nbsp;9th: 10k &nbsp;10th: 5k
+            </div>
+            <button class="menu-btn" onclick="closeLeaderboard()" style="width: 100%; margin-top: 15px;">Close</button>
+        </div>
     </div>
 
     <!-- 3. LUDO GAME UI -->
@@ -108,8 +160,8 @@
         </div>
     </div>
 
-  <script src="https://zingarena-ludo.onrender.com/socket.io/socket.io.js"></script>
-    <script src="competition.js"></script>
+  <script src="https://zingarenaoffi1-sudo-github-io.onrender.com/socket.io/socket.io.js"></script>
+    <script src="competetion.js"></script>
 
 </body>
 </html>
