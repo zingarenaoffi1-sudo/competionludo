@@ -18,13 +18,9 @@ const allTokens = {};
 let myAssignedColor = "";
 window.currentRoomId = "";
 
-// TIMER & RANKING TRACKING
-let turnTimer = null;
+// 3. VISUAL TIMER TRACKING
 let countdownInterval = null;
 let timeLeft = 25;
-const missedTurns = {}; 
-let winnersList = [];
-let totalPlayersInGame = 0;
 
 const playersData = {
     'red': { name: "RED'S TURN", class: "red-text", startOffset: 0 },
@@ -56,7 +52,6 @@ const diceFaces = ['', '⚀', '⚁', '⚂', '⚃', '⚄', '⚅'];
 // ==========================================
 let lastAdTime = 0;
 function triggerInterstitialAd(reason) {
-    console.log("🎬 Interstitial Ad Triggered for:", reason);
     let now = Date.now();
     if (now - lastAdTime < 15000) return Promise.resolve();
     lastAdTime = now;
@@ -72,17 +67,15 @@ async function initAdMobRewards() {
         try {
             await AdMob.initialize({ initializeForTesting: true });
             AdMob.addListener('onRewardedVideoAdReward', () => {
-                // 🔒 ANTI-HACK: Sirf server ko bolo add karne ke liye
                 if (socket) socket.emit('claim-ad-reward');
                 alert("Reward Received: +100 Tokens adding to your wallet via Server! 🪙");
             });
-        } catch(e) { console.log("AdMob Init Failed", e); }
+        } catch(e) {}
     }
 }
 
 async function showRewardedAdForTokens() {
     if (!socket) { alert("Please login first!"); return; }
-
     if (window.Capacitor && Capacitor.Plugins.AdMob) {
         const { AdMob } = Capacitor.Plugins;
         try {
@@ -119,14 +112,12 @@ document.addEventListener("DOMContentLoaded", () => {
 async function realGoogleLogin() {
     try {
         let user;
-        
         if (window.Capacitor && Capacitor.Plugins.FirebaseAuthentication) {
             const { FirebaseAuthentication } = Capacitor.Plugins;
             const result = await FirebaseAuthentication.signInWithGoogle();
             user = result.user; 
         } else {
             user = { uid: "pc_test_" + Math.floor(Math.random()*1000), displayName: "Zing PC Player" };
-            console.log("Running in PC Mode (Firebase Auth Skipped)");
         }
 
         document.getElementById('login-section').classList.add('hidden');
@@ -143,8 +134,6 @@ async function realGoogleLogin() {
         });
 
         socket.on('error-msg', (msg) => { alert("❌ " + msg); });
-
-        // Leaderboard listener added here
         socket.on('leaderboard-data', renderLeaderboard);
 
         socket.on('start-online-game', (data) => {
@@ -164,44 +153,55 @@ async function realGoogleLogin() {
             }
         });
 
+        // 🚨 NEW SERVER SYNC LISTENERS
         socket.on('remote-dice-rolled', handleRemoteDice);
         socket.on('remote-token-moved', handleRemoteTokenMove);
+        socket.on('turn-updated', (data) => {
+            currentPlayerIndex = activePlayers.indexOf(data.currentColor);
+            updateTurnText();
+            gameState = 'WAITING_FOR_ROLL';
+            startTurnTimer(); // Visual Only
+        });
+        socket.on('player-eliminated', (data) => {
+            alert(`🚨 ${data.color.toUpperCase()} was eliminated!`);
+            activePlayers = activePlayers.filter(c => c !== data.color);
+            let profileEl = document.getElementById(`profile-${data.color}`);
+            if (profileEl) profileEl.style.opacity = "0.1";
+            if (allTokens[data.color]) {
+                allTokens[data.color].forEach(t => {
+                    if (t.element && t.element.parentNode) t.element.parentNode.removeChild(t.element);
+                });
+            }
+        });
         
         socket.on('game-over-broadcast', (data) => {
-            if (data.winnerId === socket.id) {
-                alert(`🎉 Congratulations! You won ${data.prize} Tokens! Added to Wallet.`);
-            } else {
-                alert(`😔 You lost this match. Better luck next time!`);
-            }
+            alert(data.winnerId === socket.id ? `🎉 Congratulations! You won ${data.prize} Tokens!` : `😔 You lost this match.`);
+            endMatchAndGoToMenu();
         });
 
         initAdMobRewards();
 
     } catch (error) {
-        alert("Google Login Failed: " + JSON.stringify(error));
-        console.error("Login Error:", error);
+        alert("Google Login Failed.");
     }
 }
 
-// 🔥 DYNAMIC ENTRY FEE MATCHMAKING (Handles 2, 3, 4 Players)
 async function joinMatch(entryFee, playersRequired) {
     if (!socket) { alert("Please login first!"); return; }
-    
     if (myTokens >= entryFee) {
         await triggerInterstitialAd("Entering Pro Match"); 
-        alert(`⏳ Deducting ${entryFee} tokens & searching for ${playersRequired} players...`);
+        alert(`⏳ Deducting ${entryFee} tokens & searching for players...`);
         socket.emit('find-comp-match', { entryFee: entryFee, playersRequired: playersRequired });
     } else {
-        alert("Not enough tokens! Watch Ad for free tokens.");
+        alert("Not enough tokens!");
     }
 }
 
 // ==========================================
-// 📊 LEADERBOARD UI LOGIC
+// 📊 LEADERBOARD
 // ==========================================
 function showLeaderboard() {
-    if (!socket) { alert("Please login first!"); return; }
-    socket.emit('get-leaderboard');
+    if (socket) socket.emit('get-leaderboard');
 }
 
 function renderLeaderboard(data) {
@@ -227,17 +227,13 @@ function closeLeaderboard() {
 }
 
 // ==========================================
-// 🎲 LUDO GAMEPLAY LOGIC 
+// 🎲 LUDO GAMEPLAY LOGIC (SERVER AUTHORITATIVE)
 // ==========================================
-
 function initGameSession() {
-    winnersList = []; 
-    totalPlayersInGame = activePlayers.length; 
     activePlayers.forEach(c => {
         let p = document.getElementById(`profile-${c}`);
         if(p) p.style.opacity = "1";
     });
-    activePlayers.forEach(c => missedTurns[c] = 0);
     currentPlayerIndex = 0;
     gameState = 'WAITING_FOR_ROLL';
     isMoving = false;
@@ -246,47 +242,16 @@ function initGameSession() {
     startTurnTimer(); 
 }
 
-function handlePlayerWin(playerColor) {
-    if (!winnersList.includes(playerColor)) {
-        winnersList.push(playerColor);
-        let rank = winnersList.length; 
-        
-        let rankText = (rank === 1) ? "1st 🥇" : (rank === 2) ? "2nd 🥈" : "3rd 🥉";
-        let profileEl = document.getElementById(`profile-${playerColor}`);
-        if (profileEl) {
-            let rankDiv = document.createElement("div");
-            rankDiv.style.color = "#FFD700"; 
-            rankDiv.style.fontWeight = "bold";
-            rankDiv.innerText = rankText;
-            profileEl.appendChild(rankDiv);
-        }
-
-        if (socket && window.currentRoomId && myAssignedColor === playerColor) {
-            if (rank === 1) { 
-                socket.emit("claim-victory", { roomId: window.currentRoomId });
-            }
-        }
-
-        activePlayers = activePlayers.filter(c => c !== playerColor);
-        if (winnersList.length >= totalPlayersInGame - 1) {
-            endMatchAndGoToMenu();
-        }
-    }
-}
-
 function endMatchAndGoToMenu() {
     clearTurnTimer();
     triggerInterstitialAd("Match Finished");
     setTimeout(() => {
-        alert("🏆 MATCH FINISHED! 🏆");
         if (socket) socket.emit("leave-room");
-        
         let wrapper = document.getElementById("ludo-wrapper");
         let dashboard = document.getElementById("dashboard-section");
-        
         if(wrapper) wrapper.classList.add("hidden"); 
         if(dashboard) dashboard.classList.remove("hidden");
-    }, 2500);
+    }, 1500);
 }
 
 function createBoard() {
@@ -352,6 +317,7 @@ function spawnTokens() {
     });
 }
 
+// 🚨 SECURE DICE REQUEST
 function rollDice() {
     if (socket && window.currentRoomId) {
         if (myAssignedColor !== activePlayers[currentPlayerIndex]) {
@@ -360,40 +326,23 @@ function rollDice() {
     }
     if (activePlayers.length === 0 || gameState !== 'WAITING_FOR_ROLL' || isMoving) return;
 
-    clearTurnTimer(); 
-    gameState = 'ROLLING';
     const diceContainer = document.getElementById("dice-container");
     diceContainer.classList.add("rolling");
 
-    setTimeout(() => {
-        diceContainer.classList.remove("rolling");
-        currentDiceValue = Math.floor(Math.random() * 6) + 1; 
-        diceContainer.innerText = diceFaces[currentDiceValue];
-        diceContainer.style.color = currentDiceValue === 6 ? "#ff2a2a" : "#111";
-
-        gameState = 'WAITING_FOR_MOVE';
-        startTurnTimer(); 
-
-        if (socket && window.currentRoomId) {
-            socket.emit('roll-dice-action', {
-                roomId: window.currentRoomId,
-                diceValue: currentDiceValue,
-                playerIndex: currentPlayerIndex
-            });
-        }
-        checkAvailableMoves();
-    }, 500); 
+    if (socket && window.currentRoomId) {
+        socket.emit('request-dice-roll', { roomId: window.currentRoomId });
+    }
 }
 
+// 🚨 SERVER DICTATES THE DICE RESULT
 function handleRemoteDice(data) {
-    clearTurnTimer(); 
     currentDiceValue = data.diceValue;
-    currentPlayerIndex = data.playerIndex;
     const diceContainer = document.getElementById("dice-container");
+    diceContainer.classList.remove("rolling");
     diceContainer.innerText = diceFaces[currentDiceValue];
     diceContainer.style.color = currentDiceValue === 6 ? "#ff2a2a" : "#111";
+    
     gameState = 'WAITING_FOR_MOVE';
-    startTurnTimer(); 
     checkAvailableMoves();
 }
 
@@ -403,51 +352,39 @@ function checkAvailableMoves() {
 
     allTokens[currentPlayerColor].forEach((tokenObj, index) => {
         if (tokenObj.state === 'home' && currentDiceValue === 6) movableTokens.push(index); 
-        else if (tokenObj.state === 'active') movableTokens.push(index); 
+        else if (tokenObj.state === 'active' && tokenObj.pathPosition + currentDiceValue <= 56) movableTokens.push(index); 
     });
 
-    if (movableTokens.length === 0) {
-        setTimeout(() => switchTurn(false), 500);
-    } else {
+    if (movableTokens.length > 0) {
         movableTokens.forEach(idx => allTokens[currentPlayerColor][idx].element.classList.add('highlight-move'));
-        if (movableTokens.length === 1) {
+        if (movableTokens.length === 1 && currentPlayerColor === myAssignedColor) {
             setTimeout(() => handleTokenClick(currentPlayerColor, movableTokens[0]), 300);
         }
     }
 }
 
+// 🚨 SECURE TOKEN MOVE REQUEST
 function handleTokenClick(color, tokenIndex) {
     if (socket && window.currentRoomId && color !== myAssignedColor) return; 
     if (gameState !== 'WAITING_FOR_MOVE' || color !== activePlayers[currentPlayerIndex] || isMoving) return;
 
-    clearTurnTimer(); 
     let tokenObj = allTokens[color][tokenIndex];
     if (!tokenObj.element.classList.contains('highlight-move')) return; 
 
     allTokens[color].forEach(t => t.element.classList.remove('highlight-move'));
 
     if (socket && window.currentRoomId) {
-        socket.emit('move-token-action', {
+        socket.emit('request-token-move', {
             roomId: window.currentRoomId,
             color: color,
-            tokenIndex: tokenIndex,
-            diceVal: currentDiceValue
+            tokenIndex: tokenIndex
         });
-    }
-
-    if (tokenObj.state === 'home' && currentDiceValue === 6) {
-        tokenObj.state = 'active';
-        tokenObj.pathPosition = 0; 
-        updateTokenUI(color, tokenIndex);
-        switchTurn(true); 
-    } else {
-        moveTokenStepByStep(color, tokenIndex, currentDiceValue);
     }
 }
 
+// 🚨 SERVER CONFIRMS MOVE & CUTS
 function handleRemoteTokenMove(data) {
-    clearTurnTimer();
-    let { color, tokenIndex, diceVal } = data;
+    let { color, tokenIndex, diceVal, cutDetails } = data;
     let tokenObj = allTokens[color][tokenIndex];
     allTokens[color].forEach(t => t.element.classList.remove('highlight-move'));
 
@@ -455,35 +392,34 @@ function handleRemoteTokenMove(data) {
         tokenObj.state = 'active';
         tokenObj.pathPosition = 0; 
         updateTokenUI(color, tokenIndex);
-        switchTurn(true); 
     } else {
-        moveTokenStepByStep(color, tokenIndex, diceVal);
+        isMoving = true; 
+        let stepsTaken = 0;
+
+        let moveInterval = setInterval(() => {
+            stepsTaken++;
+            tokenObj.pathPosition++;
+            updateTokenUI(color, tokenIndex);
+
+            if (stepsTaken >= diceVal) {
+                clearInterval(moveInterval);
+                setTimeout(() => {
+                    // Visual Capture if Server Confirmed
+                    if (cutDetails) {
+                        let enemyToken = allTokens[cutDetails.color][cutDetails.index];
+                        enemyToken.state = 'home';
+                        enemyToken.pathPosition = -1;
+                        document.getElementById(`${cutDetails.color}-slot-${cutDetails.index}`).appendChild(enemyToken.element);
+                    }
+                    if (tokenObj.pathPosition >= 56) {
+                        tokenObj.element.style.display = "none"; 
+                        if(color === myAssignedColor) socket.emit("claim-victory", { roomId: window.currentRoomId });
+                    }
+                    isMoving = false; 
+                }, 300);
+            }
+        }, 250); 
     }
-}
-
-function moveTokenStepByStep(color, tokenIndex, stepsToMove) {
-    isMoving = true; 
-    let tokenObj = allTokens[color][tokenIndex];
-    let stepsTaken = 0;
-
-    let moveInterval = setInterval(() => {
-        stepsTaken++;
-        tokenObj.pathPosition++;
-        updateTokenUI(color, tokenIndex);
-
-        if (stepsTaken >= stepsToMove) {
-            clearInterval(moveInterval);
-            setTimeout(() => {
-                let cutHappened = checkCapture(color, tokenIndex);
-                if (tokenObj.pathPosition >= 56) {
-                    tokenObj.element.style.display = "none"; 
-                    handlePlayerWin(color);
-                }
-                isMoving = false; 
-                switchTurn(cutHappened || currentDiceValue === 6);
-            }, 300);
-        }
-    }, 250); 
 }
 
 function updateTokenUI(color, tokenIndex) {
@@ -501,41 +437,6 @@ function updateTokenUI(color, tokenIndex) {
     }
 }
 
-function checkCapture(color, tokenIndex) {
-    let attacker = allTokens[color][tokenIndex];
-    let startOffset = playersData[color].startOffset;
-    let globalPos = (startOffset + attacker.pathPosition) % 52;
-    let targetCoords = masterPath[globalPos];
-    let isSafe = safeZones.some(zone => zone.r === targetCoords.r && zone.c === targetCoords.c);
-    
-    if (isSafe) return false; 
-    let cutHappened = false;
-
-    for (let enemyColor of activePlayers) {
-        if (enemyColor === color) continue; 
-        allTokens[enemyColor].forEach((enemyToken, enemyIndex) => {
-            if (enemyToken.state === 'active') {
-                let enemyGlobalPos = (playersData[enemyColor].startOffset + enemyToken.pathPosition) % 52;
-                if (enemyGlobalPos === globalPos) {
-                    cutHappened = true;
-                    enemyToken.state = 'home';
-                    enemyToken.pathPosition = -1;
-                    document.getElementById(`${enemyColor}-slot-${enemyIndex}`).appendChild(enemyToken.element);
-                }
-            }
-        });
-    }
-    return cutHappened;
-}
-
-function switchTurn(gotExtraTurn) {
-    clearTurnTimer(); 
-    if (!gotExtraTurn) currentPlayerIndex = (currentPlayerIndex + 1) % activePlayers.length;
-    updateTurnText();
-    gameState = 'WAITING_FOR_ROLL';
-    startTurnTimer(); 
-}
-
 function updateTurnText() {
     let currentPlayerColor = activePlayers[currentPlayerIndex];
     const turnText = document.getElementById("turn-text");
@@ -545,6 +446,7 @@ function updateTurnText() {
     }
 }
 
+// ⏳ VISUAL TIMER (Server does the real kick)
 function startTurnTimer() {
     clearTurnTimer(); 
     timeLeft = 25;
@@ -554,35 +456,15 @@ function startTurnTimer() {
         updateTimerUI();
         if (timeLeft <= 0) clearInterval(countdownInterval);
     }, 1000);
-    turnTimer = setTimeout(() => handleTurnTimeout(activePlayers[currentPlayerIndex]), 25000); 
 }
 
 function clearTurnTimer() {
-    if (turnTimer) { clearTimeout(turnTimer); turnTimer = null; }
     if (countdownInterval) { clearInterval(countdownInterval); countdownInterval = null; }
 }
 
 function updateTimerUI() {
     let timerEl = document.getElementById("timer-text");
     if (timerEl) timerEl.innerText = `⏳ Time left: ${timeLeft}s`;
-}
-
-function handleTurnTimeout(color) {
-    if (!missedTurns[color]) missedTurns[color] = 0;
-    missedTurns[color]++;
-    if (missedTurns[color] >= 3) {
-        clearTurnTimer();
-        alert(`🚨 ${color.toUpperCase()} missed 3 turns, eliminated!`);
-        activePlayers = activePlayers.filter(c => c !== color);
-        if (activePlayers.length === 1) { handlePlayerWin(activePlayers[0]); return; }
-        if (currentPlayerIndex >= activePlayers.length) currentPlayerIndex = 0;
-        updateTurnText();
-        gameState = 'WAITING_FOR_ROLL';
-        startTurnTimer();
-        return;
-    }
-    alert(`⚠️ ${color.toUpperCase()} skips turn (${missedTurns[color]}/3).`);
-    switchTurn(false);
 }
 
 function showMyIdentity(color) {
