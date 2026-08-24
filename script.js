@@ -1,6 +1,5 @@
 /* =========================================
-   ULTRA LUDO PRO - MASTER LOGIC ENGINE + LIVE TIMER + RANKING SYSTEM
-   + INTERSTITIAL AD TRIGGER SYSTEM
+   ULTRA LUDO PRO - MASTER LOGIC ENGINE + LIVE TIMER 
 ========================================= */
 
 let activePlayers = []; 
@@ -14,15 +13,11 @@ let socket;
 let myAssignedColor = "";
 window.currentRoomId = "";
 
-// 🔥 TIMER & MISSED TURN TRACKING
-let turnTimer = null;
+// 🔥 VISUAL TIMER
+let turnTimer = null; // Local use only
 let countdownInterval = null;
 let timeLeft = 25;
 const missedTurns = {}; 
-
-// 🏆 WINNER & RANKING TRACKING
-let winnersList = [];
-let totalPlayersInGame = 0;
 
 const playersData = {
     'red': { name: "RED'S TURN", class: "red-text", startOffset: 0 },
@@ -46,28 +41,7 @@ const safeZones = [
     {r:6, c:1}, {r:8, c:2}, {r:1, c:8}, {r:2, c:6}, 
     {r:8, c:13}, {r:6, c:12}, {r:13, c:6}, {r:12, c:8}  
 ];
-
 const diceFaces = ['', '⚀', '⚁', '⚂', '⚃', '⚄', '⚅'];
-
-// ==========================================
-// 🔥 INTERSTITIAL AD CONTROLLER
-// ==========================================
-let lastAdTime = 0;
-function triggerInterstitialAd(reason) {
-    console.log("🎬 Interstitial Ad Triggered for:", reason);
-    let now = Date.now();
-    // 15-second safety lock so fast clicking doesn't cause spam flag
-    if (now - lastAdTime < 15000) {
-        console.log("⏳ Ad skipped due to quick click safety.");
-        return;
-    }
-    lastAdTime = now;
-
-    // Trigger HilltopAds full-screen ad
-    if (typeof window.showAd === 'function') {
-        window.showAd();
-    }
-}
 
 document.addEventListener("DOMContentLoaded", () => {
     createBoard();
@@ -97,12 +71,10 @@ function showQuickMatch() {
     document.getElementById("online-main-options").classList.add("hidden");
     document.getElementById("quick-match-sub").classList.remove("hidden");
 }
-
 function showCreateRoomOptions() {
     document.getElementById("online-main-options").classList.add("hidden");
     document.getElementById("create-room-sub").classList.remove("hidden");
 }
-
 function showJoinRoomInput() {
     document.getElementById("online-main-options").classList.add("hidden");
     document.getElementById("join-room-sub").classList.remove("hidden");
@@ -110,14 +82,7 @@ function showJoinRoomInput() {
 
 function backToOnlineMain() {
     if (socket) socket.emit('cancel-action'); 
-    document.getElementById("quick-match-sub").classList.add("hidden");
-    document.getElementById("create-room-sub").classList.add("hidden");
-    document.getElementById("join-room-sub").classList.add("hidden");
-    document.getElementById("online-main-options").classList.remove("hidden");
-    document.getElementById("room-created-display").innerText = "";
-    
-    const badge = document.getElementById('my-identity-badge');
-    if(badge) badge.classList.add('hidden');
+    showOnlineMainOptions();
 }
 
 function backToModeSelect() {
@@ -125,41 +90,29 @@ function backToModeSelect() {
     document.getElementById("startup-modal").classList.add("hidden");
     document.getElementById("online-modal").classList.add("hidden");
     document.getElementById("mode-selection-modal").classList.remove("hidden");
-    
-    const badge = document.getElementById('my-identity-badge');
-    if(badge) badge.classList.add('hidden');
 }
 
+// --- SOCKET.IO CONNECTION ---
 function findOnlineMatch(count) { 
     connectToServer();
-    document.getElementById("quick-match-display").innerText = "Matchmaking pls wait sometime... ⏳";
+    document.getElementById("quick-match-display").innerText = "Matchmaking pls wait... ⏳";
     socket.emit('find-match', { playersRequired: count });
-    // 🔥 TRIGGER AD ON MATCHMAKING
-    triggerInterstitialAd("Matchmaking Started");
 }
 
-// --- SOCKET.IO CONNECTION & SYNC LISTENERS ---
 function connectToServer() {
     if (!socket) {
-        socket = io('https://zingarenaoffi1-sudo-github-io.onrender.com');
-
-        socket.on('connect', () => {
-            console.log("🔥 Ludo Server se connection jud gaya! ID:", socket.id);
-        });
+        socket = io('https://zingarena-ludo.onrender.com');
 
         socket.on('room-created', (data) => {
             window.currentRoomId = data.roomId;
             myAssignedColor = data.color;
             showMyIdentity(data.color);
-            document.getElementById("room-created-display").innerText = 
-                `Make the room successfully! ID: ${data.roomId}\n(Your Color: Red) Waiting for players join the room by room id...`;
         });
 
         socket.on('joined-success', (data) => {
             window.currentRoomId = data.roomId;
             myAssignedColor = data.color;
             showMyIdentity(data.color);
-            alert(`Successfully join the room click ok to join the room ! Room ID: ${data.roomId} | Your Color: ${data.color}`);
         });
 
         socket.on('match-found', (data) => {
@@ -169,102 +122,52 @@ function connectToServer() {
         });
 
         socket.on('start-online-game', (data) => {
-            console.log("🚀 Game Start Signal Mil Gaya!", data.players);
-            
             document.getElementById("online-modal").classList.add("hidden");
             document.getElementById("mode-selection-modal").classList.add("hidden");
-            document.getElementById("startup-modal").classList.add("hidden");
-
-            activePlayers = data.players.map(p => p.color);
             
+            activePlayers = data.players.map(p => p.color);
             let me = data.players.find(p => p.id === socket.id);
-            if (me) {
-                showMyIdentity(me.color);
-            }
-
+            if (me) showMyIdentity(me.color);
             initGameSession();
         });
 
-        socket.on('remote-dice-rolled', (data) => {
-            clearTurnTimer(); 
-            currentDiceValue = data.diceValue;
-            currentPlayerIndex = data.playerIndex;
-            
-            const diceContainer = document.getElementById("dice-container");
-            diceContainer.innerText = diceFaces[currentDiceValue];
-            diceContainer.style.color = currentDiceValue === 6 ? "#ff2a2a" : "#111";
-
-            gameState = 'WAITING_FOR_MOVE';
+        // 🚨 NEW SERVER ENGINE SYNC
+        socket.on('remote-dice-rolled', handleRemoteDice);
+        socket.on('remote-token-moved', handleRemoteTokenMove);
+        socket.on('turn-updated', (data) => {
+            currentPlayerIndex = activePlayers.indexOf(data.currentColor);
+            updateTurnText();
+            gameState = 'WAITING_FOR_ROLL';
             startTurnTimer(); 
-            checkAvailableMoves();
         });
-
-        socket.on('remote-token-moved', (data) => {
-            clearTurnTimer();
-            let color = data.color;
-            let tokenIndex = data.tokenIndex;
-            let diceVal = data.diceVal;
-
-            let tokenObj = allTokens[color][tokenIndex];
-            allTokens[color].forEach(t => t.element.classList.remove('highlight-move'));
-
-            if (tokenObj.state === 'home' && diceVal === 6) {
-                tokenObj.state = 'active';
-                tokenObj.pathPosition = 0; 
-                updateTokenUI(color, tokenIndex);
-                switchTurn(true); 
-            } else {
-                moveTokenStepByStepRemote(color, tokenIndex, diceVal);
+        socket.on('player-eliminated', (data) => {
+            alert(`🚨 ${data.color.toUpperCase()} was eliminated!`);
+            activePlayers = activePlayers.filter(c => c !== data.color);
+            let profileEl = document.getElementById(`profile-${data.color}`);
+            if (profileEl) profileEl.style.opacity = "0.1";
+            if (allTokens[data.color]) {
+                allTokens[data.color].forEach(t => {
+                    if (t.element && t.element.parentNode) t.element.parentNode.removeChild(t.element);
+                });
             }
         });
 
-        socket.on('player-finished', (data) => {
-            console.log(`${data.color} won rank: ${data.rank}`);
-        });
-
-        socket.on('error-msg', (msg) => {
-            alert("❌ " + msg);
-        });
+        socket.on('error-msg', (msg) => { alert("❌ " + msg); });
     }
 }
 
 function showMyIdentity(color) {
     const badge = document.getElementById('my-identity-badge');
     if (!badge) return;
-    
     badge.classList.remove('hidden');
-    
-    let playerNum = "";
-    let bgColor = "";
-    if (color === 'red') { playerNum = "Player 1"; bgColor = "#ff2a2a"; }
-    else if (color === 'green') { playerNum = "Player 2"; bgColor = "#00cc00"; }
-    else if (color === 'yellow') { playerNum = "Player 3"; bgColor = "#ffcc00"; }
-    else if (color === 'blue') { playerNum = "Player 4"; bgColor = "#1a53ff"; }
-
-    badge.innerHTML = `👉 YOU ARE: ${playerNum} (${color}) 👈`;
+    let bgColor = (color === 'red') ? "#ff2a2a" : (color === 'green') ? "#00cc00" : (color === 'yellow') ? "#ffcc00" : "#1a53ff";
+    badge.innerHTML = `👉 YOU ARE: (${color}) 👈`;
     badge.style.background = bgColor;
-    badge.style.color = (color === 'yellow') ? '#000' : '#fff';
-
-    document.querySelectorAll('.player-profile').forEach(p => {
-        p.style.border = "1px solid rgba(255, 255, 255, 0.1)";
-        p.style.boxShadow = "none";
-        p.style.opacity = "0.3";
-    });
-    
-    const myProfile = document.getElementById(`profile-${color}`);
-    if (myProfile) {
-        myProfile.style.border = `2px solid ${bgColor}`;
-        myProfile.style.boxShadow = `0 0 15px ${bgColor}`;
-        myProfile.style.opacity = "1";
-    }
 }
 
 function createPrivateRoom(count) {
     connectToServer();
-    document.getElementById("room-created-display").innerText = "Making the room...";
     socket.emit('create-room', { maxPlayers: count });
-    // 🔥 TRIGGER AD ON ROOM CREATE
-    triggerInterstitialAd("Room Created");
 }
 
 function joinPrivateRoom() {
@@ -272,21 +175,13 @@ function joinPrivateRoom() {
     if (id) {
         connectToServer();
         socket.emit('join-room', { roomId: id });
-        // 🔥 TRIGGER AD ON ROOM JOIN
-        triggerInterstitialAd("Joining Room");
-    } else {
-        alert("Enter the valid room id to join room!");
-    }
+    } else alert("Enter the valid room id!");
 }
 
 // --- GAME INITIALIZATION ---
 function initGameSession() {
-    winnersList = []; 
-    totalPlayersInGame = activePlayers.length; 
-
     activePlayers.forEach(c => document.getElementById(`profile-${c}`).style.opacity = "1");
     activePlayers.forEach(c => missedTurns[c] = 0);
-
     currentPlayerIndex = 0;
     gameState = 'WAITING_FOR_ROLL';
     isMoving = false;
@@ -296,77 +191,22 @@ function initGameSession() {
 }
 
 function startLocalGame(playerCount) {
-    window.currentRoomId = ""; 
+    window.currentRoomId = ""; // No room ID = Offline Mode
     document.getElementById("startup-modal").classList.add("hidden");
-
-    if (playerCount === 2) activePlayers = ['red', 'yellow'];
-    else if (playerCount === 3) activePlayers = ['red', 'green', 'yellow'];
-    else activePlayers = ['red', 'green', 'yellow', 'blue'];
-
-    showMyIdentity(activePlayers[0]);
+    activePlayers = (playerCount === 2) ? ['red', 'yellow'] : (playerCount === 3) ? ['red', 'green', 'yellow'] : ['red', 'green', 'yellow', 'blue'];
     initGameSession();
-    // 🔥 TRIGGER AD ON LOCAL GAME START
-    triggerInterstitialAd("Local Game Started");
-}
-
-// ==========================================
-// 🏆 RANKING & MATCH OVER LOGIC
-// ==========================================
-function handlePlayerWin(playerColor) {
-    if (!winnersList.includes(playerColor)) {
-        winnersList.push(playerColor);
-        let rank = winnersList.length; 
-        
-        let rankText = "";
-        if (rank === 1) rankText = "1st 🥇";
-        else if (rank === 2) rankText = "2nd 🥈";
-        else if (rank === 3) rankText = "3rd 🥉";
-
-        let profileEl = document.getElementById(`profile-${playerColor}`);
-        if (profileEl) {
-            let rankDiv = document.createElement("div");
-            rankDiv.style.color = "#FFD700"; 
-            rankDiv.style.fontWeight = "bold";
-            rankDiv.innerText = rankText;
-            profileEl.appendChild(rankDiv);
-        }
-
-        if (socket && window.currentRoomId) {
-            socket.emit("player-finished", { color: playerColor, rank: rankText });
-        }
-
-        activePlayers = activePlayers.filter(c => c !== playerColor);
-
-        if (winnersList.length >= totalPlayersInGame - 1) {
-            endMatchAndGoToMenu();
-        }
-    }
 }
 
 function endMatchAndGoToMenu() {
     clearTurnTimer();
-    // 🔥 TRIGGER AD EVERY TIME A MATCH ENDS
-    triggerInterstitialAd("Match Finished");
-
     setTimeout(() => {
-        let winMessage = "🏆 MATCH FINISHED! 🏆\n\n";
-        winnersList.forEach((color, index) => {
-            winMessage += `Rank ${index + 1}: ${color.toUpperCase()} \n`;
-        });
-        
-        if (activePlayers.length > 0) {
-            winMessage += `Eliminated: ${activePlayers[0].toUpperCase()}\n`;
-        }
-        
-        alert(winMessage);
-        
+        alert("🏆 MATCH FINISHED! 🏆");
         if (socket) socket.emit("leave-room");
-        
         window.location.reload(); 
     }, 1500);
 }
 
-// --- 🔥 LIVE 25-SECOND TIMER & ELIMINATION LOGIC ---
+// --- ⏳ TIMER LOGIC (Server-safe) ---
 function startTurnTimer() {
     clearTurnTimer(); 
     timeLeft = 25;
@@ -375,80 +215,46 @@ function startTurnTimer() {
     countdownInterval = setInterval(() => {
         timeLeft--;
         updateTimerUI();
-        if (timeLeft <= 0) {
-            clearInterval(countdownInterval);
-        }
+        if (timeLeft <= 0) clearInterval(countdownInterval);
     }, 1000);
 
-    let currentColor = activePlayers[currentPlayerIndex];
-    turnTimer = setTimeout(() => {
-        handleTurnTimeout(currentColor);
-    }, 25000); 
+    // Local kicks ONLY happen if offline
+    if (!window.currentRoomId) {
+        let currentColor = activePlayers[currentPlayerIndex];
+        turnTimer = setTimeout(() => handleTurnTimeoutLocal(currentColor), 25000); 
+    }
 }
 
 function clearTurnTimer() {
-    if (turnTimer) {
-        clearTimeout(turnTimer);
-        turnTimer = null;
-    }
-    if (countdownInterval) {
-        clearInterval(countdownInterval);
-        countdownInterval = null;
-    }
+    if (turnTimer) { clearTimeout(turnTimer); turnTimer = null; }
+    if (countdownInterval) { clearInterval(countdownInterval); countdownInterval = null; }
 }
 
 function updateTimerUI() {
     let timerEl = document.getElementById("timer-text");
-    if (timerEl) {
-        timerEl.innerText = `⏳ Time left: ${timeLeft}s`;
-    }
+    if (timerEl) timerEl.innerText = `⏳ Time left: ${timeLeft}s`;
 }
 
-function handleTurnTimeout(color) {
-    if (!missedTurns[color]) missedTurns[color] = 0;
+function handleTurnTimeoutLocal(color) {
     missedTurns[color]++;
-
     if (missedTurns[color] >= 3) {
-        clearTurnTimer();
         alert(`🚨 ${color.toUpperCase()} missed 3 turns, eliminated from the game!`);
-        
-        if (allTokens[color]) {
-            allTokens[color].forEach(t => {
-                if (t.element && t.element.parentNode) {
-                    t.element.parentNode.removeChild(t.element);
-                }
-            });
-        }
-
-        let profileEl = document.getElementById(`profile-${color}`);
-        if (profileEl) profileEl.style.opacity = "0.1";
-
         activePlayers = activePlayers.filter(c => c !== color);
-
-        if (activePlayers.length === 1) {
-            endMatchAndGoToMenu();
-            return;
-        }
-
-        if (currentPlayerIndex >= activePlayers.length) {
-            currentPlayerIndex = 0;
-        }
-
+        if (activePlayers.length === 1) { endMatchAndGoToMenu(); return; }
+        if (currentPlayerIndex >= activePlayers.length) currentPlayerIndex = 0;
         updateTurnText();
         gameState = 'WAITING_FOR_ROLL';
         startTurnTimer();
         return;
     }
-
-    alert(`⚠️ ${color.toUpperCase()} skips turn because player is inactive (${missedTurns[color]}/3).`);
-    switchTurn(false);
+    alert(`⚠️ ${color.toUpperCase()} skips turn.`);
+    switchTurnLocal(false);
 }
 
 // --- BOARD CREATION ---
 function createBoard() {
     const board = document.getElementById("ludo-board");
     board.innerHTML = ""; 
-    
     createBase(board, 'red-base', 'red');
     createBase(board, 'green-base', 'green');
     createBase(board, 'blue-base', 'blue');
@@ -457,26 +263,16 @@ function createBoard() {
     for (let r = 0; r < 15; r++) {
         for (let c = 0; c < 15; c++) {
             if ((r < 6 && c < 6) || (r < 6 && c > 8) || (r > 8 && c < 6) || (r > 8 && c > 8)) continue; 
-
             const cell = document.createElement("div");
             cell.classList.add("ludo-cell");
             cell.id = `cell-${r}-${c}`; 
             cell.style.gridArea = `${r + 1} / ${c + 1} / span 1 / span 1`;
-
             if (r === 7 && c > 0 && c < 6) cell.style.backgroundColor = "#ff4d4d"; 
             if (c === 7 && r > 0 && r < 6) cell.style.backgroundColor = "#4dff4d"; 
             if (r === 7 && c > 8 && c < 14) cell.style.backgroundColor = "#ffff4d"; 
             if (c === 7 && r > 8 && r < 14) cell.style.backgroundColor = "#4d4dff"; 
-
             let isSafe = safeZones.some(zone => zone.r === r && zone.c === c);
-            if (isSafe) {
-                cell.style.backgroundColor = "#e0e0e0"; 
-                let star = document.createElement("span");
-                star.className = "safe-zone-icon";
-                star.innerHTML = "⭐"; 
-                cell.appendChild(star);
-            }
-
+            if (isSafe) { cell.style.backgroundColor = "#e0e0e0"; cell.innerHTML = '<span class="safe-zone-icon">⭐</span>'; }
             if (r >= 6 && r <= 8 && c >= 6 && c <= 8) cell.style.background = "#222";
             board.appendChild(cell);
         }
@@ -487,10 +283,8 @@ function createBase(board, colorClass, colorId) {
     const base = document.createElement("div");
     base.classList.add("base", colorClass);
     base.id = colorId + "-base";
-    
     const innerBox = document.createElement("div");
     innerBox.classList.add("inner-base");
-    
     for(let i = 0; i < 4; i++) {
         const slot = document.createElement("div");
         slot.classList.add("token-slot");
@@ -509,50 +303,49 @@ function spawnTokens() {
             token.className = `token token-${color}`;
             token.id = `token-${color}-${i}`;
             token.addEventListener('click', () => handleTokenClick(color, i));
-            
             document.getElementById(`${color}-slot-${i}`).appendChild(token);
             allTokens[color].push({ element: token, state: 'home', pathPosition: -1 });
         }
     });
 }
 
-// --- DICE ROLL ---
+// 🚨 HYBRID DICE ROLL (Online = Server, Offline = Local)
 function rollDice() {
     if (socket && window.currentRoomId) {
-        let currentTurnColor = activePlayers[currentPlayerIndex];
-        if (myAssignedColor !== currentTurnColor) {
-            alert("Wait! This is not your turn.");
-            return;
+        if (myAssignedColor !== activePlayers[currentPlayerIndex]) {
+            alert("Wait! This is not your turn."); return;
         }
     }
-
     if (activePlayers.length === 0 || gameState !== 'WAITING_FOR_ROLL' || isMoving) return;
 
     clearTurnTimer(); 
-    gameState = 'ROLLING';
     const diceContainer = document.getElementById("dice-container");
     diceContainer.classList.add("rolling");
 
-    setTimeout(() => {
-        diceContainer.classList.remove("rolling");
-        currentDiceValue = Math.floor(Math.random() * 6) + 1; 
-        
-        diceContainer.innerText = diceFaces[currentDiceValue];
-        diceContainer.style.color = currentDiceValue === 6 ? "#ff2a2a" : "#111";
+    if (socket && window.currentRoomId) {
+        socket.emit('request-dice-roll', { roomId: window.currentRoomId });
+    } else {
+        // LOCAL OFFLINE MODE
+        setTimeout(() => {
+            diceContainer.classList.remove("rolling");
+            currentDiceValue = Math.floor(Math.random() * 6) + 1; 
+            diceContainer.innerText = diceFaces[currentDiceValue];
+            diceContainer.style.color = currentDiceValue === 6 ? "#ff2a2a" : "#111";
+            gameState = 'WAITING_FOR_MOVE';
+            startTurnTimer(); 
+            checkAvailableMoves();
+        }, 500); 
+    }
+}
 
-        gameState = 'WAITING_FOR_MOVE';
-        startTurnTimer(); 
-
-        if (socket && window.currentRoomId) {
-            socket.emit('roll-dice-action', {
-                roomId: window.currentRoomId,
-                diceValue: currentDiceValue,
-                playerIndex: currentPlayerIndex
-            });
-        }
-
-        checkAvailableMoves();
-    }, 500); 
+function handleRemoteDice(data) {
+    currentDiceValue = data.diceValue;
+    const diceContainer = document.getElementById("dice-container");
+    diceContainer.classList.remove("rolling");
+    diceContainer.innerText = diceFaces[currentDiceValue];
+    diceContainer.style.color = currentDiceValue === 6 ? "#ff2a2a" : "#111";
+    gameState = 'WAITING_FOR_MOVE';
+    checkAvailableMoves();
 }
 
 function checkAvailableMoves() {
@@ -561,55 +354,77 @@ function checkAvailableMoves() {
 
     allTokens[currentPlayerColor].forEach((tokenObj, index) => {
         if (tokenObj.state === 'home' && currentDiceValue === 6) movableTokens.push(index); 
-        else if (tokenObj.state === 'active') movableTokens.push(index); 
+        else if (tokenObj.state === 'active' && tokenObj.pathPosition + currentDiceValue <= 56) movableTokens.push(index); 
     });
 
     if (movableTokens.length === 0) {
-        setTimeout(() => switchTurn(false), 500);
+        if (!window.currentRoomId) setTimeout(() => switchTurnLocal(false), 500);
     } else {
         movableTokens.forEach(idx => allTokens[currentPlayerColor][idx].element.classList.add('highlight-move'));
-        if (movableTokens.length === 1) {
-            setTimeout(() => handleTokenClick(currentPlayerColor, movableTokens[0]), 300);
-        }
     }
 }
 
-// --- TOKEN CLICK ---
+// 🚨 HYBRID TOKEN MOVE (Online = Server, Offline = Local)
 function handleTokenClick(color, tokenIndex) {
-    if (socket && window.currentRoomId) {
-        if (myAssignedColor !== activePlayers[currentPlayerIndex] || color !== myAssignedColor) {
-            return; 
-        }
-    }
-
+    if (socket && window.currentRoomId && color !== myAssignedColor) return; 
     if (gameState !== 'WAITING_FOR_MOVE' || color !== activePlayers[currentPlayerIndex] || isMoving) return;
 
-    clearTurnTimer(); 
     let tokenObj = allTokens[color][tokenIndex];
     if (!tokenObj.element.classList.contains('highlight-move')) return; 
 
     allTokens[color].forEach(t => t.element.classList.remove('highlight-move'));
 
     if (socket && window.currentRoomId) {
-        socket.emit('move-token-action', {
-            roomId: window.currentRoomId,
-            color: color,
-            tokenIndex: tokenIndex,
-            diceVal: currentDiceValue
-        });
+        socket.emit('request-token-move', { roomId: window.currentRoomId, color: color, tokenIndex: tokenIndex });
+    } else {
+        // LOCAL OFFLINE MODE
+        if (tokenObj.state === 'home' && currentDiceValue === 6) {
+            tokenObj.state = 'active';
+            tokenObj.pathPosition = 0; 
+            updateTokenUI(color, tokenIndex);
+            switchTurnLocal(true); 
+        } else {
+            moveTokenStepByStepLocal(color, tokenIndex, currentDiceValue);
+        }
     }
+}
 
-    if (tokenObj.state === 'home' && currentDiceValue === 6) {
+function handleRemoteTokenMove(data) {
+    let { color, tokenIndex, diceVal, cutDetails } = data;
+    let tokenObj = allTokens[color][tokenIndex];
+    allTokens[color].forEach(t => t.element.classList.remove('highlight-move'));
+
+    if (tokenObj.state === 'home' && diceVal === 6) {
         tokenObj.state = 'active';
         tokenObj.pathPosition = 0; 
         updateTokenUI(color, tokenIndex);
-        switchTurn(true); 
     } else {
-        moveTokenStepByStep(color, tokenIndex, currentDiceValue);
+        isMoving = true; 
+        let stepsTaken = 0;
+        let moveInterval = setInterval(() => {
+            stepsTaken++;
+            tokenObj.pathPosition++;
+            updateTokenUI(color, tokenIndex);
+
+            if (stepsTaken >= diceVal) {
+                clearInterval(moveInterval);
+                setTimeout(() => {
+                    if (cutDetails) {
+                        let enemyToken = allTokens[cutDetails.color][cutDetails.index];
+                        enemyToken.state = 'home';
+                        enemyToken.pathPosition = -1;
+                        document.getElementById(`${cutDetails.color}-slot-${cutDetails.index}`).appendChild(enemyToken.element);
+                    }
+                    if (tokenObj.pathPosition >= 56) tokenObj.element.style.display = "none"; 
+                    isMoving = false; 
+                }, 300);
+            }
+        }, 250); 
     }
 }
 
-function moveTokenStepByStep(color, tokenIndex, stepsToMove) {
+// (For Local Mode Only)
+function moveTokenStepByStepLocal(color, tokenIndex, stepsToMove) {
     isMoving = true; 
     let tokenObj = allTokens[color][tokenIndex];
     let stepsTaken = 0;
@@ -621,33 +436,13 @@ function moveTokenStepByStep(color, tokenIndex, stepsToMove) {
 
         if (stepsTaken >= stepsToMove) {
             clearInterval(moveInterval);
-            
             setTimeout(() => {
-                let cutHappened = checkCapture(color, tokenIndex);
+                let cutHappened = checkCaptureLocal(color, tokenIndex);
+                if (tokenObj.pathPosition >= 56) {
+                    tokenObj.element.style.display = "none"; 
+                }
                 isMoving = false; 
-                switchTurn(cutHappened || currentDiceValue === 6);
-            }, 300);
-        }
-    }, 250); 
-}
-
-function moveTokenStepByStepRemote(color, tokenIndex, stepsToMove) {
-    isMoving = true; 
-    let tokenObj = allTokens[color][tokenIndex];
-    let stepsTaken = 0;
-
-    let moveInterval = setInterval(() => {
-        stepsTaken++;
-        tokenObj.pathPosition++;
-        updateTokenUI(color, tokenIndex);
-
-        if (stepsTaken >= stepsToMove) {
-            clearInterval(moveInterval);
-            
-            setTimeout(() => {
-                let cutHappened = checkCapture(color, tokenIndex);
-                isMoving = false; 
-                switchTurn(cutHappened || currentDiceValue === 6);
+                switchTurnLocal(cutHappened || currentDiceValue === 6);
             }, 300);
         }
     }, 250); 
@@ -657,6 +452,7 @@ function updateTokenUI(color, tokenIndex) {
     let tokenObj = allTokens[color][tokenIndex];
     let startOffset = playersData[color].startOffset;
     let globalPos = (startOffset + tokenObj.pathPosition) % 52;
+    if(tokenObj.pathPosition > 50) globalPos = 51; 
     let targetCoords = masterPath[globalPos];
     
     let targetCell = document.getElementById(`cell-${targetCoords.r}-${targetCoords.c}`);
@@ -667,31 +463,26 @@ function updateTokenUI(color, tokenIndex) {
     }
 }
 
-function checkCapture(color, tokenIndex) {
+function checkCaptureLocal(color, tokenIndex) {
     let attacker = allTokens[color][tokenIndex];
     let startOffset = playersData[color].startOffset;
     let globalPos = (startOffset + attacker.pathPosition) % 52;
-    
     let targetCoords = masterPath[globalPos];
     let isSafe = safeZones.some(zone => zone.r === targetCoords.r && zone.c === targetCoords.c);
     
     if (isSafe) return false; 
-
     let cutHappened = false;
 
     for (let enemyColor of activePlayers) {
         if (enemyColor === color) continue; 
-
         allTokens[enemyColor].forEach((enemyToken, enemyIndex) => {
             if (enemyToken.state === 'active') {
                 let enemyGlobalPos = (playersData[enemyColor].startOffset + enemyToken.pathPosition) % 52;
-                
                 if (enemyGlobalPos === globalPos) {
                     cutHappened = true;
                     enemyToken.state = 'home';
                     enemyToken.pathPosition = -1;
-                    let homeSlot = document.getElementById(`${enemyColor}-slot-${enemyIndex}`);
-                    homeSlot.appendChild(enemyToken.element);
+                    document.getElementById(`${enemyColor}-slot-${enemyIndex}`).appendChild(enemyToken.element);
                 }
             }
         });
@@ -699,11 +490,9 @@ function checkCapture(color, tokenIndex) {
     return cutHappened;
 }
 
-function switchTurn(gotExtraTurn) {
+function switchTurnLocal(gotExtraTurn) {
     clearTurnTimer(); 
-    if (!gotExtraTurn) {
-        currentPlayerIndex = (currentPlayerIndex + 1) % activePlayers.length;
-    }
+    if (!gotExtraTurn) currentPlayerIndex = (currentPlayerIndex + 1) % activePlayers.length;
     updateTurnText();
     gameState = 'WAITING_FOR_ROLL';
     startTurnTimer(); 
@@ -712,6 +501,8 @@ function switchTurn(gotExtraTurn) {
 function updateTurnText() {
     let currentPlayerColor = activePlayers[currentPlayerIndex];
     const turnText = document.getElementById("turn-text");
-    turnText.innerText = playersData[currentPlayerColor].name;
-    turnText.className = playersData[currentPlayerColor].class;
+    if(turnText) {
+        turnText.innerText = playersData[currentPlayerColor].name;
+        turnText.className = playersData[currentPlayerColor].class;
+    }
 }
