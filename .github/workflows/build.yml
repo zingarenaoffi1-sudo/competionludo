@@ -28,17 +28,19 @@ jobs:
 
       # 🚀 🔥 FINGERPRINT KO ZINDAGI BHAR SAME RAKHNE WALA MAGIC 🔥 🚀
       - name: Setup Permanent Keystore
+        env:
+          DEBUG_KEYSTORE_BASE64: ${{ secrets.DEBUG_KEYSTORE_BASE64 }}
         run: |
           mkdir -p ~/.android
           
-          # 1. Agar tune GitHub repo mein debug.keystore daal di hai, toh usko use karega (Permanent)
-          if [ -f debug.keystore ]; then
-            echo "✅ Repo se Keystore mil gayi! Using SAME FINGERPRINT forever."
-            cp debug.keystore ~/.android/debug.keystore
+          # 1. Check if the secret exists in GitHub Secrets (Base64 decode karega)
+          if [ -n "$DEBUG_KEYSTORE_BASE64" ]; then
+            echo "✅ GitHub Secrets se Keystore mil gayi! Decoding and using SAME FINGERPRINT forever."
+            echo "$DEBUG_KEYSTORE_BASE64" | base64 --decode > ~/.android/debug.keystore
           
-          # 2. Agar nahi hai, toh nayi banayega
+          # 2. Agar secret nahi mila, toh nayi banayega
           else
-            echo "⚠️ Nayi Keystore bana rahe hain..."
+            echo "⚠️ Secret nahi mila, nayi Keystore bana rahe hain..."
             keytool -genkey -v -keystore ~/.android/debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
           fi
           
