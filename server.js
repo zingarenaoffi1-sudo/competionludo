@@ -233,18 +233,22 @@ async function removeFromCompQueues(socket, refund) {
 io.on('connection', (socket) => {
     console.log('User connected:', socket.id);
 
-    // 🔐 AUTHENTICATION
+    // 🔐 100% SECURE SERVER-SIDE AUTHENTICATION
     socket.on('authenticate-user', async (data) => {
         try {
+            // 🔥 NAYA SECURITY LOGIC: Agar ID Token nahi aaya toh turant reject! (No Backdoors)
+            if (!data || !data.idToken) {
+                socket.emit('error-msg', 'Authentication Blocked: ID Token Missing!');
+                return;
+            }
+
             let uid, name;
-            if (data && data.idToken) {
-                const decoded = await admin.auth().verifyIdToken(data.idToken);
-                uid = decoded.uid;
-                name = decoded.name || decoded.email || "Zing Player";
-            } else if (data && data.testUid) {
-                uid = data.testUid;
-                name = data.name || "Test Player";
-            } else return;
+            
+            // 🔥 SERVER VERIFICATION: Google/Firebase se direct check karega.
+            // Hacker client code change kar sakta hai, par Firebase ka sign fake nahi kar sakta.
+            const decoded = await admin.auth().verifyIdToken(data.idToken);
+            uid = decoded.uid;
+            name = decoded.name || decoded.email || "Zing Player";
 
             socket.uid = uid; 
             await ensureWeeklyResetIfNeeded();
@@ -262,7 +266,8 @@ io.on('connection', (socket) => {
             }
             socket.emit('update-wallet', { tokens: userData.mainWallet, score: userData.weeklyWinnings });
         } catch (e) {
-            socket.emit('error-msg', 'Authentication failed!');
+            console.error("Auth Failed:", e);
+            socket.emit('error-msg', 'Authentication failed! Invalid or Expired Token.');
         }
     });
 
@@ -478,7 +483,8 @@ io.on('connection', (socket) => {
             });
             
             const snap = await userRef.get();
-            socket.emit('update-wallet', { tokens: snap.data().mainWallet, score: snap.data().weeklyWinnings });
+            const d = snap.data();
+            socket.emit('update-wallet', { tokens: d.mainWallet, score: d.weeklyWinnings });
             io.to(data.roomId).emit('game-over-broadcast', { winnerId: socket.id, prize: room.prize });
         } catch (e) {}
     });
