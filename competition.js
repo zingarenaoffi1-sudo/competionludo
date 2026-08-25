@@ -107,25 +107,40 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 // ==========================================
-// 🛡️ REAL GOOGLE LOGIN & MATCHMAKING
+// 🛡️ SECURE GOOGLE LOGIN & MATCHMAKING
 // ==========================================
 async function realGoogleLogin() {
     try {
+        let idToken;
         let user;
+
         if (window.Capacitor && Capacitor.Plugins.FirebaseAuthentication) {
             const { FirebaseAuthentication } = Capacitor.Plugins;
-            const result = await FirebaseAuthentication.signInWithGoogle();
+            
+            // Web Client ID ke sath sign-in jo ki tumhare JSON mein hai
+            const result = await FirebaseAuthentication.signInWithGoogle({
+                clientId: "554089835021-3idmc196ket8k4buadpj7d7oobq1ka4f.apps.googleusercontent.com"
+            });
+            
             user = result.user; 
+            // Server-side authentication ke liye idToken extract kar rahe hain
+            idToken = result.credential ? result.credential.idToken : result.idToken;
+            
         } else {
+            // PC / Browser Testing ke liye fallback
             user = { uid: "pc_test_" + Math.floor(Math.random()*1000), displayName: "Zing PC Player" };
+            idToken = "PC_TEST_TOKEN";
         }
 
         document.getElementById('login-section').classList.add('hidden');
         document.getElementById('dashboard-section').classList.remove('hidden');
         document.getElementById('player-name').innerText = user.displayName || "Zing Master";
 
+        // Secure Server Connection
         socket = io('https://zingarena-ludo.onrender.com');
-        socket.emit('authenticate-user', { uid: user.uid, name: user.displayName });
+        
+        // Server ko idToken bhejna zaroori hai taaki verification pass ho jaye
+        socket.emit('authenticate-user', { idToken: idToken });
 
         socket.on('update-wallet', (data) => {
             myTokens = data.tokens;
@@ -153,14 +168,14 @@ async function realGoogleLogin() {
             }
         });
 
-        // 🚨 NEW SERVER SYNC LISTENERS
+        // Server Sync Listeners
         socket.on('remote-dice-rolled', handleRemoteDice);
         socket.on('remote-token-moved', handleRemoteTokenMove);
         socket.on('turn-updated', (data) => {
             currentPlayerIndex = activePlayers.indexOf(data.currentColor);
             updateTurnText();
             gameState = 'WAITING_FOR_ROLL';
-            startTurnTimer(); // Visual Only
+            startTurnTimer(); 
         });
         socket.on('player-eliminated', (data) => {
             alert(`🚨 ${data.color.toUpperCase()} was eliminated!`);
@@ -182,7 +197,8 @@ async function realGoogleLogin() {
         initAdMobRewards();
 
     } catch (error) {
-        alert("Google Login Failed.");
+        alert("Google Login Failed! Error: " + JSON.stringify(error));
+        console.error("Login Error:", error);
     }
 }
 
@@ -317,7 +333,7 @@ function spawnTokens() {
     });
 }
 
-// 🚨 SECURE DICE REQUEST
+// Dice Request
 function rollDice() {
     if (socket && window.currentRoomId) {
         if (myAssignedColor !== activePlayers[currentPlayerIndex]) {
@@ -334,7 +350,7 @@ function rollDice() {
     }
 }
 
-// 🚨 SERVER DICTATES THE DICE RESULT
+// Server Dice Result Handler
 function handleRemoteDice(data) {
     currentDiceValue = data.diceValue;
     const diceContainer = document.getElementById("dice-container");
@@ -363,7 +379,7 @@ function checkAvailableMoves() {
     }
 }
 
-// 🚨 SECURE TOKEN MOVE REQUEST
+// Token Move Request
 function handleTokenClick(color, tokenIndex) {
     if (socket && window.currentRoomId && color !== myAssignedColor) return; 
     if (gameState !== 'WAITING_FOR_MOVE' || color !== activePlayers[currentPlayerIndex] || isMoving) return;
@@ -382,7 +398,7 @@ function handleTokenClick(color, tokenIndex) {
     }
 }
 
-// 🚨 SERVER CONFIRMS MOVE & CUTS
+// Server Move & Cut Confirmation
 function handleRemoteTokenMove(data) {
     let { color, tokenIndex, diceVal, cutDetails } = data;
     let tokenObj = allTokens[color][tokenIndex];
@@ -404,7 +420,6 @@ function handleRemoteTokenMove(data) {
             if (stepsTaken >= diceVal) {
                 clearInterval(moveInterval);
                 setTimeout(() => {
-                    // Visual Capture if Server Confirmed
                     if (cutDetails) {
                         let enemyToken = allTokens[cutDetails.color][cutDetails.index];
                         enemyToken.state = 'home';
@@ -446,7 +461,6 @@ function updateTurnText() {
     }
 }
 
-// ⏳ VISUAL TIMER (Server does the real kick)
 function startTurnTimer() {
     clearTurnTimer(); 
     timeLeft = 25;
