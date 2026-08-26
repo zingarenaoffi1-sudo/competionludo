@@ -137,7 +137,7 @@ async function realGoogleLogin() {
         document.getElementById('player-name').innerText = user.displayName || "Zing Master";
 
         // Secure Server Connection
-        socket = io('https://zingarena-ludo.onrender.com');
+        socket = io('https://competionludo.onrender.com');
         
         // Server ko idToken bhejna zaroori hai taaki verification pass ho jaye
         socket.emit('authenticate-user', { idToken: idToken });
