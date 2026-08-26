@@ -119,6 +119,9 @@ jobs:
 
       - name: Configure Gradle
         run: |
+          # ✨ YAHAN HAI MAGIC FIX - Asli permanent Keystore ko Capacitor ke dummy keystore se replace kar rahe hain ✨
+          cp ~/.android/debug.keystore android/app/debug.keystore
+          
           cd android
           chmod +x gradlew
           ./gradlew wrapper --gradle-version 8.9
