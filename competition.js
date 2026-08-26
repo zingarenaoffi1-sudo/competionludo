@@ -197,7 +197,7 @@ async function realGoogleLogin() {
         initAdMobRewards();
 
     } catch (error) {
-        alert("Google Login Failed! Error: " + JSON.stringify(error));
+        alert("Google Login Failed! Error: " + (error.message || JSON.stringify(error)));
         console.error("Login Error:", error);
     }
 }
