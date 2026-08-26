@@ -118,7 +118,8 @@ async function realGoogleLogin() {
             const { FirebaseAuthentication } = Capacitor.Plugins;
             
             // Web Client ID ke sath sign-in jo ki tumhare JSON mein hai
-         const result = await FirebaseAuthentication.signInWithGoogle();
+       const result = await FirebaseAuthentication.signInWithGoogle({
+                clientId: "554089835021-3idmc196ket8k4buadpj7d7oobq1ka4f.apps.googleusercontent.com"
             });
             
             user = result.user; 
