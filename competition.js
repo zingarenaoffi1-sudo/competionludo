@@ -118,13 +118,15 @@ async function realGoogleLogin() {
             const { FirebaseAuthentication } = Capacitor.Plugins;
             
             // Web Client ID ke sath sign-in jo ki tumhare JSON mein hai
-       const result = await FirebaseAuthentication.signInWithGoogle({
+            const result = await FirebaseAuthentication.signInWithGoogle({
                 clientId: "554089835021-3idmc196ket8k4buadpj7d7oobq1ka4f.apps.googleusercontent.com"
             });
             
             user = result.user; 
-            // Server-side authentication ke liye idToken extract kar rahe hain
-            idToken = result.credential ? result.credential.idToken : result.idToken;
+            
+            // 🔥 NAYA FIX: Google ki jagah Firebase ka real ID Token nikalna
+            const tokenResponse = await FirebaseAuthentication.getIdToken();
+            idToken = tokenResponse.token || result.user.idToken;
             
         } else {
             // PC / Browser Testing ke liye fallback
