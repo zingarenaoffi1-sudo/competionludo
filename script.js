@@ -101,7 +101,7 @@ function findOnlineMatch(count) {
 
 function connectToServer() {
     if (!socket) {
-        socket = io('https://zingarena-ludo.onrender.com');
+        socket = io('https://competionludo.onrender.com');
 
         socket.on('room-created', (data) => {
             window.currentRoomId = data.roomId;
