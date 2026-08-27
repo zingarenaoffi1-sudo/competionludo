@@ -145,15 +145,15 @@ body {
 .blue-base { grid-area: 10 / 1 / 16 / 7; background-color: var(--blue-main); }
 .yellow-base { grid-area: 10 / 10 / 16 / 16; background-color: var(--yellow-main); }
 
-/* --- 6. INNER 2x2 GRID BOX (The Fix) --- */
+/* --- 6. INNER 2x2 GRID BOX --- */
 .inner-base {
     width: 65%; 
     height: 65%;
-    background-color: white; /* Ludo King jaisa safed background */
+    background-color: white; 
     display: grid; 
     grid-template-columns: 1fr 1fr; 
     grid-template-rows: 1fr 1fr;
-    gap: 8px; /* Khanon ke beech ka gap */
+    gap: 8px; 
     padding: 8px; 
     border-radius: 12px;
     box-shadow: inset 0 4px 8px rgba(0, 0, 0, 0.3);
@@ -171,7 +171,6 @@ body {
     box-shadow: inset 0 2px 5px rgba(0,0,0,0.4);
 }
 
-/* Parent base ke hisaab se khane ka color set hoga */
 .red-base .token-slot { background-color: var(--red-main); }
 .green-base .token-slot { background-color: var(--green-main); }
 .blue-base .token-slot { background-color: var(--blue-main); }
@@ -298,7 +297,7 @@ body {
 .safe-zone-icon {
     font-size: 18px;
     color: rgba(0, 0, 0, 0.3);
-    pointer-events: none; /* Taki goti click karne me problem na ho */
+    pointer-events: none; 
     position: absolute;
 }
 .token.highlight-move { 
@@ -315,7 +314,7 @@ body {
 /* --- 1. WINNING BOX TAAJ (CROWN) --- */
 #cell-7-7 {
     position: relative;
-    background: radial-gradient(circle, #ffd700, #ff8c00) !important; /* Gold gradient */
+    background: radial-gradient(circle, #ffd700, #ff8c00) !important; 
     box-shadow: 0 0 15px #ffcc00, inset 0 0 20px rgba(0, 0, 0, 0.8) !important;
     z-index: 5;
     border-radius: 4px;
@@ -341,7 +340,7 @@ body {
 /* --- 2. GOTI MOVEMENT ANIMATION --- */
 .token.moving {
     animation: movePop 0.4s ease-out forwards;
-    z-index: 50; /* Chalte waqt goti sabse upar dikhe */
+    z-index: 50; 
 }
 
 @keyframes movePop {
@@ -360,15 +359,79 @@ body {
 }
 
 /* =========================================
+   🔥 COMPETITION MODE UI (NEWLY ADDED) 🔥
+========================================= */
+/* Top Header Fix for Competition Menu */
+.comp-header { 
+    background: linear-gradient(to right, #1a237e, #311b92); 
+    padding: 15px; 
+    text-align: center; 
+    box-shadow: 0 4px 10px rgba(0,0,0,0.5); 
+    z-index: 100; 
+    position: fixed; /* Header hamesha upar rahega */
+    top: 0; 
+    left: 0;
+    width: 100%; 
+    box-sizing: border-box; 
+}
+.comp-logo { 
+    font-size: 24px; 
+    font-weight: 900; 
+    color: #ff9900; 
+    letter-spacing: 2px; 
+    margin: 0; 
+}
+
+/* Scrollable Dashboard (Matches list katega nahi) */
+.comp-dashboard-container {
+    width: 100%;
+    height: 100vh;
+    padding-top: 70px; /* Header ki jagah chhodi */
+    overflow-y: auto; /* Scroll allow karega */
+    box-sizing: border-box;
+}
+
+.comp-dashboard { 
+    padding: 15px; 
+    padding-bottom: 50px; 
+    width: 100%;
+    max-width: 500px;
+    margin: 0 auto;
+} 
+
+/* UI Elements inside Dashboard */
+.wallet-container { display: flex; justify-content: space-between; margin-bottom: 20px; }
+.wallet-box { background: #1e1e1e; padding: 15px; border-radius: 10px; width: 45%; text-align: center; border: 1px solid #333; }
+.wallet-title { font-size: 12px; color: #aaa; text-transform: uppercase; margin-bottom: 5px; }
+.wallet-amount { font-size: 20px; font-weight: bold; color: #4CAF50; }
+.weekly-score { color: #2196F3; }
+.aura-badge { background: #ff9900; color: black; padding: 3px 8px; border-radius: 15px; font-size: 12px; font-weight: bold; display: inline-block; }
+
+.btn-comp-google { background: white; color: black; padding: 12px; width: 90%; border-radius: 25px; font-weight: bold; margin: 30px auto; display: block; border: none; font-size: 16px; cursor: pointer; }
+.btn-comp-ad { background: linear-gradient(to right, #ff416c, #ff4b2b); color: white; padding: 12px; width: 100%; border-radius: 10px; font-weight: bold; border: none; margin-bottom: 20px; cursor: pointer; box-shadow: 0 4px 15px rgba(255, 75, 43, 0.4); }
+.btn-leaderboard { background: linear-gradient(to right, #ffd700, #ff9900); color: #111; padding: 12px; width: 100%; border-radius: 10px; font-weight: bold; border: none; margin-bottom: 15px; cursor: pointer; }
+
+/* Match Cards */
+.match-card { background: #2a2a2a; padding: 15px; border-radius: 10px; margin-bottom: 15px; border-left: 5px solid #ff9900; }
+.match-info h3 { margin: 0 0 5px 0; color: #fff; font-size: 16px; }
+.match-info p { margin: 0; font-size: 12px; color: #aaa; }
+.player-count-row { display: flex; justify-content: space-between; gap: 8px; margin-top: 12px; }
+.btn-play-small { flex: 1; background: #4CAF50; color: white; border: none; padding: 8px 4px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 13px; line-height: 1.4; }
+.btn-play-small span { display: block; font-size: 10px; font-weight: normal; opacity: 0.85; }
+.leaderboard-row { display: flex; justify-content: space-between; padding: 10px 5px; border-bottom: 1px solid #333; font-size: 14px; }
+.reward-tiers { font-size: 11px; color: #888; text-align: center; margin-top: 10px; line-height: 1.6; }
+
+/* Matchmaking Loader Animation */
+.comp-loader { border: 8px solid #333; border-top: 8px solid #ff9900; border-radius: 50%; width: 60px; height: 60px; animation: spin 1s linear infinite; margin: 30px auto; }
+@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+/* =========================================
    🔥 MOBILE RESPONSIVENESS FIX 🔥
 ========================================= */
 @media (max-width: 768px) {
-    /* Mobile me board ko thoda sa adjust karta hai taaki footer ko jagah mile */
     .board-container {
         transform: scale(0.97); 
     }
-    
-    /* Dice aur timer ko upar shift karne ka jaadu */
     .game-footer {
         transform: translateY(-25px); 
         z-index: 100;
