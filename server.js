@@ -236,16 +236,12 @@ io.on('connection', (socket) => {
     // 🔐 100% SECURE SERVER-SIDE AUTHENTICATION
     socket.on('authenticate-user', async (data) => {
         try {
-            // 🔥 NAYA SECURITY LOGIC: Agar ID Token nahi aaya toh turant reject! (No Backdoors)
             if (!data || !data.idToken) {
                 socket.emit('error-msg', 'Authentication Blocked: ID Token Missing!');
                 return;
             }
 
             let uid, name;
-            
-            // 🔥 SERVER VERIFICATION: Google/Firebase se direct check karega.
-            // Hacker client code change kar sakta hai, par Firebase ka sign fake nahi kar sakta.
             const decoded = await admin.auth().verifyIdToken(data.idToken);
             uid = decoded.uid;
             name = decoded.name || decoded.email || "Zing Player";
@@ -271,7 +267,7 @@ io.on('connection', (socket) => {
         }
     });
 
-    // 📺 AD REWARDS
+    // 📺 AD REWARDS (🔥 SECURE LOGIC IS RIGHT HERE)
     socket.on('request-ad-reward', () => {
         if (!socket.uid) return;
         const sessionId = 'AD_' + Math.random().toString(36).substr(2, 12) + Date.now();
@@ -286,10 +282,10 @@ io.on('connection', (socket) => {
             delete pendingAdRewards[data.sessionId]; 
 
             const elapsed = Date.now() - session.requestedAt;
-            if (elapsed < 8000) return;
+            if (elapsed < 8000) return; // Must watch ad for at least 8 seconds
 
             const userRef = db.collection('users').doc(socket.uid);
-            await userRef.update({ mainWallet: admin.firestore.FieldValue.increment(100) });
+            await userRef.update({ mainWallet: admin.firestore.FieldValue.increment(100) }); // Server side +100 tokens
             const snap = await userRef.get();
             socket.emit('update-wallet', { tokens: snap.data().mainWallet, score: snap.data().weeklyWinnings });
             socket.emit('ad-reward-granted', { amount: 100 });
