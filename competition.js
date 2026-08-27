@@ -48,7 +48,7 @@ const safeZones = [
 const diceFaces = ['', '⚀', '⚁', '⚂', '⚃', '⚄', '⚅'];
 
 // ==========================================
-// 🔥 ADS SYSTEM
+// 🔥 ADS SYSTEM (FIXED ADMOB LISTENERS)
 // ==========================================
 let lastAdTime = 0;
 function triggerInterstitialAd(reason) {
@@ -66,11 +66,26 @@ async function initAdMobRewards() {
         const { AdMob } = Capacitor.Plugins;
         try {
             await AdMob.initialize({ initializeForTesting: true });
+            
+            // 1. Reward ka Signal (Tokens ke liye)
             AdMob.addListener('onRewardedVideoAdReward', () => {
                 if (socket) socket.emit('claim-ad-reward');
-                alert("Reward Received: +100 Tokens adding to your wallet via Server! 🪙");
+                alert("Reward Processed! Adding to your wallet via Server! 🪙");
             });
-        } catch(e) {}
+
+            // 2. 🔥 NEW: Ad Close (X Button) ka Signal
+            AdMob.addListener('onRewardedVideoAdDismissed', () => {
+                console.log("Ad closed by user.");
+            });
+
+            // 3. Optional: Agar Ad load hone mein error aaye
+            AdMob.addListener('onRewardedVideoAdFailedToLoad', (err) => {
+                console.error("Ad failed to load: ", err);
+            });
+            
+        } catch(e) {
+            console.error("AdMob Init Error: ", e);
+        }
     }
 }
 
