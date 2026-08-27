@@ -1,293 +1,635 @@
-
 /* =========================================
-   ZINGARENA LUDO - COMPETITION UI FIX
+   ZINGARENA LUDO - COMPETITION STYLE
+   Separate CSS for Online/Competition Mode
 ========================================= */
 
-html, body {
+/* =========================================
+   1. GLOBAL RESET
+========================================= */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+}
+
+html,
+body {
     width: 100%;
     max-width: 100%;
+    min-height: 100%;
     overflow-x: hidden;
 }
 
-/* Competition Screen */
-.comp-header {
+body {
+    margin: 0;
+    padding: 0;
+    background: #121212;
+    color: white;
+    font-family: Arial, sans-serif;
+    min-height: 100vh;
+}
+
+
+/* =========================================
+   2. HIDDEN
+========================================= */
+
+.hidden {
+    display: none !important;
+}
+
+
+/* =========================================
+   3. TOP HEADER
+========================================= */
+
+.header {
     width: 100%;
     position: sticky;
     top: 0;
     left: 0;
     z-index: 999;
-    background: linear-gradient(135deg,#1a237e,#311b92);
+    background: linear-gradient(135deg, #1a237e, #311b92);
     padding: 14px 10px;
     text-align: center;
-    box-shadow: 0 3px 12px rgba(0,0,0,.45);
+    box-shadow: 0 3px 12px rgba(0, 0, 0, 0.45);
 }
 
-.comp-logo {
+.logo {
     font-size: 26px;
     font-weight: 900;
     color: #ffb300;
-    letter-spacing: 1px;
+    letter-spacing: 1.5px;
     margin: 0;
     text-transform: none;
+    text-shadow: 0 0 10px rgba(255, 179, 0, 0.35);
 }
 
-/* Main Dashboard */
-.comp-dashboard-container{
-    width:100%;
-    min-height:100vh;
-    overflow-y:auto;
-    overflow-x:hidden;
-    padding:0;
-    box-sizing:border-box;
-    background:#121212;
+
+/* =========================================
+   4. DASHBOARD
+========================================= */
+
+.dashboard {
+    width: 100%;
+    max-width: 430px;
+    height: calc(100vh - 60px);
+    min-height: calc(100vh - 60px);
+    margin: 0 auto;
+    padding: 18px 14px 80px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    background: #121212;
+    box-sizing: border-box;
 }
 
-.comp-dashboard{
-    width:100%;
-    max-width:430px;
-    margin:0 auto;
-    padding:18px 14px 45px;
-    box-sizing:border-box;
+
+/* =========================================
+   5. LOGIN SECTION
+========================================= */
+
+#login-section h2 {
+    text-align: center;
+    margin-top: 50px;
+    color: #ff9900;
 }
 
-/* Username Area */
-
-.player-top{
-    text-align:center;
-    margin-bottom:18px;
+#login-section p {
+    text-align: center;
+    color: #ddd;
+    font-size: 16px;
+    padding: 0 20px;
+    line-height: 1.6;
+    margin-bottom: 30px;
 }
 
-.player-top .game-title{
-    font-size:24px;
-    font-weight:900;
-    color:#ffb300;
-    margin-bottom:6px;
-    letter-spacing:.5px;
+
+/* =========================================
+   6. PLAYER NAME AREA
+========================================= */
+
+.player-name-box {
+    text-align: center;
+    margin-bottom: 20px;
+    width: 100%;
 }
 
-.player-top .player-name{
-    font-size:20px;
-    font-weight:700;
-    color:white;
+.game-title {
+    color: #ff9900;
+    font-size: 24px;
+    font-weight: 900;
+    letter-spacing: 1.5px;
+    margin-bottom: 6px;
+    text-shadow: 0 0 10px rgba(255, 153, 0, 0.5);
 }
 
-.aura-badge{
-    margin-top:8px;
-    background:#ff9900;
-    color:#111;
-    padding:5px 14px;
-    border-radius:20px;
-    font-size:13px;
-    font-weight:bold;
-    display:inline-block;
+.player-name-box #player-name {
+    color: #ffffff;
+    font-size: 20px;
+    font-weight: 700;
+    margin: 0 0 6px 0;
+    word-break: break-word;
 }
 
-/* Wallet */
-
-.wallet-container{
-    display:grid;
-    grid-template-columns:1fr 1fr;
-    gap:12px;
-    margin-bottom:18px;
+.aura-badge {
+    margin-top: 8px;
+    background: #ff9900;
+    color: #111;
+    padding: 5px 14px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: bold;
+    display: inline-block;
 }
 
-.wallet-box{
-    width:100%;
-    background:#1e1e1e;
-    padding:18px 10px;
-    border-radius:18px;
-    border:1px solid #3a3a3a;
-    text-align:center;
-    box-sizing:border-box;
+
+/* =========================================
+   7. WALLET
+========================================= */
+
+.wallet-container {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 18px;
 }
 
-.wallet-title{
-    font-size:13px;
-    color:#bdbdbd;
-    margin-bottom:8px;
-    line-height:1.3;
+.wallet-box {
+    width: 100%;
+    background: #1e1e1e;
+    padding: 18px 10px;
+    border-radius: 18px;
+    border: 1px solid #3a3a3a;
+    text-align: center;
+    box-sizing: border-box;
 }
 
-.wallet-amount{
-    font-size:28px;
-    font-weight:800;
-    color:#66bb6a;
-    word-break:break-word;
+.wallet-title {
+    font-size: 13px;
+    color: #bdbdbd;
+    margin-bottom: 8px;
+    line-height: 1.3;
 }
 
-.weekly-score{
-    color:#42a5f5;
+.wallet-amount {
+    font-size: 28px;
+    font-weight: 800;
+    color: #66bb6a;
+    word-break: break-word;
 }
 
-/* Buttons */
-
-.btn-comp-ad,
-.btn-leaderboard{
-    width:100%;
-    border:none;
-    border-radius:18px;
-    padding:17px 12px;
-    font-size:18px;
-    font-weight:800;
-    margin-bottom:14px;
-    cursor:pointer;
+.weekly-score {
+    color: #42a5f5;
 }
 
-.btn-comp-ad{
-    background:linear-gradient(90deg,#ff416c,#ff3d2e);
-    color:white;
-    box-shadow:0 5px 18px rgba(255,70,70,.25);
+
+/* =========================================
+   8. BUTTONS
+========================================= */
+
+.btn-google {
+    background: white;
+    color: #111;
+    padding: 13px 15px;
+    width: 90%;
+    border-radius: 25px;
+    font-weight: bold;
+    margin: 30px auto;
+    display: block;
+    border: none;
+    font-size: 16px;
+    cursor: pointer;
 }
 
-.btn-leaderboard{
-    background:linear-gradient(90deg,#ffd54f,#ff9800);
-    color:#111;
+.btn-google:active,
+.btn-ad:active,
+.btn-leaderboard:active,
+.btn-play-small:active,
+.menu-btn:active {
+    transform: scale(0.98);
 }
 
-/* Select Match */
 
-.select-match-title{
-    font-size:25px;
-    font-weight:800;
-    margin:22px 0 12px;
-    color:white;
+/* Watch Ad Button */
+
+.btn-ad {
+    width: 100%;
+    border: none;
+    border-radius: 18px;
+    padding: 17px 12px;
+    font-size: 18px;
+    font-weight: 800;
+    margin-bottom: 14px;
+    cursor: pointer;
+    background: linear-gradient(90deg, #ff416c, #ff3d2e);
+    color: white;
+    box-shadow: 0 5px 18px rgba(255, 70, 70, 0.25);
 }
 
-/* Match Cards */
 
-.match-card{
-    width:100%;
-    background:#292929;
-    border-radius:18px;
-    padding:16px;
-    margin-bottom:18px;
-    border-left:5px solid #ff9800;
-    box-sizing:border-box;
+/* Leaderboard Button */
+
+.btn-leaderboard {
+    width: 100%;
+    border: none;
+    border-radius: 18px;
+    padding: 17px 12px;
+    font-size: 18px;
+    font-weight: 800;
+    margin-bottom: 14px;
+    cursor: pointer;
+    background: linear-gradient(90deg, #ffd54f, #ff9800);
+    color: #111;
 }
 
-.match-info h3{
-    color:white;
-    font-size:24px;
-    margin-bottom:8px;
-    line-height:1.2;
+
+/* Back/Menu Button */
+
+.menu-btn {
+    display: block;
+    margin: 20px auto;
+    background: #333;
+    color: white;
+    padding: 10px 20px;
+    border: 1px solid #444;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
 }
 
-.match-info p{
-    color:#c7c7c7;
-    font-size:17px;
-    line-height:1.4;
+
+/* =========================================
+   9. SELECT MATCH
+========================================= */
+
+#dashboard-section > h3 {
+    color: white;
+    border-bottom: 1px solid #333;
+    padding-bottom: 10px;
+    margin-bottom: 14px;
 }
 
-/* Player Buttons */
 
-.player-count-row{
-    width:100%;
-    display:grid;
-    grid-template-columns:repeat(3,1fr);
-    gap:10px;
-    margin-top:16px;
+/* =========================================
+   10. MATCH CARDS
+========================================= */
+
+.match-card {
+    width: 100%;
+    background: #292929;
+    border-radius: 18px;
+    padding: 16px;
+    margin-bottom: 18px;
+    border-left: 5px solid #ff9800;
+    box-sizing: border-box;
 }
 
-.btn-play-small{
-    width:100%;
-    min-width:0;
-    border:none;
-    background:#4caf50;
-    color:white;
-    border-radius:12px;
-    padding:14px 4px;
-    font-size:17px;
-    font-weight:800;
-    line-height:1.15;
-    box-sizing:border-box;
+.match-info h3 {
+    color: white;
+    font-size: 24px;
+    margin: 0 0 8px 0;
+    line-height: 1.2;
 }
 
-.btn-play-small span{
-    display:block;
-    margin-top:5px;
-    font-size:13px;
-    font-weight:500;
-    opacity:.9;
+.match-info p {
+    color: #c7c7c7;
+    font-size: 17px;
+    line-height: 1.4;
+    margin: 0;
 }
 
-/* Loader */
 
-.comp-loader{
-    border:8px solid #333;
-    border-top:8px solid #ff9900;
-    border-radius:50%;
-    width:60px;
-    height:60px;
-    animation:spin 1s linear infinite;
-    margin:30px auto;
+/* =========================================
+   11. PLAYER COUNT BUTTONS
+========================================= */
+
+.player-count-row {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-top: 16px;
 }
 
-@keyframes spin{
-    from{transform:rotate(0deg);}
-    to{transform:rotate(360deg);}
+.btn-play-small {
+    width: 100%;
+    min-width: 0;
+    border: none;
+    background: #4caf50;
+    color: white;
+    border-radius: 12px;
+    padding: 14px 4px;
+    font-size: 17px;
+    font-weight: 800;
+    line-height: 1.15;
+    box-sizing: border-box;
+    cursor: pointer;
 }
 
-/* Leaderboard */
-
-.leaderboard-row{
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-    padding:12px 4px;
-    border-bottom:1px solid #383838;
-    font-size:15px;
+.btn-play-small span {
+    display: block;
+    margin-top: 5px;
+    font-size: 13px;
+    font-weight: 500;
+    opacity: 0.9;
 }
 
-.reward-tiers{
-    text-align:center;
-    color:#999;
-    font-size:12px;
-    margin-top:12px;
+
+/* =========================================
+   12. MATCHMAKING SCREEN
+========================================= */
+
+#matchmaking-section {
+    text-align: center;
+    padding-top: 80px;
 }
 
-/* Mobile Perfect */
+#matchmaking-section h2 {
+    color: #ff9900;
+    font-size: 28px;
+}
 
-@media(max-width:480px){
+#matchmaking-section p {
+    color: #ddd;
+    font-size: 16px;
+    line-height: 1.5;
+    margin-top: 10px;
+}
 
-    .comp-dashboard{
-        max-width:100%;
-        padding:16px 12px 35px;
+
+/* Loader - IMPORTANT: HTML uses .loader */
+
+.loader {
+    border: 8px solid #333;
+    border-top: 8px solid #ff9900;
+    border-radius: 50%;
+    width: 60px;
+    height: 60px;
+    animation: spin 1s linear infinite;
+    margin: 30px auto;
+}
+
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
     }
 
-    .comp-logo{
-        font-size:24px;
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+
+/* =========================================
+   13. LEADERBOARD MODAL
+========================================= */
+
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.85);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    padding: 15px;
+    box-sizing: border-box;
+}
+
+.modal-content {
+    width: 90%;
+    max-width: 340px;
+    max-height: 90vh;
+    overflow-y: auto;
+    background: #1e1e1e;
+    padding: 20px;
+    border-radius: 12px;
+    border: 2px solid #ff9900;
+    box-shadow: 0 0 25px rgba(255, 153, 0, 0.25);
+    box-sizing: border-box;
+}
+
+
+/* Leaderboard Rows */
+
+.leaderboard-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 4px;
+    border-bottom: 1px solid #383838;
+    font-size: 15px;
+}
+
+
+/* Reward Tiers */
+
+.reward-tiers {
+    text-align: center;
+    color: #999;
+    font-size: 12px;
+    margin-top: 12px;
+    line-height: 1.6;
+}
+
+
+/* =========================================
+   14. LUDO GAME UI
+========================================= */
+
+#ludo-wrapper {
+    width: 100%;
+    min-height: 100vh;
+    padding: 15px 10px 30px;
+    background: #121220;
+    box-sizing: border-box;
+    text-align: center;
+    overflow-y: auto;
+}
+
+#my-identity-badge {
+    text-align: center;
+    padding: 5px;
+    font-weight: bold;
+    margin-bottom: 10px;
+}
+
+#turn-text {
+    text-align: center;
+    margin: 10px 0;
+    font-size: 18px;
+    font-weight: bold;
+}
+
+#timer-text {
+    text-align: center;
+    margin: 5px 0;
+    color: #ff4d4d;
+    font-weight: bold;
+}
+
+
+/* Ludo Board */
+
+#ludo-board {
+    width: min(360px, 94vw);
+    height: min(360px, 94vw);
+    margin: 10px auto;
+    background: #999;
+    border: 5px solid #222;
+    border-radius: 8px;
+    box-shadow: 0 15px 30px rgba(0, 0, 0, 0.8);
+}
+
+
+/* Dice */
+
+#dice-container {
+    width: 60px;
+    height: 60px;
+    margin: 20px auto;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    font-size: 50px;
+    cursor: pointer;
+    background: transparent;
+}
+
+
+/* Player Profiles */
+
+.profiles-container {
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    gap: 5px;
+    margin-top: 10px;
+    flex-wrap: wrap;
+}
+
+.player-profile {
+    padding: 6px 8px;
+    font-size: 12px;
+    border-radius: 8px;
+    background: rgba(0, 0, 0, 0.35);
+}
+
+
+/* =========================================
+   15. MOBILE RESPONSIVE
+========================================= */
+
+@media (max-width: 480px) {
+
+    .header {
+        padding: 13px 8px;
     }
 
-    .player-top .game-title{
-        font-size:22px;
+    .logo {
+        font-size: 24px;
+        letter-spacing: 1px;
     }
 
-    .player-top .player-name{
-        font-size:19px;
+    .dashboard {
+        max-width: 100%;
+        height: calc(100vh - 56px);
+        min-height: calc(100vh - 56px);
+        padding: 16px 12px 70px;
     }
 
-    .wallet-box{
-        padding:15px 8px;
+    .player-name-box .game-title {
+        font-size: 22px;
     }
 
-    .wallet-amount{
-        font-size:24px;
+    .player-name-box #player-name {
+        font-size: 19px;
     }
 
-    .match-info h3{
-        font-size:22px;
+    .wallet-box {
+        padding: 15px 8px;
     }
 
-    .match-info p{
-        font-size:16px;
+    .wallet-title {
+        font-size: 12px;
     }
 
-    .btn-play-small{
-        font-size:16px;
-        padding:13px 3px;
+    .wallet-amount {
+        font-size: 24px;
     }
 
-    .btn-play-small span{
-        font-size:12px;
+    .btn-ad,
+    .btn-leaderboard {
+        font-size: 16px;
+        padding: 15px 10px;
+    }
+
+    .match-info h3 {
+        font-size: 22px;
+    }
+
+    .match-info p {
+        font-size: 16px;
+    }
+
+    .btn-play-small {
+        font-size: 16px;
+        padding: 13px 3px;
+    }
+
+    .btn-play-small span {
+        font-size: 12px;
+    }
+
+    #ludo-board {
+        width: 94vw;
+        height: 94vw;
+    }
+}
+
+
+/* =========================================
+   16. VERY SMALL PHONES
+========================================= */
+
+@media (max-width: 360px) {
+
+    .logo {
+        font-size: 21px;
+    }
+
+    .player-name-box .game-title {
+        font-size: 20px;
+    }
+
+    .player-name-box #player-name {
+        font-size: 17px;
+    }
+
+    .wallet-amount {
+        font-size: 21px;
+    }
+
+    .match-info h3 {
+        font-size: 19px;
+    }
+
+    .match-info p {
+        font-size: 14px;
+    }
+
+    .btn-play-small {
+        font-size: 14px;
+    }
+
+    .btn-play-small span {
+        font-size: 11px;
     }
 }
