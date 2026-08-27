@@ -48,7 +48,7 @@ const safeZones = [
 const diceFaces = ['', '⚀', '⚁', '⚂', '⚃', '⚄', '⚅'];
 
 // ==========================================
-// 🔥 ADS SYSTEM (Secure Server Integration)
+// 🔥 ADS SYSTEM
 // ==========================================
 let lastAdTime = 0;
 function triggerInterstitialAd(reason) {
@@ -116,20 +116,13 @@ async function realGoogleLogin() {
 
         if (window.Capacitor && Capacitor.Plugins.FirebaseAuthentication) {
             const { FirebaseAuthentication } = Capacitor.Plugins;
-            
-            // Web Client ID ke sath sign-in jo ki tumhare JSON mein hai
             const result = await FirebaseAuthentication.signInWithGoogle({
                 clientId: "554089835021-3idmc196ket8k4buadpj7d7oobq1ka4f.apps.googleusercontent.com"
             });
-            
             user = result.user; 
-            
-            // 🔥 NAYA FIX: Google ki jagah Firebase ka real ID Token nikalna
             const tokenResponse = await FirebaseAuthentication.getIdToken();
             idToken = tokenResponse.token || result.user.idToken;
-            
         } else {
-            // PC / Browser Testing ke liye fallback
             user = { uid: "pc_test_" + Math.floor(Math.random()*1000), displayName: "Zing PC Player" };
             idToken = "PC_TEST_TOKEN";
         }
@@ -138,10 +131,7 @@ async function realGoogleLogin() {
         document.getElementById('dashboard-section').classList.remove('hidden');
         document.getElementById('player-name').innerText = user.displayName || "Zing Master";
 
-        // Secure Server Connection
         socket = io('https://competionludo.onrender.com');
-        
-        // Server ko idToken bhejna zaroori hai taaki verification pass ho jaye
         socket.emit('authenticate-user', { idToken: idToken });
 
         socket.on('update-wallet', (data) => {
@@ -155,7 +145,9 @@ async function realGoogleLogin() {
 
         socket.on('start-online-game', (data) => {
             if (data.mode === 'comp') {
+                // 🔥 Hide Matchmaking overlay and show board
                 document.getElementById("dashboard-section").classList.add("hidden");
+                document.getElementById("matchmaking-section").classList.add("hidden");
                 document.getElementById("ludo-wrapper").classList.remove("hidden"); 
 
                 window.currentRoomId = data.roomId;
@@ -170,7 +162,6 @@ async function realGoogleLogin() {
             }
         });
 
-        // Server Sync Listeners
         socket.on('remote-dice-rolled', handleRemoteDice);
         socket.on('remote-token-moved', handleRemoteTokenMove);
         socket.on('turn-updated', (data) => {
@@ -200,19 +191,32 @@ async function realGoogleLogin() {
 
     } catch (error) {
         alert("Google Login Failed! Error: " + (error.message || JSON.stringify(error)));
-        console.error("Login Error:", error);
     }
 }
 
+// 🔥 NEW MATCHMAKING LOGIC
 async function joinMatch(entryFee, playersRequired) {
     if (!socket) { alert("Please login first!"); return; }
     if (myTokens >= entryFee) {
+        // Change UI to Matchmaking screen
+        document.getElementById('dashboard-section').classList.add('hidden');
+        document.getElementById('matchmaking-section').classList.remove('hidden');
+        
         await triggerInterstitialAd("Entering Pro Match"); 
-        alert(`⏳ Deducting ${entryFee} tokens & searching for players...`);
         socket.emit('find-comp-match', { entryFee: entryFee, playersRequired: playersRequired });
     } else {
         alert("Not enough tokens!");
     }
+}
+
+// 🔥 CANCEL MATCHMAKING AND REFUND
+function cancelMatchmaking() {
+    if (socket) {
+        socket.emit('cancel-action'); // Server automatically refunds tokens via this event
+    }
+    // Return to dashboard
+    document.getElementById('matchmaking-section').classList.add('hidden');
+    document.getElementById('dashboard-section').classList.remove('hidden');
 }
 
 // ==========================================
@@ -245,7 +249,7 @@ function closeLeaderboard() {
 }
 
 // ==========================================
-// 🎲 LUDO GAMEPLAY LOGIC (SERVER AUTHORITATIVE)
+// 🎲 LUDO GAMEPLAY LOGIC 
 // ==========================================
 function initGameSession() {
     activePlayers.forEach(c => {
@@ -335,7 +339,6 @@ function spawnTokens() {
     });
 }
 
-// Dice Request
 function rollDice() {
     if (socket && window.currentRoomId) {
         if (myAssignedColor !== activePlayers[currentPlayerIndex]) {
@@ -352,7 +355,6 @@ function rollDice() {
     }
 }
 
-// Server Dice Result Handler
 function handleRemoteDice(data) {
     currentDiceValue = data.diceValue;
     const diceContainer = document.getElementById("dice-container");
@@ -381,7 +383,6 @@ function checkAvailableMoves() {
     }
 }
 
-// Token Move Request
 function handleTokenClick(color, tokenIndex) {
     if (socket && window.currentRoomId && color !== myAssignedColor) return; 
     if (gameState !== 'WAITING_FOR_MOVE' || color !== activePlayers[currentPlayerIndex] || isMoving) return;
@@ -400,7 +401,6 @@ function handleTokenClick(color, tokenIndex) {
     }
 }
 
-// Server Move & Cut Confirmation
 function handleRemoteTokenMove(data) {
     let { color, tokenIndex, diceVal, cutDetails } = data;
     let tokenObj = allTokens[color][tokenIndex];
