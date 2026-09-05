@@ -5,8 +5,24 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>ZingArena - Main Menu</title>
     <link rel="stylesheet" href="style.css">
+    <style>
+        /* PC Testing Ke Liye Sirf EK Center Banner */
+        .dummy-banner {
+            position: absolute;
+            top: 0; left: 50%; transform: translateX(-50%);
+            width: 320px; height: 50px;
+            background: #ffcc00; color: #000;
+            display: none; align-items: center; justify-content: center;
+            font-weight: bold; font-size: 14px;
+            z-index: 1000; border: 2px solid #111; border-top: none;
+            border-bottom-left-radius: 8px; border-bottom-right-radius: 8px;
+        }
+    </style>
 </head>
 <body>
+    <!-- Dummy Banner (Sirf PC par dikhega) -->
+    <div id="test-banner" class="dummy-banner">AdMob Banner (320x50)</div>
+
     <div id="game-wrapper">
         <div class="game-header">
             <div class="logo-text">ZINGARENA LUDO</div>
@@ -21,10 +37,33 @@
                 
                 <button class="ultra-roll-btn" onclick="window.location.href='online.html'" style="width: 100%; margin-bottom: 12px; background: linear-gradient(to bottom, #2196F3, #0D47A1);">Online Multiplayer</button>
 
-                <!-- 🔥 NAYA COMPETITION BUTTON 🔥 -->
                 <button class="ultra-roll-btn" onclick="window.location.href='competition.html'" style="width: 100%; background: linear-gradient(to right, #ff416c, #ff4b2b); border: 2px solid #ff9900; box-shadow: 0 4px 15px rgba(255, 75, 43, 0.4);">🏆 Pro Competition</button>
             </div>
         </div>
     </div>
+
+    <!-- Banner Ad Initialization Script -->
+    <script>
+        document.addEventListener("DOMContentLoaded", async () => {
+            const bannerTestId = 'ca-app-pub-3940256099942544/9214589741'; 
+            
+            if (window.Capacitor && Capacitor.Plugins.AdMob) {
+                const { AdMob } = Capacitor.Plugins;
+                try {
+                    await AdMob.initialize({ initializeForTesting: true });
+                    await AdMob.showBanner({
+                        adId: bannerTestId,
+                        position: 'TOP_CENTER', 
+                        margin: 0
+                    });
+                } catch(e) {
+                    console.error("Banner Load Error: ", e);
+                }
+            } else {
+                // PC Mode
+                document.getElementById('test-banner').style.display = 'flex';
+            }
+        });
+    </script>
 </body>
 </html>
