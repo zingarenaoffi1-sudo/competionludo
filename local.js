@@ -13,6 +13,11 @@ const missedTurns = {};
 let winnersList = [];
 let totalPlayersInGame = 0;
 
+const soundDice = new Audio('sounds/board game dice_2.mp3');
+const soundMove = new Audio('sounds/ui pop_2.mp3');
+const soundCut = new Audio('sounds/cartoon bonk.mp3');
+const soundWin = new Audio('sounds/success chime_2.mp3');
+
 const playersData = {
     'red': { name: "RED'S TURN", class: "red-text", startOffset: 0 },
     'green': { name: "GREEN'S TURN", class: "green-text", startOffset: 13 },
@@ -111,6 +116,7 @@ function handlePlayerWin(playerColor) {
 
 function endMatchAndGoToMenu() {
     clearTurnTimer();
+    soundWin.play().catch(e => {});
     triggerInterstitialAd("Match Finished");
     setTimeout(() => {
         let winMessage = "🏆 MATCH FINISHED! 🏆\n\n";
@@ -247,6 +253,9 @@ function rollDice() {
     diceContainer.classList.add("rolling");
 
     setTimeout(() => {
+        soundDice.currentTime = 0;
+        soundDice.play().catch(e => {});
+        
         diceContainer.classList.remove("rolling");
         currentDiceValue = Math.floor(Math.random() * 6) + 1; 
         diceContainer.innerText = diceFaces[currentDiceValue];
@@ -314,6 +323,9 @@ function moveTokenStepByStep(color, tokenIndex, stepsToMove) {
 }
 
 function updateTokenUI(color, tokenIndex) {
+    soundMove.currentTime = 0;
+    soundMove.play().catch(e => {});
+
     let tokenObj = allTokens[color][tokenIndex];
     let startOffset = playersData[color].startOffset;
     let globalPos = (startOffset + tokenObj.pathPosition) % 52;
@@ -343,6 +355,8 @@ function checkCapture(color, tokenIndex) {
                 let enemyGlobalPos = (playersData[enemyColor].startOffset + enemyToken.pathPosition) % 52;
                 if (enemyGlobalPos === globalPos) {
                     cutHappened = true;
+                    soundCut.play().catch(e => {});
+                    
                     enemyToken.state = 'home';
                     enemyToken.pathPosition = -1;
                     let homeSlot = document.getElementById(`${enemyColor}-slot-${enemyIndex}`);
