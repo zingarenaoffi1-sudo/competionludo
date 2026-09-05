@@ -5,8 +5,24 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Ultra Ludo - Local Offline</title>
     <link rel="stylesheet" href="style.css">
+    <style>
+        /* PC Testing Ke Liye Sirf EK Center Banner */
+        .dummy-banner {
+            position: absolute;
+            top: 0; left: 50%; transform: translateX(-50%);
+            width: 320px; height: 50px;
+            background: #ffcc00; color: #000;
+            display: none; align-items: center; justify-content: center;
+            font-weight: bold; font-size: 14px;
+            z-index: 1000; border: 2px solid #111; border-top: none;
+            border-bottom-left-radius: 8px; border-bottom-right-radius: 8px;
+        }
+    </style>
 </head>
 <body>
+    <!-- Dummy Banner (Sirf PC par dikhega) -->
+    <div id="test-banner" class="dummy-banner">AdMob Banner (320x50)</div>
+
     <div id="game-wrapper">
         <div class="game-header">
             <div class="logo-text">ULTRA LUDO (LOCAL)</div>
@@ -40,20 +56,37 @@
         <div id="mode-selection-modal" class="hidden"></div><div id="online-modal" class="hidden"></div>
     </div>
 
-    <!-- NATIVE ADMOB LOCAL LOGIC (3 Chance Logic) -->
+    <!-- NATIVE ADMOB LOCAL LOGIC (Banner + 3 Chance Interstitial) -->
     <script>
-        // AdMob Initialize karna zaroori hai
         document.addEventListener('DOMContentLoaded', async () => {
+            const bannerTestId = 'ca-app-pub-3940256099942544/9214589741';
+
             if (window.Capacitor && Capacitor.Plugins.AdMob) {
-                await Capacitor.Plugins.AdMob.initialize({ initializeForTesting: true });
+                const { AdMob } = Capacitor.Plugins;
+                try {
+                    await AdMob.initialize({ initializeForTesting: true });
+                    
+                    // Show Top Banner Automatically
+                    await AdMob.showBanner({
+                        adId: bannerTestId,
+                        position: 'TOP_CENTER',
+                        margin: 0
+                    });
+                } catch(e) {
+                    console.error("Banner Ad failed to load", e);
+                }
+            } else {
+                // PC Mode
+                document.getElementById('test-banner').style.display = 'flex';
             }
         });
 
+        // 3 Chance Interstitial Ad Logic
         let localMatchCount = 0;
         window.showAd = function() {
             localMatchCount++;
             if (localMatchCount >= 3) {
-                localMatchCount = 0; // Reset counter
+                localMatchCount = 0; 
                 playActualAd();
             }
         };
@@ -62,17 +95,14 @@
             if (window.Capacitor && Capacitor.Plugins.AdMob) {
                 const { AdMob } = Capacitor.Plugins;
                 try {
-                    // Test Interstitial ID
                     await AdMob.prepareInterstitial({
                         adId: 'ca-app-pub-3940256099942544/1033173712',
                         isTesting: true
                     });
                     await AdMob.showInterstitial();
                 } catch(e) {
-                    console.log("Ad failed to load", e);
+                    console.log("Interstitial Ad failed to load", e);
                 }
-            } else {
-                console.log("AdMob only works in the compiled APK!");
             }
         }
     </script>
