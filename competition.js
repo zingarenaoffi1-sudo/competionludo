@@ -65,7 +65,7 @@ async function initAdMobRewards() {
             AdMob.addListener('onRewardedVideoAdReward', () => {
                 if (socket) socket.emit('claim-ad-reward');
                 soundAd.play().catch(e => {});
-                alert("Reward Processed! Adding to your wallet via Server! 🪙");
+                alert("Reward processed! Adding tokens to your wallet via server! 🪙");
             });
 
             AdMob.addListener('onRewardedVideoAdDismissed', () => {
@@ -83,7 +83,7 @@ async function initAdMobRewards() {
 }
 
 async function showRewardedAdForTokens() {
-    if (!socket) { alert("Please login first!"); return; }
+    if (!socket) { alert("Please log in first!"); return; }
     if (window.Capacitor && Capacitor.Plugins.AdMob) {
         const { AdMob } = Capacitor.Plugins;
         try {
@@ -93,10 +93,10 @@ async function showRewardedAdForTokens() {
             });
             await AdMob.showRewardVideoAd();
         } catch(e) {
-            alert("Ad is loading or failed. Try again in a moment.");
+            alert("The ad is still loading or failed to load. Please try again in a moment.");
         }
     } else {
-        alert("[PC TEST MODE] Ad simulated. Asking Server for 100 Tokens...");
+        alert("[PC TEST MODE] Ad simulated. Requesting 100 tokens from server...");
         setTimeout(() => { if (socket) socket.emit('claim-ad-reward'); }, 2000);
     }
 }
@@ -197,12 +197,12 @@ async function realGoogleLogin() {
         initAdMobRewards();
 
     } catch (error) {
-        alert("Google Login Failed! Error: " + (error.message || JSON.stringify(error)));
+        alert("Google sign-in failed. Error: " + (error.message || JSON.stringify(error)));
     }
 }
 
 async function joinMatch(entryFee, playersRequired) {
-    if (!socket) { alert("Please login first!"); return; }
+    if (!socket) { alert("Please log in first!"); return; }
     if (myTokens >= entryFee) {
         document.getElementById('dashboard-section').classList.add('hidden');
         document.getElementById('matchmaking-section').classList.remove('hidden');
@@ -210,7 +210,7 @@ async function joinMatch(entryFee, playersRequired) {
         await triggerInterstitialAd("Entering Pro Match");
         socket.emit('find-comp-match', { entryFee: entryFee, playersRequired: playersRequired });
     } else {
-        alert("Not enough tokens!");
+        alert("Not enough tokens to join this match!");
     }
 }
 
@@ -339,7 +339,7 @@ function spawnTokens() {
 function rollDice() {
     if (socket && window.currentRoomId) {
         if (myAssignedColor !== activePlayers[currentPlayerIndex]) {
-            alert("Wait! This is not your turn."); return;
+            alert("Wait! It is not your turn."); return;
         }
     }
     if (activePlayers.length === 0 || gameState !== 'WAITING_FOR_ROLL' || isMoving) return;
@@ -495,6 +495,6 @@ function showMyIdentity(color) {
     badge.classList.remove('hidden');
     let playerNum = (color === 'red') ? "Player 1" : (color === 'green') ? "Player 2" : "Player 3";
     let bgColor = (color === 'red') ? "#ff2a2a" : (color === 'green') ? "#00cc00" : "#ffcc00";
-    badge.innerHTML = `👉 YOU ARE: ${playerNum} (${color}) 👈`;
+    badge.innerHTML = `👉 YOU ARE: ${playerNum} (${color.toUpperCase()}) 👈`;
     badge.style.background = bgColor;
 }
