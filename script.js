@@ -1,7 +1,3 @@
-/* =========================================
-   ULTRA LUDO PRO - MASTER LOGIC ENGINE + LIVE TIMER 
-========================================= */
-
 let activePlayers = []; 
 let currentPlayerIndex = 0; 
 let gameState = 'WAITING_FOR_ROLL'; 
@@ -13,11 +9,16 @@ let socket;
 let myAssignedColor = "";
 window.currentRoomId = "";
 
-// 🔥 VISUAL TIMER
-let turnTimer = null; // Local use only
+let turnTimer = null; 
 let countdownInterval = null;
 let timeLeft = 25;
 const missedTurns = {}; 
+
+// 🔊 GAME SOUND EFFECTS
+const soundDice = new Audio('sounds/board game dice_2.mp3');
+const soundMove = new Audio('sounds/ui pop_2.mp3');
+const soundCut = new Audio('sounds/cartoon bonk.mp3');
+const soundWin = new Audio('sounds/success chime_2.mp3');
 
 const playersData = {
     'red': { name: "RED'S TURN", class: "red-text", startOffset: 0 },
@@ -48,7 +49,6 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("dice-container").addEventListener("click", rollDice);
 });
 
-// --- MENU NAVIGATION FUNCTIONS ---
 function showLocalPlayerModal() {
     document.getElementById("mode-selection-modal").classList.add("hidden");
     document.getElementById("startup-modal").classList.remove("hidden");
@@ -87,12 +87,12 @@ function backToOnlineMain() {
 
 function backToModeSelect() {
     if (socket) socket.emit('cancel-action');
+    if (typeof window.showAd === 'function') window.showAd(); // Trigger Ad when going back
     document.getElementById("startup-modal").classList.add("hidden");
     document.getElementById("online-modal").classList.add("hidden");
     document.getElementById("mode-selection-modal").classList.remove("hidden");
 }
 
-// --- SOCKET.IO CONNECTION ---
 function findOnlineMatch(count) { 
     connectToServer();
     document.getElementById("quick-match-display").innerText = "Matchmaking pls wait... ⏳";
@@ -131,7 +131,6 @@ function connectToServer() {
             initGameSession();
         });
 
-        // 🚨 NEW SERVER ENGINE SYNC
         socket.on('remote-dice-rolled', handleRemoteDice);
         socket.on('remote-token-moved', handleRemoteTokenMove);
         socket.on('turn-updated', (data) => {
@@ -178,7 +177,6 @@ function joinPrivateRoom() {
     } else alert("Enter the valid room id!");
 }
 
-// --- GAME INITIALIZATION ---
 function initGameSession() {
     activePlayers.forEach(c => document.getElementById(`profile-${c}`).style.opacity = "1");
     activePlayers.forEach(c => missedTurns[c] = 0);
@@ -191,7 +189,7 @@ function initGameSession() {
 }
 
 function startLocalGame(playerCount) {
-    window.currentRoomId = ""; // No room ID = Offline Mode
+    window.currentRoomId = ""; 
     document.getElementById("startup-modal").classList.add("hidden");
     activePlayers = (playerCount === 2) ? ['red', 'yellow'] : (playerCount === 3) ? ['red', 'green', 'yellow'] : ['red', 'green', 'yellow', 'blue'];
     initGameSession();
@@ -199,6 +197,8 @@ function startLocalGame(playerCount) {
 
 function endMatchAndGoToMenu() {
     clearTurnTimer();
+    soundWin.play().catch(e => {});
+    if (typeof window.showAd === 'function') window.showAd(); // Trigger Ad on Match Finish
     setTimeout(() => {
         alert("🏆 MATCH FINISHED! 🏆");
         if (socket) socket.emit("leave-room");
@@ -206,7 +206,6 @@ function endMatchAndGoToMenu() {
     }, 1500);
 }
 
-// --- ⏳ TIMER LOGIC (Server-safe) ---
 function startTurnTimer() {
     clearTurnTimer(); 
     timeLeft = 25;
@@ -218,7 +217,6 @@ function startTurnTimer() {
         if (timeLeft <= 0) clearInterval(countdownInterval);
     }, 1000);
 
-    // Local kicks ONLY happen if offline
     if (!window.currentRoomId) {
         let currentColor = activePlayers[currentPlayerIndex];
         turnTimer = setTimeout(() => handleTurnTimeoutLocal(currentColor), 25000); 
@@ -251,7 +249,6 @@ function handleTurnTimeoutLocal(color) {
     switchTurnLocal(false);
 }
 
-// --- BOARD CREATION ---
 function createBoard() {
     const board = document.getElementById("ludo-board");
     board.innerHTML = ""; 
@@ -309,7 +306,6 @@ function spawnTokens() {
     });
 }
 
-// 🚨 HYBRID DICE ROLL (Online = Server, Offline = Local)
 function rollDice() {
     if (socket && window.currentRoomId) {
         if (myAssignedColor !== activePlayers[currentPlayerIndex]) {
@@ -325,8 +321,10 @@ function rollDice() {
     if (socket && window.currentRoomId) {
         socket.emit('request-dice-roll', { roomId: window.currentRoomId });
     } else {
-        // LOCAL OFFLINE MODE
         setTimeout(() => {
+            soundDice.currentTime = 0;
+            soundDice.play().catch(e => {});
+            
             diceContainer.classList.remove("rolling");
             currentDiceValue = Math.floor(Math.random() * 6) + 1; 
             diceContainer.innerText = diceFaces[currentDiceValue];
@@ -340,6 +338,10 @@ function rollDice() {
 
 function handleRemoteDice(data) {
     currentDiceValue = data.diceValue;
+    
+    soundDice.currentTime = 0;
+    soundDice.play().catch(e => {});
+    
     const diceContainer = document.getElementById("dice-container");
     diceContainer.classList.remove("rolling");
     diceContainer.innerText = diceFaces[currentDiceValue];
@@ -364,7 +366,6 @@ function checkAvailableMoves() {
     }
 }
 
-// 🚨 HYBRID TOKEN MOVE (Online = Server, Offline = Local)
 function handleTokenClick(color, tokenIndex) {
     if (socket && window.currentRoomId && color !== myAssignedColor) return; 
     if (gameState !== 'WAITING_FOR_MOVE' || color !== activePlayers[currentPlayerIndex] || isMoving) return;
@@ -377,7 +378,6 @@ function handleTokenClick(color, tokenIndex) {
     if (socket && window.currentRoomId) {
         socket.emit('request-token-move', { roomId: window.currentRoomId, color: color, tokenIndex: tokenIndex });
     } else {
-        // LOCAL OFFLINE MODE
         if (tokenObj.state === 'home' && currentDiceValue === 6) {
             tokenObj.state = 'active';
             tokenObj.pathPosition = 0; 
@@ -414,6 +414,8 @@ function handleRemoteTokenMove(data) {
                         enemyToken.state = 'home';
                         enemyToken.pathPosition = -1;
                         document.getElementById(`${cutDetails.color}-slot-${cutDetails.index}`).appendChild(enemyToken.element);
+                        
+                        soundCut.play().catch(e => {});
                     }
                     if (tokenObj.pathPosition >= 56) tokenObj.element.style.display = "none"; 
                     isMoving = false; 
@@ -423,7 +425,6 @@ function handleRemoteTokenMove(data) {
     }
 }
 
-// (For Local Mode Only)
 function moveTokenStepByStepLocal(color, tokenIndex, stepsToMove) {
     isMoving = true; 
     let tokenObj = allTokens[color][tokenIndex];
@@ -449,6 +450,9 @@ function moveTokenStepByStepLocal(color, tokenIndex, stepsToMove) {
 }
 
 function updateTokenUI(color, tokenIndex) {
+    soundMove.currentTime = 0;
+    soundMove.play().catch(e => {});
+
     let tokenObj = allTokens[color][tokenIndex];
     let startOffset = playersData[color].startOffset;
     let globalPos = (startOffset + tokenObj.pathPosition) % 52;
@@ -480,6 +484,8 @@ function checkCaptureLocal(color, tokenIndex) {
                 let enemyGlobalPos = (playersData[enemyColor].startOffset + enemyToken.pathPosition) % 52;
                 if (enemyGlobalPos === globalPos) {
                     cutHappened = true;
+                    soundCut.play().catch(e => {});
+                    
                     enemyToken.state = 'home';
                     enemyToken.pathPosition = -1;
                     document.getElementById(`${enemyColor}-slot-${enemyIndex}`).appendChild(enemyToken.element);
