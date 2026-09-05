@@ -1,19 +1,14 @@
-/* =========================================
-   ULTRA LUDO PRO - FULL LOCAL OFFLINE ENGINE
-   (100% Original Logic)
-========================================= */
-
-let activePlayers = []; 
-let currentPlayerIndex = 0; 
-let gameState = 'WAITING_FOR_ROLL'; 
+let activePlayers = [];
+let currentPlayerIndex = 0;
+let gameState = 'WAITING_FOR_ROLL';
 let currentDiceValue = 0;
-let isMoving = false; 
-const allTokens = {}; 
+let isMoving = false;
+const allTokens = {};
 
 let turnTimer = null;
 let countdownInterval = null;
 let timeLeft = 25;
-const missedTurns = {}; 
+const missedTurns = {};
 
 let winnersList = [];
 let totalPlayersInGame = 0;
@@ -43,13 +38,12 @@ const safeZones = [
 
 const diceFaces = ['', '⚀', '⚁', '⚂', '⚃', '⚄', '⚅'];
 
-// ORIGINAL AD LOGIC
 let lastAdTime = 0;
 function triggerInterstitialAd(reason) {
-    console.log("🎬 Interstitial Ad Triggered for:", reason);
+    console.log("Interstitial ad triggered for:", reason);
     let now = Date.now();
     if (now - lastAdTime < 15000) {
-        console.log("⏳ Ad skipped due to quick click safety.");
+        console.log("Ad skipped due to rapid click protection.");
         return;
     }
     lastAdTime = now;
@@ -121,7 +115,7 @@ function endMatchAndGoToMenu() {
     setTimeout(() => {
         let winMessage = "🏆 MATCH FINISHED! 🏆\n\n";
         winnersList.forEach((color, index) => {
-            winMessage += `Rank ${index + 1}: ${color.toUpperCase()} \n`;
+            winMessage += `Rank ${index + 1}: ${color.toUpperCase()}\n`;
         });
         if (activePlayers.length > 0) {
             winMessage += `Eliminated: ${activePlayers[0].toUpperCase()}\n`;
@@ -160,7 +154,7 @@ function handleTurnTimeout(color) {
     missedTurns[color]++;
     if (missedTurns[color] >= 3) {
         clearTurnTimer();
-        alert(`🚨 ${color.toUpperCase()} missed 3 turns, eliminated from the game!`);
+        alert(`🚨 ${color.toUpperCase()} missed 3 turns and has been eliminated from the game!`);
         if (allTokens[color]) {
             allTokens[color].forEach(t => {
                 if (t.element && t.element.parentNode) t.element.parentNode.removeChild(t.element);
@@ -176,7 +170,7 @@ function handleTurnTimeout(color) {
         startTurnTimer();
         return;
     }
-    alert(`⚠️ ${color.toUpperCase()} skips turn because player is inactive (${missedTurns[color]}/3).`);
+    alert(`⚠️ ${color.toUpperCase()} skipped their turn due to inactivity (${missedTurns[color]}/3).`);
     switchTurn(false);
 }
 
