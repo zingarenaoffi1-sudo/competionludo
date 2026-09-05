@@ -1,26 +1,24 @@
-/* =========================================
-   ZINGARENA PRO - COMPETITIVE LOGIC ENGINE 
-   (Tokens + Leaderboard + Live Timer + Interstitial Ads + Google Login)
-========================================= */
-
-// 1. GAME ECONOMY VARIABLES
-let myTokens = 0; 
+let myTokens = 0;
 let myWeeklyWinnings = 0;
 let socket;
 
-// 2. LUDO ENGINE VARIABLES
-let activePlayers = []; 
-let currentPlayerIndex = 0; 
-let gameState = 'WAITING_FOR_ROLL'; 
+let activePlayers = [];
+let currentPlayerIndex = 0;
+let gameState = 'WAITING_FOR_ROLL';
 let currentDiceValue = 0;
-let isMoving = false; 
-const allTokens = {}; 
+let isMoving = false;
+const allTokens = {};
 let myAssignedColor = "";
 window.currentRoomId = "";
 
-// 3. VISUAL TIMER TRACKING
 let countdownInterval = null;
 let timeLeft = 25;
+
+const soundDice = new Audio('sounds/board game dice_2.mp3');
+const soundMove = new Audio('sounds/ui pop_2.mp3');
+const soundCut = new Audio('sounds/cartoon bonk.mp3');
+const soundWin = new Audio('sounds/success chime_2.mp3');
+const soundAd = new Audio('sounds/coin collect game_2.mp3');
 
 const playersData = {
     'red': { name: "RED'S TURN", class: "red-text", startOffset: 0 },
@@ -30,26 +28,23 @@ const playersData = {
 };
 
 const masterPath = [
-    {r:6, c:1}, {r:6, c:2}, {r:6, c:3}, {r:6, c:4}, {r:6, c:5}, 
-    {r:5, c:6}, {r:4, c:6}, {r:3, c:6}, {r:2, c:6}, {r:1, c:6}, {r:0, c:6}, {r:0, c:7}, {r:0, c:8}, 
-    {r:1, c:8}, {r:2, c:8}, {r:3, c:8}, {r:4, c:8}, {r:5, c:8}, 
-    {r:6, c:9}, {r:6, c:10}, {r:6, c:11}, {r:6, c:12}, {r:6, c:13}, {r:6, c:14}, {r:7, c:14}, {r:8, c:14}, 
-    {r:8, c:13}, {r:8, c:12}, {r:8, c:11}, {r:8, c:10}, {r:8, c:9}, 
-    {r:9, c:8}, {r:10, c:8}, {r:11, c:8}, {r:12, c:8}, {r:13, c:8}, {r:14, c:8}, {r:14, c:7}, {r:14, c:6}, 
-    {r:13, c:6}, {r:12, c:6}, {r:11, c:6}, {r:10, c:6}, {r:9, c:6}, 
-    {r:8, c:5}, {r:8, c:4}, {r:8, c:3}, {r:8, c:2}, {r:8, c:1}, {r:8, c:0}, {r:7, c:0} 
+    {r:6, c:1}, {r:6, c:2}, {r:6, c:3}, {r:6, c:4}, {r:6, c:5},
+    {r:5, c:6}, {r:4, c:6}, {r:3, c:6}, {r:2, c:6}, {r:1, c:6}, {r:0, c:6}, {r:0, c:7}, {r:0, c:8},
+    {r:1, c:8}, {r:2, c:8}, {r:3, c:8}, {r:4, c:8}, {r:5, c:8},
+    {r:6, c:9}, {r:6, c:10}, {r:6, c:11}, {r:6, c:12}, {r:6, c:13}, {r:6, c:14}, {r:7, c:14}, {r:8, c:14},
+    {r:8, c:13}, {r:8, c:12}, {r:8, c:11}, {r:8, c:10}, {r:8, c:9},
+    {r:9, c:8}, {r:10, c:8}, {r:11, c:8}, {r:12, c:8}, {r:13, c:8}, {r:14, c:8}, {r:14, c:7}, {r:14, c:6},
+    {r:13, c:6}, {r:12, c:6}, {r:11, c:6}, {r:10, c:6}, {r:9, c:6},
+    {r:8, c:5}, {r:8, c:4}, {r:8, c:3}, {r:8, c:2}, {r:8, c:1}, {r:8, c:0}, {r:7, c:0}
 ];
 
 const safeZones = [
-    {r:6, c:1}, {r:8, c:2}, {r:1, c:8}, {r:2, c:6}, 
-    {r:8, c:13}, {r:6, c:12}, {r:13, c:6}, {r:12, c:8}  
+    {r:6, c:1}, {r:8, c:2}, {r:1, c:8}, {r:2, c:6},
+    {r:8, c:13}, {r:6, c:12}, {r:13, c:6}, {r:12, c:8}
 ];
 
 const diceFaces = ['', '⚀', '⚁', '⚂', '⚃', '⚄', '⚅'];
 
-// ==========================================
-// 🔥 ADS SYSTEM (FIXED ADMOB LISTENERS)
-// ==========================================
 let lastAdTime = 0;
 function triggerInterstitialAd(reason) {
     let now = Date.now();
@@ -67,18 +62,16 @@ async function initAdMobRewards() {
         try {
             await AdMob.initialize({ initializeForTesting: true });
             
-            // 1. Reward ka Signal (Tokens ke liye)
             AdMob.addListener('onRewardedVideoAdReward', () => {
                 if (socket) socket.emit('claim-ad-reward');
+                soundAd.play().catch(e => {});
                 alert("Reward Processed! Adding to your wallet via Server! 🪙");
             });
 
-            // 2. 🔥 NEW: Ad Close (X Button) ka Signal
             AdMob.addListener('onRewardedVideoAdDismissed', () => {
                 console.log("Ad closed by user.");
             });
 
-            // 3. Optional: Agar Ad load hone mein error aaye
             AdMob.addListener('onRewardedVideoAdFailedToLoad', (err) => {
                 console.error("Ad failed to load: ", err);
             });
@@ -121,9 +114,6 @@ document.addEventListener("DOMContentLoaded", () => {
     if(diceBtn) diceBtn.addEventListener("click", rollDice);
 });
 
-// ==========================================
-// 🛡️ SECURE GOOGLE LOGIN & MATCHMAKING
-// ==========================================
 async function realGoogleLogin() {
     try {
         let idToken;
@@ -134,7 +124,7 @@ async function realGoogleLogin() {
             const result = await FirebaseAuthentication.signInWithGoogle({
                 clientId: "554089835021-3idmc196ket8k4buadpj7d7oobq1ka4f.apps.googleusercontent.com"
             });
-            user = result.user; 
+            user = result.user;
             const tokenResponse = await FirebaseAuthentication.getIdToken();
             idToken = tokenResponse.token || result.user.idToken;
         } else {
@@ -160,10 +150,9 @@ async function realGoogleLogin() {
 
         socket.on('start-online-game', (data) => {
             if (data.mode === 'comp') {
-                // 🔥 Hide Matchmaking overlay and show board
                 document.getElementById("dashboard-section").classList.add("hidden");
                 document.getElementById("matchmaking-section").classList.add("hidden");
-                document.getElementById("ludo-wrapper").classList.remove("hidden"); 
+                document.getElementById("ludo-wrapper").classList.remove("hidden");
 
                 window.currentRoomId = data.roomId;
                 activePlayers = data.players.map(p => p.color);
@@ -183,7 +172,7 @@ async function realGoogleLogin() {
             currentPlayerIndex = activePlayers.indexOf(data.currentColor);
             updateTurnText();
             gameState = 'WAITING_FOR_ROLL';
-            startTurnTimer(); 
+            startTurnTimer();
         });
         socket.on('player-eliminated', (data) => {
             alert(`🚨 ${data.color.toUpperCase()} was eliminated!`);
@@ -198,6 +187,9 @@ async function realGoogleLogin() {
         });
         
         socket.on('game-over-broadcast', (data) => {
+            if (data.winnerId === socket.id) {
+                soundWin.play().catch(e => {});
+            }
             alert(data.winnerId === socket.id ? `🎉 Congratulations! You won ${data.prize} Tokens!` : `😔 You lost this match.`);
             endMatchAndGoToMenu();
         });
@@ -209,34 +201,27 @@ async function realGoogleLogin() {
     }
 }
 
-// 🔥 NEW MATCHMAKING LOGIC
 async function joinMatch(entryFee, playersRequired) {
     if (!socket) { alert("Please login first!"); return; }
     if (myTokens >= entryFee) {
-        // Change UI to Matchmaking screen
         document.getElementById('dashboard-section').classList.add('hidden');
         document.getElementById('matchmaking-section').classList.remove('hidden');
         
-        await triggerInterstitialAd("Entering Pro Match"); 
+        await triggerInterstitialAd("Entering Pro Match");
         socket.emit('find-comp-match', { entryFee: entryFee, playersRequired: playersRequired });
     } else {
         alert("Not enough tokens!");
     }
 }
 
-// 🔥 CANCEL MATCHMAKING AND REFUND
 function cancelMatchmaking() {
     if (socket) {
-        socket.emit('cancel-action'); // Server automatically refunds tokens via this event
+        socket.emit('cancel-action');
     }
-    // Return to dashboard
     document.getElementById('matchmaking-section').classList.add('hidden');
     document.getElementById('dashboard-section').classList.remove('hidden');
 }
 
-// ==========================================
-// 📊 LEADERBOARD
-// ==========================================
 function showLeaderboard() {
     if (socket) socket.emit('get-leaderboard');
 }
@@ -247,7 +232,7 @@ function renderLeaderboard(data) {
     if (!container || !modal) return;
 
     if (!data || data.length === 0) {
-        container.innerHTML = '<p style="text-align:center; color:#aaa;">Abhi tak koi winnings nahi hai.</p>';
+        container.innerHTML = '<p style="text-align:center; color:#aaa;">No winnings recorded yet.</p>';
     } else {
         const medals = ['🥇', '🥈', '🥉'];
         container.innerHTML = data.map((p, i) => {
@@ -263,9 +248,6 @@ function closeLeaderboard() {
     if (modal) modal.classList.add('hidden');
 }
 
-// ==========================================
-// 🎲 LUDO GAMEPLAY LOGIC 
-// ==========================================
 function initGameSession() {
     activePlayers.forEach(c => {
         let p = document.getElementById(`profile-${c}`);
@@ -276,7 +258,7 @@ function initGameSession() {
     isMoving = false;
     updateTurnText();
     spawnTokens();
-    startTurnTimer(); 
+    startTurnTimer();
 }
 
 function endMatchAndGoToMenu() {
@@ -286,7 +268,7 @@ function endMatchAndGoToMenu() {
         if (socket) socket.emit("leave-room");
         let wrapper = document.getElementById("ludo-wrapper");
         let dashboard = document.getElementById("dashboard-section");
-        if(wrapper) wrapper.classList.add("hidden"); 
+        if(wrapper) wrapper.classList.add("hidden");
         if(dashboard) dashboard.classList.remove("hidden");
     }, 1500);
 }
@@ -294,7 +276,7 @@ function endMatchAndGoToMenu() {
 function createBoard() {
     const board = document.getElementById("ludo-board");
     if(!board) return;
-    board.innerHTML = ""; 
+    board.innerHTML = "";
     createBase(board, 'red-base', 'red');
     createBase(board, 'green-base', 'green');
     createBase(board, 'blue-base', 'blue');
@@ -302,21 +284,21 @@ function createBoard() {
 
     for (let r = 0; r < 15; r++) {
         for (let c = 0; c < 15; c++) {
-            if ((r < 6 && c < 6) || (r < 6 && c > 8) || (r > 8 && c < 6) || (r > 8 && c > 8)) continue; 
+            if ((r < 6 && c < 6) || (r < 6 && c > 8) || (r > 8 && c < 6) || (r > 8 && c > 8)) continue;
             const cell = document.createElement("div");
             cell.classList.add("ludo-cell");
-            cell.id = `cell-${r}-${c}`; 
+            cell.id = `cell-${r}-${c}`;
             cell.style.gridArea = `${r + 1} / ${c + 1} / span 1 / span 1`;
 
-            if (r === 7 && c > 0 && c < 6) cell.style.backgroundColor = "#ff4d4d"; 
-            if (c === 7 && r > 0 && r < 6) cell.style.backgroundColor = "#4dff4d"; 
-            if (r === 7 && c > 8 && c < 14) cell.style.backgroundColor = "#ffff4d"; 
-            if (c === 7 && r > 8 && r < 14) cell.style.backgroundColor = "#4d4dff"; 
+            if (r === 7 && c > 0 && c < 6) cell.style.backgroundColor = "#ff4d4d";
+            if (c === 7 && r > 0 && r < 6) cell.style.backgroundColor = "#4dff4d";
+            if (r === 7 && c > 8 && c < 14) cell.style.backgroundColor = "#ffff4d";
+            if (c === 7 && r > 8 && r < 14) cell.style.backgroundColor = "#4d4dff";
 
             let isSafe = safeZones.some(zone => zone.r === r && zone.c === c);
             if (isSafe) {
-                cell.style.backgroundColor = "#e0e0e0"; 
-                cell.innerHTML = '<span class="safe-zone-icon">⭐</span>'; 
+                cell.style.backgroundColor = "#e0e0e0";
+                cell.innerHTML = '<span class="safe-zone-icon">⭐</span>';
             }
             if (r >= 6 && r <= 8 && c >= 6 && c <= 8) cell.style.background = "#222";
             board.appendChild(cell);
@@ -372,6 +354,10 @@ function rollDice() {
 
 function handleRemoteDice(data) {
     currentDiceValue = data.diceValue;
+    
+    soundDice.currentTime = 0;
+    soundDice.play().catch(e => {});
+
     const diceContainer = document.getElementById("dice-container");
     diceContainer.classList.remove("rolling");
     diceContainer.innerText = diceFaces[currentDiceValue];
@@ -386,8 +372,8 @@ function checkAvailableMoves() {
     let movableTokens = [];
 
     allTokens[currentPlayerColor].forEach((tokenObj, index) => {
-        if (tokenObj.state === 'home' && currentDiceValue === 6) movableTokens.push(index); 
-        else if (tokenObj.state === 'active' && tokenObj.pathPosition + currentDiceValue <= 56) movableTokens.push(index); 
+        if (tokenObj.state === 'home' && currentDiceValue === 6) movableTokens.push(index);
+        else if (tokenObj.state === 'active' && tokenObj.pathPosition + currentDiceValue <= 56) movableTokens.push(index);
     });
 
     if (movableTokens.length > 0) {
@@ -399,11 +385,11 @@ function checkAvailableMoves() {
 }
 
 function handleTokenClick(color, tokenIndex) {
-    if (socket && window.currentRoomId && color !== myAssignedColor) return; 
+    if (socket && window.currentRoomId && color !== myAssignedColor) return;
     if (gameState !== 'WAITING_FOR_MOVE' || color !== activePlayers[currentPlayerIndex] || isMoving) return;
 
     let tokenObj = allTokens[color][tokenIndex];
-    if (!tokenObj.element.classList.contains('highlight-move')) return; 
+    if (!tokenObj.element.classList.contains('highlight-move')) return;
 
     allTokens[color].forEach(t => t.element.classList.remove('highlight-move'));
 
@@ -423,10 +409,10 @@ function handleRemoteTokenMove(data) {
 
     if (tokenObj.state === 'home' && diceVal === 6) {
         tokenObj.state = 'active';
-        tokenObj.pathPosition = 0; 
+        tokenObj.pathPosition = 0;
         updateTokenUI(color, tokenIndex);
     } else {
-        isMoving = true; 
+        isMoving = true;
         let stepsTaken = 0;
 
         let moveInterval = setInterval(() => {
@@ -442,30 +428,35 @@ function handleRemoteTokenMove(data) {
                         enemyToken.state = 'home';
                         enemyToken.pathPosition = -1;
                         document.getElementById(`${cutDetails.color}-slot-${cutDetails.index}`).appendChild(enemyToken.element);
+                        
+                        soundCut.play().catch(e => {});
                     }
                     if (tokenObj.pathPosition >= 56) {
-                        tokenObj.element.style.display = "none"; 
+                        tokenObj.element.style.display = "none";
                         if(color === myAssignedColor) socket.emit("claim-victory", { roomId: window.currentRoomId });
                     }
-                    isMoving = false; 
+                    isMoving = false;
                 }, 300);
             }
-        }, 250); 
+        }, 250);
     }
 }
 
 function updateTokenUI(color, tokenIndex) {
+    soundMove.currentTime = 0;
+    soundMove.play().catch(e => {});
+
     let tokenObj = allTokens[color][tokenIndex];
     let startOffset = playersData[color].startOffset;
     let globalPos = (startOffset + tokenObj.pathPosition) % 52;
-    if(tokenObj.pathPosition > 50) globalPos = 51; 
+    if(tokenObj.pathPosition > 50) globalPos = 51;
     let targetCoords = masterPath[globalPos];
     
     let targetCell = document.getElementById(`cell-${targetCoords.r}-${targetCoords.c}`);
     if (targetCell) {
-        targetCell.appendChild(tokenObj.element); 
+        targetCell.appendChild(tokenObj.element);
         tokenObj.element.classList.add('moving');
-        setTimeout(() => tokenObj.element.classList.remove('moving'), 200); 
+        setTimeout(() => tokenObj.element.classList.remove('moving'), 200);
     }
 }
 
@@ -479,7 +470,7 @@ function updateTurnText() {
 }
 
 function startTurnTimer() {
-    clearTurnTimer(); 
+    clearTurnTimer();
     timeLeft = 25;
     updateTimerUI();
     countdownInterval = setInterval(() => {
