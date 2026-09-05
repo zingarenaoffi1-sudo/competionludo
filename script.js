@@ -1,20 +1,19 @@
-let activePlayers = []; 
-let currentPlayerIndex = 0; 
-let gameState = 'WAITING_FOR_ROLL'; 
+let activePlayers = [];
+let currentPlayerIndex = 0;
+let gameState = 'WAITING_FOR_ROLL';
 let currentDiceValue = 0;
-let isMoving = false; 
-const allTokens = {}; 
+let isMoving = false;
+const allTokens = {};
 
 let socket;
 let myAssignedColor = "";
 window.currentRoomId = "";
 
-let turnTimer = null; 
+let turnTimer = null;
 let countdownInterval = null;
 let timeLeft = 25;
-const missedTurns = {}; 
+const missedTurns = {};
 
-// 🔊 GAME SOUND EFFECTS
 const soundDice = new Audio('sounds/board game dice_2.mp3');
 const soundMove = new Audio('sounds/ui pop_2.mp3');
 const soundCut = new Audio('sounds/cartoon bonk.mp3');
@@ -71,10 +70,12 @@ function showQuickMatch() {
     document.getElementById("online-main-options").classList.add("hidden");
     document.getElementById("quick-match-sub").classList.remove("hidden");
 }
+
 function showCreateRoomOptions() {
     document.getElementById("online-main-options").classList.add("hidden");
     document.getElementById("create-room-sub").classList.remove("hidden");
 }
+
 function showJoinRoomInput() {
     document.getElementById("online-main-options").classList.add("hidden");
     document.getElementById("join-room-sub").classList.remove("hidden");
@@ -87,7 +88,7 @@ function backToOnlineMain() {
 
 function backToModeSelect() {
     if (socket) socket.emit('cancel-action');
-    if (typeof window.showAd === 'function') window.showAd(); // Trigger Ad when going back
+    if (typeof window.showAd === 'function') window.showAd();
     document.getElementById("startup-modal").classList.add("hidden");
     document.getElementById("online-modal").classList.add("hidden");
     document.getElementById("mode-selection-modal").classList.remove("hidden");
@@ -95,7 +96,7 @@ function backToModeSelect() {
 
 function findOnlineMatch(count) { 
     connectToServer();
-    document.getElementById("quick-match-display").innerText = "Matchmaking pls wait... ⏳";
+    document.getElementById("quick-match-display").innerText = "Finding match, please wait... ⏳";
     socket.emit('find-match', { playersRequired: count });
 }
 
@@ -160,7 +161,7 @@ function showMyIdentity(color) {
     if (!badge) return;
     badge.classList.remove('hidden');
     let bgColor = (color === 'red') ? "#ff2a2a" : (color === 'green') ? "#00cc00" : (color === 'yellow') ? "#ffcc00" : "#1a53ff";
-    badge.innerHTML = `👉 YOU ARE: (${color}) 👈`;
+    badge.innerHTML = `👉 YOU ARE: (${color.toUpperCase()}) 👈`;
     badge.style.background = bgColor;
 }
 
@@ -174,7 +175,9 @@ function joinPrivateRoom() {
     if (id) {
         connectToServer();
         socket.emit('join-room', { roomId: id });
-    } else alert("Enter the valid room id!");
+    } else {
+        alert("Please enter a valid Room ID!");
+    }
 }
 
 function initGameSession() {
@@ -198,7 +201,7 @@ function startLocalGame(playerCount) {
 function endMatchAndGoToMenu() {
     clearTurnTimer();
     soundWin.play().catch(e => {});
-    if (typeof window.showAd === 'function') window.showAd(); // Trigger Ad on Match Finish
+    if (typeof window.showAd === 'function') window.showAd();
     setTimeout(() => {
         alert("🏆 MATCH FINISHED! 🏆");
         if (socket) socket.emit("leave-room");
@@ -236,7 +239,7 @@ function updateTimerUI() {
 function handleTurnTimeoutLocal(color) {
     missedTurns[color]++;
     if (missedTurns[color] >= 3) {
-        alert(`🚨 ${color.toUpperCase()} missed 3 turns, eliminated from the game!`);
+        alert(`🚨 ${color.toUpperCase()} missed 3 turns and has been eliminated from the game!`);
         activePlayers = activePlayers.filter(c => c !== color);
         if (activePlayers.length === 1) { endMatchAndGoToMenu(); return; }
         if (currentPlayerIndex >= activePlayers.length) currentPlayerIndex = 0;
@@ -245,7 +248,7 @@ function handleTurnTimeoutLocal(color) {
         startTurnTimer();
         return;
     }
-    alert(`⚠️ ${color.toUpperCase()} skips turn.`);
+    alert(`⚠️ ${color.toUpperCase()} skipped their turn.`);
     switchTurnLocal(false);
 }
 
@@ -309,7 +312,7 @@ function spawnTokens() {
 function rollDice() {
     if (socket && window.currentRoomId) {
         if (myAssignedColor !== activePlayers[currentPlayerIndex]) {
-            alert("Wait! This is not your turn."); return;
+            alert("Wait! It is not your turn."); return;
         }
     }
     if (activePlayers.length === 0 || gameState !== 'WAITING_FOR_ROLL' || isMoving) return;
