@@ -1,4 +1,4 @@
-name: Build ZingArena Ludo APK
+name: Build Ludo APK
 
 on:
   push:
@@ -38,7 +38,7 @@ jobs:
             echo "$DEBUG_KEYSTORE_BASE64" | base64 --decode > ~/.android/debug.keystore
           else
             echo "Keystore secret not found. Generating debug keystore as fallback..."
-            keytool -genkey -v -keystore ~/.android/debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=ZingArena Ludo,O=ZingArena,C=IN"
+            keytool -genkey -v -keystore ~/.android/debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Ludo,O=Ludo,C=IN"
           fi
           
           echo "========================================================="
@@ -88,25 +88,38 @@ jobs:
           fi
           echo "Applying AdMob App ID: $FINAL_ADMOB_ID"
 
-          # Update AndroidManifest safely
-          python3 -c "
+          # Update AndroidManifest and set app name to Ludo
+          python3 -c '
           import re, os
-          path = 'android/app/src/main/AndroidManifest.xml'
-          app_id = os.environ.get('FINAL_ADMOB_ID', 'ca-app-pub-3940256099942544~3347511713')
-          with open(path, 'r', encoding='utf-8') as f:
+          
+          # 1. AndroidManifest
+          path = "android/app/src/main/AndroidManifest.xml"
+          app_id = os.environ.get("FINAL_ADMOB_ID", "ca-app-pub-3940256099942544~3347511713")
+          with open(path, "r", encoding="utf-8") as f:
               content = f.read()
-          if 'com.google.android.gms.ads.APPLICATION_ID' not in content:
-              meta = f'    <meta-data android:name=\"com.google.android.gms.ads.APPLICATION_ID\" android:value=\"{app_id}\"/>\n    </application>'
-              content = content.replace('</application>', meta)
-          perms = ['INTERNET', 'ACCESS_NETWORK_STATE', 'RECORD_AUDIO', 'MODIFY_AUDIO_SETTINGS']
+          if "com.google.android.gms.ads.APPLICATION_ID" not in content:
+              meta = f"    <meta-data android:name=\"com.google.android.gms.ads.APPLICATION_ID\" android:value=\"{app_id}\"/>\n    </application>"
+              content = content.replace("</application>", meta)
+          perms = ["INTERNET", "ACCESS_NETWORK_STATE", "RECORD_AUDIO", "MODIFY_AUDIO_SETTINGS"]
           for p in perms:
-              perm_str = f'android.permission.{p}'
+              perm_str = f"android.permission.{p}"
               if perm_str not in content:
-                  content = re.sub(r'(<manifest[^>]*>)', r'\1\n    <uses-permission android:name=\"' + perm_str + '\"/>', content)
-          with open(path, 'w', encoding='utf-8') as f:
+                  content = re.sub(r"(<manifest[^>]*>)", r"\1\n    <uses-permission android:name=\"" + perm_str + "\"/>", content)
+          with open(path, "w", encoding="utf-8") as f:
               f.write(content)
-          print('AndroidManifest.xml successfully updated.')
-          "
+
+          # 2. App Name strings.xml -> Set app display name to "Ludo"
+          strings_path = "android/app/src/main/res/values/strings.xml"
+          if os.path.exists(strings_path):
+              with open(strings_path, "r", encoding="utf-8") as f:
+                  strings_xml = f.read()
+              strings_xml = re.sub(r"<string name=\"app_name\">[^<]*</string>", "<string name=\"app_name\">Ludo</string>", strings_xml)
+              strings_xml = re.sub(r"<string name=\"title_activity_main\">[^<]*</string>", "<string name=\"title_activity_main\">Ludo</string>", strings_xml)
+              with open(strings_path, "w", encoding="utf-8") as f:
+                  f.write(strings_xml)
+
+          print("AndroidManifest.xml and strings.xml updated successfully.")
+          '
 
           # Generate app icons if icon.png is present
           if [ -f icon.png ]; then
@@ -123,40 +136,40 @@ jobs:
         env:
           GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
         run: |
-          python3 -c "
+          python3 -c '
           import os, json
-          target = 'android/app/google-services.json'
-          secret = os.environ.get('GOOGLE_SERVICES_JSON', '').strip()
+          target = "android/app/google-services.json"
+          secret = os.environ.get("GOOGLE_SERVICES_JSON", "").strip()
           if len(secret) > 20:
-              with open(target, 'w', encoding='utf-8') as f:
+              with open(target, "w", encoding="utf-8") as f:
                   f.write(secret)
-              print('Injected google-services.json from GitHub Secrets.')
+              print("Injected google-services.json from GitHub Secrets.")
           else:
-              print('Using fallback google-services.json...')
+              print("Using fallback google-services.json...")
               fallback = {
-                  'project_info': {
-                      'project_number': '100000000000',
-                      'project_id': 'zingarena-ludo',
-                      'storage_bucket': 'zingarena-ludo.appspot.com'
+                  "project_info": {
+                      "project_number": "100000000000",
+                      "project_id": "zingarena-ludo",
+                      "storage_bucket": "zingarena-ludo.appspot.com"
                   },
-                  'client': [
+                  "client": [
                       {
-                          'client_info': {
-                              'mobilesdk_app_id': '1:100000000000:android:abcdef123456',
-                              'android_client_info': {
-                                  'package_name': 'com.zingarena.app'
+                          "client_info": {
+                              "mobilesdk_app_id": "1:100000000000:android:abcdef123456",
+                              "android_client_info": {
+                                  "package_name": "com.zingarena.app"
                               }
                           },
-                          'oauth_client': [],
-                          'api_key': [{'current_key': 'dummy_api_key_for_build'}],
-                          'services': {}
+                          "oauth_client": [],
+                          "api_key": [{"current_key": "dummy_api_key_for_build"}],
+                          "services": {}
                       }
                   ],
-                  'configuration_version': '1'
+                  "configuration_version": "1"
               }
-              with open(target, 'w', encoding='utf-8') as f:
+              with open(target, "w", encoding="utf-8") as f:
                   json.dump(fallback, f, indent=2)
-          "
+          '
 
       - name: Configure Gradle & Plugins
         run: |
@@ -171,54 +184,38 @@ jobs:
           echo "org.gradle.parallel=false" >> gradle.properties
           echo "org.gradle.caching=false" >> gradle.properties
           
-          python3 -c "
+          python3 -c '
           # 1. Root build.gradle
-          with open('build.gradle', 'r', encoding='utf-8') as f:
+          with open("build.gradle", "r", encoding="utf-8") as f:
               root = f.read()
-          if 'com.google.gms:google-services' not in root:
-              root = root.replace('dependencies {', 'dependencies {\n        classpath \"com.google.gms:google-services:4.4.2\"')
-          if 'org.jetbrains.kotlin:kotlin-stdlib' not in root:
-              root += '\nallprojects { configurations.all { resolutionStrategy { force \"org.jetbrains.kotlin:kotlin-stdlib:1.9.24\"; force \"org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.9.24\"; force \"org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.9.24\" } } }\n'
-          with open('build.gradle', 'w', encoding='utf-8') as f:
+          if "com.google.gms:google-services" not in root:
+              root = root.replace("dependencies {", "dependencies {\n        classpath \"com.google.gms:google-services:4.4.2\"")
+          if "org.jetbrains.kotlin:kotlin-stdlib" not in root:
+              root += "\nallprojects { configurations.all { resolutionStrategy { force \"org.jetbrains.kotlin:kotlin-stdlib:1.9.24\"; force \"org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.9.24\"; force \"org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.9.24\" } } }\n"
+          with open("build.gradle", "w", encoding="utf-8") as f:
               f.write(root)
 
           # 2. App build.gradle
-          with open('app/build.gradle', 'r', encoding='utf-8') as f:
+          with open("app/build.gradle", "r", encoding="utf-8") as f:
               app = f.read()
-          if 'com.google.gms.google-services' not in app:
-              app += '\napply plugin: \"com.google.gms.google-services\"\n'
-          if 'signingConfigs.debug' not in app:
-              signing_block = '''
-android {
-    signingConfigs {
-        debug {
-            storeFile file(\"debug.keystore\")
-            storePassword \"android\"
-            keyAlias \"androiddebugkey\"
-            keyPassword \"android\"
-        }
-    }
-    buildTypes {
-        debug {
-            signingConfig signingConfigs.debug
-        }
-    }
-}
-'''
-              app += signing_block
-          with open('app/build.gradle', 'w', encoding='utf-8') as f:
+          if "com.google.gms.google-services" not in app:
+              app += "\napply plugin: \"com.google.gms.google-services\"\n"
+          if "signingConfigs.debug" not in app:
+              signing_cfg = "\nandroid {\n    signingConfigs {\n        debug {\n            storeFile file(\"debug.keystore\")\n            storePassword \"android\"\n            keyAlias \"androiddebugkey\"\n            keyPassword \"android\"\n        }\n    }\n    buildTypes {\n        debug {\n            signingConfig signingConfigs.debug\n        }\n    }\n}\n"
+              app += signing_cfg
+          with open("app/build.gradle", "w", encoding="utf-8") as f:
               f.write(app)
-          print('Gradle configuration applied successfully.')
-          "
+          print("Gradle configuration applied successfully.")
+          '
 
       - name: Build Debug APK with Gradle
         run: |
           cd android
           ./gradlew assembleDebug --no-daemon --max-workers=2
 
-      - name: Upload ZingArena Ludo APK Artifact
+      - name: Upload Ludo APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ZingArena-Ludo-APK
+          name: Ludo-APK
           path: android/app/build/outputs/apk/debug/app-debug.apk
           retention-days: 14
