@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ZingArena Ludo</title>
+    <title>Ludo</title>
     <meta name="description" content="Multiplayer and offline Ludo game with local offline play, vs computer bots, online multiplayer, and pro competition modes.">
-    <meta property="og:title" content="ZingArena Ludo">
+    <meta property="og:title" content="Ludo">
     <meta property="og:description" content="Multiplayer and offline Ludo game with local offline play, vs computer bots, online multiplayer, and pro competition modes.">
     <link rel="stylesheet" href="style.css">
 </head>
@@ -19,7 +19,13 @@
         <!-- TOP HEADER WITH LOGO & HOW TO PLAY BUTTON (SAFELY BELOW BANNER) -->
         <div style="width: 100%; max-width: 380px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
             <div style="display: flex; align-items: center; gap: 8px;">
-                <span style="font-size: 20px;">👑</span>
+                <svg width="22" height="18" viewBox="0 0 64 50" fill="none" style="filter: drop-shadow(0 0 6px rgba(255,215,0,0.8));">
+                    <path d="M6 38C6 36.5 7.5 35 9 35H55C56.5 35 58 36.5 58 38V42C58 43.5 56.5 45 55 45H9C7.5 45 6 43.5 6 42V38Z" fill="#d97706"/>
+                    <path d="M8 35L14 18L25 28L32 10L39 28L50 18L56 35H8Z" fill="#ffd700"/>
+                    <circle cx="14" cy="16" r="3.5" fill="#ffffff"/>
+                    <circle cx="32" cy="8" r="4.5" fill="#ef4444"/>
+                    <circle cx="50" cy="16" r="3.5" fill="#ffffff"/>
+                </svg>
                 <span style="font-size: 13px; font-weight: 900; color: #ffd700; letter-spacing: 0.5px;">ZINGARENA</span>
             </div>
             <button onclick="HowToPlayGuide.openModal()" style="display: flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: 20px; border: 2px solid #ffd700; background: rgba(30, 41, 59, 0.95); color: #ffd700; font-size: 12px; font-weight: 900; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.6); transition: transform 0.2s;">
@@ -29,7 +35,25 @@
         </div>
 
         <div class="lobby-hero" style="margin-bottom: 22px;">
-            <div style="font-size: 48px; margin-bottom: 4px; filter: drop-shadow(0 0 14px rgba(255,215,0,0.8));">👑</div>
+            <div style="margin-bottom: 6px;">
+                <svg width="60" height="48" viewBox="0 0 64 50" fill="none" style="filter: drop-shadow(0 0 16px rgba(255,215,0,0.85));">
+                    <defs>
+                        <linearGradient id="hero-gold-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" stop-color="#fff59d"/>
+                            <stop offset="50%" stop-color="#ffd700"/>
+                            <stop offset="100%" stop-color="#f59e0b"/>
+                        </linearGradient>
+                    </defs>
+                    <path d="M6 38C6 36.5 7.5 35 9 35H55C56.5 35 58 36.5 58 38V42C58 43.5 56.5 45 55 45H9C7.5 45 6 43.5 6 42V38Z" fill="#b45309"/>
+                    <circle cx="16" cy="40" r="2.5" fill="#ef4444"/>
+                    <circle cx="32" cy="40" r="3" fill="#38bdf8"/>
+                    <circle cx="48" cy="40" r="2.5" fill="#10b981"/>
+                    <path d="M8 35L14 17L25 27L32 9L39 27L50 17L56 35H8Z" fill="url(#hero-gold-grad)"/>
+                    <circle cx="14" cy="15" r="3.5" fill="#fff" stroke="#ffd700" stroke-width="1.5"/>
+                    <circle cx="32" cy="7" r="4.5" fill="#ef4444" stroke="#fff" stroke-width="2"/>
+                    <circle cx="50" cy="15" r="3.5" fill="#fff" stroke="#ffd700" stroke-width="1.5"/>
+                </svg>
+            </div>
             <h1 class="lobby-title">ZINGARENA LUDO</h1>
             <p class="lobby-subtitle">The Royal Multiplayer Board Experience</p>
         </div>
@@ -128,8 +152,16 @@
             </div>
         </div>
 
-        <div style="text-align: center; margin-top: 28px; font-size: 11px; color: #64748b; font-weight: 600; letter-spacing: 0.5px;">
+        <div style="text-align: center; margin-top: 24px; font-size: 11px; color: #64748b; font-weight: 600; letter-spacing: 0.5px;">
             Version 2.0 &bull; Secure Anti-Cheat Gaming
+        </div>
+
+        <div style="display: flex; justify-content: center; align-items: center; gap: 12px; margin-top: 10px; font-size: 11px; flex-wrap: wrap;">
+            <a href="privacy.html" style="color: #94a3b8; text-decoration: none; padding: 4px 6px; transition: color 0.2s;" onmouseover="this.style.color='#ffd700'" onmouseout="this.style.color='#94a3b8'">Privacy Policy</a>
+            <span style="color: #475569;">&bull;</span>
+            <a href="terms.html" style="color: #94a3b8; text-decoration: none; padding: 4px 6px; transition: color 0.2s;" onmouseover="this.style.color='#ffd700'" onmouseout="this.style.color='#94a3b8'">Terms & Conditions</a>
+            <span style="color: #475569;">&bull;</span>
+            <a href="about.html" style="color: #94a3b8; text-decoration: none; padding: 4px 6px; transition: color 0.2s;" onmouseover="this.style.color='#ffd700'" onmouseout="this.style.color='#94a3b8'">About Us</a>
         </div>
     </div>
 
