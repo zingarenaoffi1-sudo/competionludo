@@ -136,8 +136,11 @@ async function realGoogleLogin() {
         document.getElementById('dashboard-section').classList.remove('hidden');
         document.getElementById('player-name').innerText = user.displayName || "Zing Master";
 
-        socket = io('https://competionludo.onrender.com');
-        socket.emit('authenticate-user', { idToken: idToken });
+        const socketUrl = (window.location.protocol.startsWith('http') && !window.location.href.includes('capacitor'))
+            ? window.location.origin
+            : 'https://competionludo.onrender.com';
+        socket = io(socketUrl);
+        socket.emit('authenticate-user', { idToken: idToken, displayName: user.displayName });
 
         socket.on('update-wallet', (data) => {
             myTokens = data.tokens;
@@ -295,7 +298,7 @@ function createBoard() {
             if (r === 7 && c > 8 && c < 14) cell.style.backgroundColor = "#ffff4d";
             if (c === 7 && r > 8 && r < 14) cell.style.backgroundColor = "#4d4dff";
 
-            let isSafe = safeZones.some(zone => zone.r === r && zone.c === c);
+            let isSafe = safeZones.some(zone => zone.r === zone.r && zone.c === c);
             if (isSafe) {
                 cell.style.backgroundColor = "#e0e0e0";
                 cell.innerHTML = '<span class="safe-zone-icon">⭐</span>';

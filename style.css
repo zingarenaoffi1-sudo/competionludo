@@ -1,8 +1,3 @@
-/* =========================================
-   ULTRA LUDO PRO - FULL CSS STYLESHEET
-========================================= */
-
-/* --- 1. VARIABLES (Colors) --- */
 :root {
     --bg-dark: #121220;
     --board-bg: #ffffff;
@@ -18,7 +13,6 @@
     --blue-dark: #0022cc;
 }
 
-/* --- 2. GLOBAL SETUP --- */
 * { 
     margin: 0; 
     padding: 0; 
@@ -48,7 +42,6 @@ body {
     padding: 10px; 
 }
 
-/* --- 3. HEADER & HUD --- */
 .game-header { 
     display: flex; 
     justify-content: space-between; 
@@ -109,7 +102,6 @@ body {
 .yellow-bg { background-color: var(--yellow-main) !important; }
 .blue-bg { background-color: var(--blue-main) !important; }
 
-/* --- 4. BOARD CONTAINER --- */
 .board-container { 
     width: 360px; 
     height: 360px; 
@@ -131,11 +123,10 @@ body {
     position: relative;
 }
 
-/* --- 5. BIG BASES --- */
 .base {
     display: flex; 
     justify-content: center; 
-    align-items: center;
+    align-items: center; 
     position: relative; 
     border: 1px solid #111; 
     z-index: 2; 
@@ -145,7 +136,6 @@ body {
 .blue-base { grid-area: 10 / 1 / 16 / 7; background-color: var(--blue-main); }
 .yellow-base { grid-area: 10 / 10 / 16 / 16; background-color: var(--yellow-main); }
 
-/* --- 6. INNER 2x2 GRID BOX --- */
 .inner-base {
     width: 65%; 
     height: 65%;
@@ -159,7 +149,6 @@ body {
     box-shadow: inset 0 4px 8px rgba(0, 0, 0, 0.3);
 }
 
-/* COLORED SQUARES (4 Khanas) */
 .token-slot {
     width: 100%; 
     height: 100%;
@@ -184,7 +173,6 @@ body {
     align-items: center; 
 }
 
-/* --- 7. 3D TOKENS (Gotiyan) --- */
 .token {
     width: 20px; 
     height: 20px; 
@@ -212,7 +200,6 @@ body {
 .token-blue { background: radial-gradient(circle at 30% 30%, #6666ff, var(--blue-dark)); }
 .token-yellow { background: radial-gradient(circle at 30% 30%, #ffff66, var(--yellow-dark)); }
 
-/* --- 8. CONTROLS & FOOTER --- */
 .game-footer { 
     display: flex; 
     justify-content: space-between; 
@@ -248,6 +235,7 @@ body {
     color: #111; 
     cursor: pointer; 
 }
+
 .rolling { animation: shake 0.4s ease-in-out infinite; }
 @keyframes shake { 
     0% { transform: rotate(0deg) scale(1); } 
@@ -257,7 +245,6 @@ body {
     100% { transform: rotate(0deg) scale(1); } 
 }
 
-/* --- 9. MODALS --- */
 .modal { 
     position: fixed; 
     top: 0; 
@@ -293,7 +280,7 @@ body {
     cursor: pointer; 
     text-transform: uppercase; 
 }
-/* --- SAFE ZONE & MOVEMENT HIGHLIGHTS --- */
+
 .safe-zone-icon {
     font-size: 18px;
     color: rgba(0, 0, 0, 0.3);
@@ -307,11 +294,6 @@ body {
     border-color: #ffeb3b;
 }
 
-/* =========================================
-   ULTRA LUDO PRO - WINNING TAAJ & ANIMATIONS
-========================================= */
-
-/* --- 1. WINNING BOX TAAJ (CROWN) --- */
 #cell-7-7 {
     position: relative;
     background: radial-gradient(circle, #ffd700, #ff8c00) !important; 
@@ -337,7 +319,6 @@ body {
     100% { transform: translate(-50%, -50%) scale(1); }
 }
 
-/* --- 2. GOTI MOVEMENT ANIMATION --- */
 .token.moving {
     animation: movePop 0.4s ease-out forwards;
     z-index: 50; 
@@ -358,19 +339,15 @@ body {
     }
 }
 
-/* =========================================
-   🔥 COMPETITION MODE UI (NEWLY ADDED) 🔥
-========================================= */
-/* Top Header Fix for Competition Menu */
 .comp-header { 
     background: linear-gradient(to right, #1a237e, #311b92); 
     padding: 15px; 
     text-align: center; 
     box-shadow: 0 4px 10px rgba(0,0,0,0.5); 
     z-index: 100; 
-    position: fixed; /* Header hamesha upar rahega */
+    position: fixed; 
     top: 0; 
-    left: 0;
+    left: 0; 
     width: 100%; 
     box-sizing: border-box; 
 }
@@ -382,13 +359,12 @@ body {
     margin: 0; 
 }
 
-/* Scrollable Dashboard (Matches list katega nahi) */
 .comp-dashboard-container {
     width: 100%;
     height: 100vh;
-    padding-top: 70px; /* Header ki jagah chhodi */
-    overflow-y: auto; /* Scroll allow karega */
-    box-sizing: border-box;
+    padding-top: 70px; 
+    overflow-y: auto; 
+    box-sizing: border-box; 
 }
 
 .comp-dashboard { 
@@ -396,10 +372,9 @@ body {
     padding-bottom: 50px; 
     width: 100%;
     max-width: 500px;
-    margin: 0 auto;
+    margin: 0 auto; 
 } 
 
-/* UI Elements inside Dashboard */
 .wallet-container { display: flex; justify-content: space-between; margin-bottom: 20px; }
 .wallet-box { background: #1e1e1e; padding: 15px; border-radius: 10px; width: 45%; text-align: center; border: 1px solid #333; }
 .wallet-title { font-size: 12px; color: #aaa; text-transform: uppercase; margin-bottom: 5px; }
@@ -411,7 +386,6 @@ body {
 .btn-comp-ad { background: linear-gradient(to right, #ff416c, #ff4b2b); color: white; padding: 12px; width: 100%; border-radius: 10px; font-weight: bold; border: none; margin-bottom: 20px; cursor: pointer; box-shadow: 0 4px 15px rgba(255, 75, 43, 0.4); }
 .btn-leaderboard { background: linear-gradient(to right, #ffd700, #ff9900); color: #111; padding: 12px; width: 100%; border-radius: 10px; font-weight: bold; border: none; margin-bottom: 15px; cursor: pointer; }
 
-/* Match Cards */
 .match-card { background: #2a2a2a; padding: 15px; border-radius: 10px; margin-bottom: 15px; border-left: 5px solid #ff9900; }
 .match-info h3 { margin: 0 0 5px 0; color: #fff; font-size: 16px; }
 .match-info p { margin: 0; font-size: 12px; color: #aaa; }
@@ -421,13 +395,9 @@ body {
 .leaderboard-row { display: flex; justify-content: space-between; padding: 10px 5px; border-bottom: 1px solid #333; font-size: 14px; }
 .reward-tiers { font-size: 11px; color: #888; text-align: center; margin-top: 10px; line-height: 1.6; }
 
-/* Matchmaking Loader Animation */
 .comp-loader { border: 8px solid #333; border-top: 8px solid #ff9900; border-radius: 50%; width: 60px; height: 60px; animation: spin 1s linear infinite; margin: 30px auto; }
 @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-/* =========================================
-   🔥 MOBILE RESPONSIVENESS FIX 🔥
-========================================= */
 @media (max-width: 768px) {
     .board-container {
         transform: scale(0.97); 

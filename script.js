@@ -5,14 +5,13 @@ let currentDiceValue = 0;
 let isMoving = false;
 const allTokens = {};
 
-let socket;
-let myAssignedColor = "";
-window.currentRoomId = "";
-
 let turnTimer = null;
 let countdownInterval = null;
 let timeLeft = 25;
 const missedTurns = {};
+
+let myAssignedColor = ""; 
+let currentOnlineRoomId = "";
 
 const soundDice = new Audio('sounds/board game dice_2.mp3');
 const soundMove = new Audio('sounds/ui pop_2.mp3');
@@ -41,189 +40,185 @@ const safeZones = [
     {r:6, c:1}, {r:8, c:2}, {r:1, c:8}, {r:2, c:6}, 
     {r:8, c:13}, {r:6, c:12}, {r:13, c:6}, {r:12, c:8}  
 ];
+
 const diceFaces = ['', '⚀', '⚁', '⚂', '⚃', '⚄', '⚅'];
+
+let socket = null;
+
+let lastAdTime = 0;
+function triggerInterstitialAd(reason) {
+    console.log("Interstitial ad triggered for:", reason);
+    let now = Date.now();
+    if (now - lastAdTime < 15000) {
+        console.log("Ad skipped due to rapid click protection.");
+        return;
+    }
+    lastAdTime = now;
+    if (typeof window.showAd === 'function') {
+        window.showAd();
+    }
+}
 
 document.addEventListener("DOMContentLoaded", () => {
     createBoard();
     document.getElementById("dice-container").addEventListener("click", rollDice);
+
+    const socketUrl = (window.location.protocol.startsWith('http') && !window.location.href.includes('capacitor'))
+        ? window.location.origin
+        : 'https://competionludo.onrender.com';
+    socket = io(socketUrl);
+    setupSocketListeners();
 });
 
-function showLocalPlayerModal() {
-    document.getElementById("mode-selection-modal").classList.add("hidden");
-    document.getElementById("startup-modal").classList.remove("hidden");
-}
-
-function showOnlineMenu() {
-    document.getElementById("mode-selection-modal").classList.add("hidden");
-    document.getElementById("online-modal").classList.remove("hidden");
-    showOnlineMainOptions();
-}
-
-function showOnlineMainOptions() {
-    document.getElementById("quick-match-sub").classList.add("hidden");
-    document.getElementById("create-room-sub").classList.add("hidden");
-    document.getElementById("join-room-sub").classList.add("hidden");
-    document.getElementById("online-main-options").classList.remove("hidden");
-}
-
 function showQuickMatch() {
-    document.getElementById("online-main-options").classList.add("hidden");
-    document.getElementById("quick-match-sub").classList.remove("hidden");
+    document.getElementById('online-main-options').classList.add('hidden');
+    document.getElementById('quick-match-sub').classList.remove('hidden');
 }
 
 function showCreateRoomOptions() {
-    document.getElementById("online-main-options").classList.add("hidden");
-    document.getElementById("create-room-sub").classList.remove("hidden");
+    document.getElementById('online-main-options').classList.add('hidden');
+    document.getElementById('create-room-sub').classList.remove('hidden');
 }
 
 function showJoinRoomInput() {
-    document.getElementById("online-main-options").classList.add("hidden");
-    document.getElementById("join-room-sub").classList.remove("hidden");
+    document.getElementById('online-main-options').classList.add('hidden');
+    document.getElementById('join-room-sub').classList.remove('hidden');
 }
 
 function backToOnlineMain() {
-    if (socket) socket.emit('cancel-action'); 
-    showOnlineMainOptions();
+    document.getElementById('quick-match-sub').classList.add('hidden');
+    document.getElementById('create-room-sub').classList.add('hidden');
+    document.getElementById('join-room-sub').classList.add('hidden');
+    document.getElementById('online-main-options').classList.remove('hidden');
+    document.getElementById('quick-match-display').innerText = '';
+    document.getElementById('room-created-display').innerText = '';
 }
 
-function backToModeSelect() {
-    if (socket) socket.emit('cancel-action');
-    if (typeof window.showAd === 'function') window.showAd();
-    document.getElementById("startup-modal").classList.add("hidden");
-    document.getElementById("online-modal").classList.add("hidden");
-    document.getElementById("mode-selection-modal").classList.remove("hidden");
+function findOnlineMatch(playersCount) {
+    document.getElementById('quick-match-display').innerText = `Searching for ${playersCount} players... Please wait.`;
+    socket.emit('find-match', { playersRequired: playersCount });
 }
 
-function findOnlineMatch(count) { 
-    connectToServer();
-    document.getElementById("quick-match-display").innerText = "Finding match, please wait... ⏳";
-    socket.emit('find-match', { playersRequired: count });
-}
-
-function connectToServer() {
-    if (!socket) {
-        socket = io('https://competionludo.onrender.com');
-
-        socket.on('room-created', (data) => {
-            window.currentRoomId = data.roomId;
-            myAssignedColor = data.color;
-            showMyIdentity(data.color);
-        });
-
-        socket.on('joined-success', (data) => {
-            window.currentRoomId = data.roomId;
-            myAssignedColor = data.color;
-            showMyIdentity(data.color);
-        });
-
-        socket.on('match-found', (data) => {
-            window.currentRoomId = data.roomId;
-            myAssignedColor = data.color;
-            showMyIdentity(data.color);
-        });
-
-        socket.on('start-online-game', (data) => {
-            document.getElementById("online-modal").classList.add("hidden");
-            document.getElementById("mode-selection-modal").classList.add("hidden");
-            
-            activePlayers = data.players.map(p => p.color);
-            let me = data.players.find(p => p.id === socket.id);
-            if (me) showMyIdentity(me.color);
-            initGameSession();
-        });
-
-        socket.on('remote-dice-rolled', handleRemoteDice);
-        socket.on('remote-token-moved', handleRemoteTokenMove);
-        socket.on('turn-updated', (data) => {
-            currentPlayerIndex = activePlayers.indexOf(data.currentColor);
-            updateTurnText();
-            gameState = 'WAITING_FOR_ROLL';
-            startTurnTimer(); 
-        });
-        socket.on('player-eliminated', (data) => {
-            alert(`🚨 ${data.color.toUpperCase()} was eliminated!`);
-            activePlayers = activePlayers.filter(c => c !== data.color);
-            let profileEl = document.getElementById(`profile-${data.color}`);
-            if (profileEl) profileEl.style.opacity = "0.1";
-            if (allTokens[data.color]) {
-                allTokens[data.color].forEach(t => {
-                    if (t.element && t.element.parentNode) t.element.parentNode.removeChild(t.element);
-                });
-            }
-        });
-
-        socket.on('error-msg', (msg) => { alert("❌ " + msg); });
-    }
-}
-
-function showMyIdentity(color) {
-    const badge = document.getElementById('my-identity-badge');
-    if (!badge) return;
-    badge.classList.remove('hidden');
-    let bgColor = (color === 'red') ? "#ff2a2a" : (color === 'green') ? "#00cc00" : (color === 'yellow') ? "#ffcc00" : "#1a53ff";
-    badge.innerHTML = `👉 YOU ARE: (${color.toUpperCase()}) 👈`;
-    badge.style.background = bgColor;
-}
-
-function createPrivateRoom(count) {
-    connectToServer();
-    socket.emit('create-room', { maxPlayers: count });
+function createPrivateRoom(playersCount) {
+    socket.emit('create-room', { maxPlayers: playersCount });
 }
 
 function joinPrivateRoom() {
-    let id = document.getElementById("room-id-input").value.trim();
-    if (id) {
-        connectToServer();
-        socket.emit('join-room', { roomId: id });
+    let roomId = document.getElementById('room-id-input').value.trim();
+    if (roomId) {
+        socket.emit('join-room', { roomId: roomId });
     } else {
         alert("Please enter a valid Room ID!");
     }
 }
 
-function initGameSession() {
+function setupSocketListeners() {
+    socket.on('room-created', (data) => {
+        myAssignedColor = data.color;
+        currentOnlineRoomId = data.roomId;
+        document.getElementById('room-created-display').innerHTML = `Room Code: <span style="color:#ffcc00; font-size:16px;">${data.roomId}</span><br>Share this code with friends! Waiting for players to join...`;
+    });
+
+    socket.on('match-found', (data) => {
+        myAssignedColor = data.color;
+        currentOnlineRoomId = data.roomId;
+    });
+
+    socket.on('joined-success', (data) => {
+        myAssignedColor = data.color;
+        currentOnlineRoomId = data.roomId;
+        document.getElementById('online-modal').classList.add('hidden');
+        alert(`Joined room ${data.roomId} successfully! Waiting for host to start...`);
+    });
+
+    socket.on('start-online-game', (data) => {
+        document.getElementById('online-modal').classList.add('hidden');
+        triggerInterstitialAd("Online Game Started");
+
+        activePlayers = data.players.map(p => p.color);
+        showMyIdentity(myAssignedColor);
+        initGameSessionOnline();
+    });
+
+    socket.on('remote-dice-rolled', (data) => {
+        currentDiceValue = data.diceValue;
+        soundDice.currentTime = 0;
+        soundDice.play().catch(e => {});
+
+        const diceContainer = document.getElementById("dice-container");
+        diceContainer.classList.remove("rolling");
+        diceContainer.innerText = diceFaces[currentDiceValue];
+        diceContainer.style.color = currentDiceValue === 6 ? "#ff2a2a" : "#111";
+
+        gameState = 'WAITING_FOR_MOVE';
+        startTurnTimer();
+        checkAvailableMovesOnline();
+    });
+
+    socket.on('remote-token-moved', (data) => {
+        moveTokenStepByStepRemote(data.color, data.tokenIndex, data.diceVal, data.cutDetails);
+    });
+
+    socket.on('turn-updated', (data) => {
+        currentPlayerIndex = activePlayers.indexOf(data.currentColor);
+        updateTurnText();
+        gameState = 'WAITING_FOR_ROLL';
+        startTurnTimer();
+    });
+
+    socket.on('player-eliminated', (data) => {
+        alert(`🚨 ${data.color.toUpperCase()} has been eliminated from the match!`);
+        activePlayers = activePlayers.filter(c => c !== data.color);
+        let profileEl = document.getElementById(`profile-${data.color}`);
+        if (profileEl) profileEl.style.opacity = "0.1";
+        if (allTokens[data.color]) {
+            allTokens[data.color].forEach(t => {
+                if (t.element && t.element.parentNode) t.element.parentNode.removeChild(t.element);
+            });
+        }
+    });
+
+    socket.on('game-over-broadcast', (data) => {
+        soundWin.play().catch(e => {});
+        alert(`🏆 GAME OVER! 🏆\nWinner: ${data.winnerColor ? data.winnerColor.toUpperCase() : 'Player'}`);
+        triggerInterstitialAd("Online Game Finished");
+        setTimeout(() => window.location.reload(), 2000);
+    });
+}
+
+function showMyIdentity(color) {
+    const badge = document.getElementById('my-identity-badge');
+    badge.classList.remove('hidden');
+    let playerNum = (color === 'red') ? "Player 1" : (color === 'green') ? "Player 2" : (color === 'yellow') ? "Player 3" : "Player 4";
+    badge.innerText = `👉 YOU ARE: ${playerNum} (${color.toUpperCase()}) 👈`;
+}
+
+function initGameSessionOnline() {
     activePlayers.forEach(c => document.getElementById(`profile-${c}`).style.opacity = "1");
     activePlayers.forEach(c => missedTurns[c] = 0);
+
     currentPlayerIndex = 0;
     gameState = 'WAITING_FOR_ROLL';
     isMoving = false;
     updateTurnText();
     spawnTokens();
-    startTurnTimer(); 
-}
-
-function startLocalGame(playerCount) {
-    window.currentRoomId = ""; 
-    document.getElementById("startup-modal").classList.add("hidden");
-    activePlayers = (playerCount === 2) ? ['red', 'yellow'] : (playerCount === 3) ? ['red', 'green', 'yellow'] : ['red', 'green', 'yellow', 'blue'];
-    initGameSession();
-}
-
-function endMatchAndGoToMenu() {
-    clearTurnTimer();
-    soundWin.play().catch(e => {});
-    if (typeof window.showAd === 'function') window.showAd();
-    setTimeout(() => {
-        alert("🏆 MATCH FINISHED! 🏆");
-        if (socket) socket.emit("leave-room");
-        window.location.reload(); 
-    }, 1500);
+    startTurnTimer();
 }
 
 function startTurnTimer() {
-    clearTurnTimer(); 
+    clearTurnTimer();
     timeLeft = 25;
     updateTimerUI();
-
     countdownInterval = setInterval(() => {
         timeLeft--;
         updateTimerUI();
         if (timeLeft <= 0) clearInterval(countdownInterval);
     }, 1000);
 
-    if (!window.currentRoomId) {
-        let currentColor = activePlayers[currentPlayerIndex];
-        turnTimer = setTimeout(() => handleTurnTimeoutLocal(currentColor), 25000); 
-    }
+    let currentColor = activePlayers[currentPlayerIndex];
+    turnTimer = setTimeout(() => {
+        handleTurnTimeout(currentColor);
+    }, 25000);
 }
 
 function clearTurnTimer() {
@@ -236,20 +231,48 @@ function updateTimerUI() {
     if (timerEl) timerEl.innerText = `⏳ Time left: ${timeLeft}s`;
 }
 
-function handleTurnTimeoutLocal(color) {
+function handleTurnTimeout(color) {
+    if (socket && currentOnlineRoomId) return; 
+
+    if (!missedTurns[color]) missedTurns[color] = 0;
     missedTurns[color]++;
+
     if (missedTurns[color] >= 3) {
+        clearTurnTimer();
         alert(`🚨 ${color.toUpperCase()} missed 3 turns and has been eliminated from the game!`);
+        
+        if (allTokens[color]) {
+            allTokens[color].forEach(t => {
+                if (t.element && t.element.parentNode) t.element.parentNode.removeChild(t.element);
+            });
+        }
+        let profileEl = document.getElementById(`profile-${color}`);
+        if (profileEl) profileEl.style.opacity = "0.1";
+
         activePlayers = activePlayers.filter(c => c !== color);
-        if (activePlayers.length === 1) { endMatchAndGoToMenu(); return; }
+        if (activePlayers.length === 1) {
+            endMatchAndGoToMenu();
+            return;
+        }
         if (currentPlayerIndex >= activePlayers.length) currentPlayerIndex = 0;
         updateTurnText();
         gameState = 'WAITING_FOR_ROLL';
         startTurnTimer();
         return;
     }
-    alert(`⚠️ ${color.toUpperCase()} skipped their turn.`);
+
+    alert(`⚠️ ${color.toUpperCase()} skipped their turn due to inactivity (${missedTurns[color]}/3).`);
     switchTurnLocal(false);
+}
+
+function endMatchAndGoToMenu() {
+    clearTurnTimer();
+    soundWin.play().catch(e => {});
+    triggerInterstitialAd("Match Finished");
+    setTimeout(() => {
+        alert("🏆 MATCH FINISHED! 🏆");
+        window.location.reload(); 
+    }, 1500);
 }
 
 function createBoard() {
@@ -267,12 +290,20 @@ function createBoard() {
             cell.classList.add("ludo-cell");
             cell.id = `cell-${r}-${c}`; 
             cell.style.gridArea = `${r + 1} / ${c + 1} / span 1 / span 1`;
+
             if (r === 7 && c > 0 && c < 6) cell.style.backgroundColor = "#ff4d4d"; 
             if (c === 7 && r > 0 && r < 6) cell.style.backgroundColor = "#4dff4d"; 
             if (r === 7 && c > 8 && c < 14) cell.style.backgroundColor = "#ffff4d"; 
             if (c === 7 && r > 8 && r < 14) cell.style.backgroundColor = "#4d4dff"; 
+
             let isSafe = safeZones.some(zone => zone.r === r && zone.c === c);
-            if (isSafe) { cell.style.backgroundColor = "#e0e0e0"; cell.innerHTML = '<span class="safe-zone-icon">⭐</span>'; }
+            if (isSafe) {
+                cell.style.backgroundColor = "#e0e0e0"; 
+                let star = document.createElement("span");
+                star.className = "safe-zone-icon";
+                star.innerHTML = "⭐"; 
+                cell.appendChild(star);
+            }
             if (r >= 6 && r <= 8 && c >= 6 && c <= 8) cell.style.background = "#222";
             board.appendChild(cell);
         }
@@ -310,19 +341,21 @@ function spawnTokens() {
 }
 
 function rollDice() {
-    if (socket && window.currentRoomId) {
+    if (socket && currentOnlineRoomId) {
         if (myAssignedColor !== activePlayers[currentPlayerIndex]) {
-            alert("Wait! It is not your turn."); return;
+            alert("Wait! It's not your turn.");
+            return;
         }
     }
-    if (activePlayers.length === 0 || gameState !== 'WAITING_FOR_ROLL' || isMoving) return;
 
+    if (activePlayers.length === 0 || gameState !== 'WAITING_FOR_ROLL' || isMoving) return;
     clearTurnTimer(); 
+    gameState = 'ROLLING';
     const diceContainer = document.getElementById("dice-container");
     diceContainer.classList.add("rolling");
 
-    if (socket && window.currentRoomId) {
-        socket.emit('request-dice-roll', { roomId: window.currentRoomId });
+    if (socket && currentOnlineRoomId) {
+        socket.emit('request-dice-roll', { roomId: currentOnlineRoomId });
     } else {
         setTimeout(() => {
             soundDice.currentTime = 0;
@@ -334,43 +367,47 @@ function rollDice() {
             diceContainer.style.color = currentDiceValue === 6 ? "#ff2a2a" : "#111";
             gameState = 'WAITING_FOR_MOVE';
             startTurnTimer(); 
-            checkAvailableMoves();
+            checkAvailableMovesLocal();
         }, 500); 
     }
 }
 
-function handleRemoteDice(data) {
-    currentDiceValue = data.diceValue;
-    
-    soundDice.currentTime = 0;
-    soundDice.play().catch(e => {});
-    
-    const diceContainer = document.getElementById("dice-container");
-    diceContainer.classList.remove("rolling");
-    diceContainer.innerText = diceFaces[currentDiceValue];
-    diceContainer.style.color = currentDiceValue === 6 ? "#ff2a2a" : "#111";
-    gameState = 'WAITING_FOR_MOVE';
-    checkAvailableMoves();
-}
-
-function checkAvailableMoves() {
+function checkAvailableMovesOnline() {
     let currentPlayerColor = activePlayers[currentPlayerIndex];
     let movableTokens = [];
-
     allTokens[currentPlayerColor].forEach((tokenObj, index) => {
         if (tokenObj.state === 'home' && currentDiceValue === 6) movableTokens.push(index); 
         else if (tokenObj.state === 'active' && tokenObj.pathPosition + currentDiceValue <= 56) movableTokens.push(index); 
     });
 
+    if (movableTokens.length > 0) {
+        movableTokens.forEach(idx => allTokens[currentPlayerColor][idx].element.classList.add('highlight-move'));
+        if (movableTokens.length === 1 && currentPlayerColor === myAssignedColor) {
+            setTimeout(() => handleTokenClick(currentPlayerColor, movableTokens[0]), 300);
+        }
+    }
+}
+
+function checkAvailableMovesLocal() {
+    let currentPlayerColor = activePlayers[currentPlayerIndex];
+    let movableTokens = [];
+    allTokens[currentPlayerColor].forEach((tokenObj, index) => {
+        if (tokenObj.state === 'home' && currentDiceValue === 6) movableTokens.push(index); 
+        else if (tokenObj.state === 'active') movableTokens.push(index); 
+    });
+
     if (movableTokens.length === 0) {
-        if (!window.currentRoomId) setTimeout(() => switchTurnLocal(false), 500);
+        setTimeout(() => switchTurnLocal(false), 500);
     } else {
         movableTokens.forEach(idx => allTokens[currentPlayerColor][idx].element.classList.add('highlight-move'));
+        if (movableTokens.length === 1) {
+            setTimeout(() => handleTokenClick(currentPlayerColor, movableTokens[0]), 300);
+        }
     }
 }
 
 function handleTokenClick(color, tokenIndex) {
-    if (socket && window.currentRoomId && color !== myAssignedColor) return; 
+    if (socket && currentOnlineRoomId && color !== myAssignedColor) return;
     if (gameState !== 'WAITING_FOR_MOVE' || color !== activePlayers[currentPlayerIndex] || isMoving) return;
 
     let tokenObj = allTokens[color][tokenIndex];
@@ -378,9 +415,14 @@ function handleTokenClick(color, tokenIndex) {
 
     allTokens[color].forEach(t => t.element.classList.remove('highlight-move'));
 
-    if (socket && window.currentRoomId) {
-        socket.emit('request-token-move', { roomId: window.currentRoomId, color: color, tokenIndex: tokenIndex });
+    if (socket && currentOnlineRoomId) {
+        socket.emit('request-token-move', {
+            roomId: currentOnlineRoomId,
+            color: color,
+            tokenIndex: tokenIndex
+        });
     } else {
+        clearTurnTimer(); 
         if (tokenObj.state === 'home' && currentDiceValue === 6) {
             tokenObj.state = 'active';
             tokenObj.pathPosition = 0; 
@@ -392,8 +434,7 @@ function handleTokenClick(color, tokenIndex) {
     }
 }
 
-function handleRemoteTokenMove(data) {
-    let { color, tokenIndex, diceVal, cutDetails } = data;
+function moveTokenStepByStepRemote(color, tokenIndex, diceVal, cutDetails) {
     let tokenObj = allTokens[color][tokenIndex];
     allTokens[color].forEach(t => t.element.classList.remove('highlight-move'));
 

@@ -15,7 +15,6 @@
     <div class="logo">ZINGARENA LUDO</div>
 </div>
 
-    <!-- 1. LOGIN SECTION -->
     <div id="login-section" class="dashboard">
         <h2 style="text-align: center; margin-top: 50px; color: #ff9900;">🏆 Join the Competition</h2>
         <p style="text-align: center; color: #ddd; font-size: 16px; padding: 0 20px; line-height: 1.6; margin-bottom: 30px;">
@@ -25,7 +24,6 @@
         <button class="menu-btn" onclick="window.location.href='index.html'">⬅ Back to Main Menu</button>
     </div>
 
-    <!-- 2. MAIN DASHBOARD SECTION -->
     <div id="dashboard-section" class="dashboard hidden">
       <div class="player-name-box">
     <div class="game-title">ZINGARENA LUDO</div>
@@ -101,7 +99,6 @@
         <button class="menu-btn" onclick="window.location.href='index.html'">⬅ Back to Main Menu</button>
     </div>
 
-    <!-- 🔥 3. NEW MATCHMAKING WAITING SCREEN -->
     <div id="matchmaking-section" class="dashboard hidden" style="text-align: center; padding-top: 80px;">
         <h2 style="color: #ff9900; font-size: 28px;">⏳ Matchmaking Started...</h2>
         <p style="color: #ddd; font-size: 16px; line-height: 1.5; margin-top: 10px;">
@@ -111,11 +108,10 @@
         <button class="btn-google" style="background: #f44336; color: white; border: 2px solid #ff9900;" onclick="cancelMatchmaking()">🔙 Back (Refund Coins)</button>
     </div>
 
-    <!-- 🏆 LEADERBOARD MODAL -->
     <div id="leaderboard-modal" class="modal hidden">
         <div class="modal-content" style="max-width: 340px;">
             <h2 style="color: #ffd700; margin-bottom: 5px;">🏆 Weekly Leaderboard</h2>
-            <p style="color: #aaa; font-size: 12px; margin-bottom: 15px;">Har Monday reset hota hai</p>
+            <p style="color: #aaa; font-size: 12px; margin-bottom: 15px;">Resets every Monday</p>
             <div id="leaderboard-list" style="text-align: left; max-height: 300px; overflow-y: auto;"></div>
             <div class="reward-tiers">
                 1st: 50k &nbsp;2nd: 45k &nbsp;3rd: 40k &nbsp;4th: 35k &nbsp;5th: 30k<br>
@@ -125,7 +121,6 @@
         </div>
     </div>
 
-    <!-- 4. LUDO GAME UI -->
     <div id="ludo-wrapper" class="hidden">
         <div id="my-identity-badge" class="hidden" style="text-align:center; padding: 5px; font-weight: bold; margin-bottom: 10px;"></div>
         <div id="turn-text" style="text-align:center; margin: 10px 0; font-size: 18px; font-weight: bold;">WAITING...</div>
@@ -142,8 +137,13 @@
         </div>
     </div>
 
-  <script src="https://competionludo.onrender.com/socket.io/socket.io.js"></script>
-<script src="competition.js"></script>
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+      if (typeof io === 'undefined') {
+          document.write('<script src="https://cdn.socket.io/4.7.2/socket.io.min.js"><\/script>');
+      }
+  </script>
+  <script src="competition.js"></script>
 
 </body>
 </html>

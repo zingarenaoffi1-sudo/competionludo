@@ -3,10 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ZingArena - Main Menu</title>
+    <title>ZingArena Ludo</title>
+    <meta name="description" content="Multiplayer and offline Ludo game with local offline play, online multiplayer, and pro competition modes.">
+    <meta property="og:title" content="ZingArena Ludo">
+    <meta property="og:description" content="Multiplayer and offline Ludo game with local offline play, online multiplayer, and pro competition modes.">
     <link rel="stylesheet" href="style.css">
     <style>
-        /* PC Testing Ke Liye Sirf EK Center Banner */
         .dummy-banner {
             position: absolute;
             top: 0; left: 50%; transform: translateX(-50%);
@@ -20,7 +22,6 @@
     </style>
 </head>
 <body>
-    <!-- Dummy Banner (Sirf PC par dikhega) -->
     <div id="test-banner" class="dummy-banner">AdMob Banner (320x50)</div>
 
     <div id="game-wrapper">
@@ -42,7 +43,6 @@
         </div>
     </div>
 
-    <!-- Banner Ad Initialization Script -->
     <script>
         document.addEventListener("DOMContentLoaded", async () => {
             const bannerTestId = 'ca-app-pub-3940256099942544/9214589741'; 
@@ -60,7 +60,6 @@
                     console.error("Banner Load Error: ", e);
                 }
             } else {
-                // PC Mode
                 document.getElementById('test-banner').style.display = 'flex';
             }
         });
