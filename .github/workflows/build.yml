@@ -70,8 +70,8 @@ jobs:
 
       - name: Install Capacitor & Mobile Dependencies
         run: |
-          npm install --save-dev @capacitor/cli@^6.0.0 @capacitor/assets@^3.0.0
-          npm install --save @capacitor/core@^6.0.0 @capacitor/android@^6.0.0 @capacitor-community/admob@^6.0.0 firebase @capacitor-firebase/authentication@^6.0.0
+          npm install --save-dev @capacitor/cli@^6.0.0
+          npm install --save @capacitor/core@^6.0.0 @capacitor/android@^6.0.0 @capacitor-community/admob@^6.0.0
 
       - name: Initialize Capacitor Android Project
         env:
@@ -88,7 +88,7 @@ jobs:
           fi
           echo "Applying AdMob App ID: $FINAL_ADMOB_ID"
 
-          # Update AndroidManifest and app name strings cleanly without invalid XML escapes
+          # Update AndroidManifest and app name strings
           python3 -c '
           import os, re
           
@@ -122,59 +122,37 @@ jobs:
           print("AndroidManifest.xml and strings.xml updated successfully.")
           '
 
-          # Generate app icons if icon.png is present
+      - name: Generate High-Res Android App Icons
+        run: |
           if [ -f icon.png ]; then
-            mkdir -p assets
-            cp icon.png assets/icon.png
-            npx capacitor-assets generate --android || echo "Icon generation finished."
+            echo "Generating high-resolution launcher icons for all Android densities..."
+            densities="mdpi:48:108 hdpi:72:162 xhdpi:96:216 xxhdpi:144:324 xxxhdpi:192:432"
+            for item in $densities; do
+              dir=$(echo $item | cut -d: -f1)
+              size=$(echo $item | cut -d: -f2)
+              fg_size=$(echo $item | cut -d: -f3)
+              target_dir="android/app/src/main/res/mipmap-$dir"
+              mkdir -p "$target_dir"
+              convert icon.png -resize "${size}x${size}" "$target_dir/ic_launcher.png"
+              convert icon.png -resize "${size}x${size}" "$target_dir/ic_launcher_round.png"
+              convert icon.png -resize "${fg_size}x${fg_size}" "$target_dir/ic_launcher_foreground.png"
+            done
+
+            mkdir -p android/app/src/main/res/values
+            echo '<?xml version="1.0" encoding="utf-8"?><resources><color name="ic_launcher_background">#0b0f19</color></resources>' > android/app/src/main/res/values/ic_launcher_background.xml
+            echo "Custom Ludo icons generated across all mipmap folders!"
+          else
+            echo "icon.png not found, skipping icon generation."
           fi
 
       - name: Sync Capacitor Android
         run: |
           npx cap sync android
 
-      - name: Inject Google Services Configuration
+      - name: Configure Gradle & Plugins
         env:
           GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
         run: |
-          python3 -c '
-          import os, json
-          target = "android/app/google-services.json"
-          secret = os.environ.get("GOOGLE_SERVICES_JSON", "").strip()
-          if len(secret) > 20:
-              with open(target, "w", encoding="utf-8") as f:
-                  f.write(secret)
-              print("Injected google-services.json from GitHub Secrets.")
-          else:
-              print("Using fallback google-services.json...")
-              fallback = {
-                  "project_info": {
-                      "project_number": "100000000000",
-                      "project_id": "zingarena-ludo",
-                      "storage_bucket": "zingarena-ludo.appspot.com"
-                  },
-                  "client": [
-                      {
-                          "client_info": {
-                              "mobilesdk_app_id": "1:100000000000:android:abcdef123456",
-                              "android_client_info": {
-                                  "package_name": "com.zingarena.app"
-                              }
-                          },
-                          "oauth_client": [],
-                          "api_key": [{"current_key": "dummy_api_key_for_build"}],
-                          "services": {}
-                      }
-                  ],
-                  "configuration_version": "1"
-              }
-              with open(target, "w", encoding="utf-8") as f:
-                  json.dump(fallback, f, indent=2)
-          '
-
-      - name: Configure Gradle & Plugins
-        run: |
-          # Copy keystore (from user secrets) into android/app directory
           cp ~/.android/debug.keystore android/app/debug.keystore
           
           cd android
@@ -185,28 +163,48 @@ jobs:
           echo "org.gradle.parallel=false" >> gradle.properties
           echo "org.gradle.caching=false" >> gradle.properties
           
+          SECRET_CONTENT="${GOOGLE_SERVICES_JSON:-}"
+          HAS_REAL_FIREBASE=false
+          if [ ${#SECRET_CONTENT} -gt 100 ]; then
+            if echo "$SECRET_CONTENT" | grep -q "project_id" && echo "$SECRET_CONTENT" | grep -q "client"; then
+              echo "$SECRET_CONTENT" > app/google-services.json
+              HAS_REAL_FIREBASE=true
+              echo "Real google-services.json found and written!"
+            fi
+          fi
+
           python3 -c '
+          import os
+
           # 1. Root build.gradle
           with open("build.gradle", "r", encoding="utf-8") as f:
               root = f.read()
-          if "com.google.gms:google-services" not in root:
+
+          has_fb = os.environ.get("HAS_REAL_FIREBASE", "false") == "true"
+          if has_fb and "com.google.gms:google-services" not in root:
               root = root.replace("dependencies {", "dependencies {\n        classpath \"com.google.gms:google-services:4.4.2\"")
+
           if "org.jetbrains.kotlin:kotlin-stdlib" not in root:
               root += "\nallprojects { configurations.all { resolutionStrategy { force \"org.jetbrains.kotlin:kotlin-stdlib:1.9.24\"; force \"org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.9.24\"; force \"org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.9.24\" } } }\n"
+
           with open("build.gradle", "w", encoding="utf-8") as f:
               f.write(root)
 
           # 2. App build.gradle
           with open("app/build.gradle", "r", encoding="utf-8") as f:
               app = f.read()
-          if "com.google.gms.google-services" not in app:
+
+          if has_fb and "com.google.gms.google-services" not in app:
               app += "\napply plugin: \"com.google.gms.google-services\"\n"
+
           if "signingConfigs.debug" not in app:
               signing_cfg = "\nandroid {\n    signingConfigs {\n        debug {\n            storeFile file(\"debug.keystore\")\n            storePassword \"android\"\n            keyAlias \"androiddebugkey\"\n            keyPassword \"android\"\n        }\n    }\n    buildTypes {\n        debug {\n            signingConfig signingConfigs.debug\n        }\n    }\n}\n"
               app += signing_cfg
+
           with open("app/build.gradle", "w", encoding="utf-8") as f:
               f.write(app)
-          print("Gradle configuration applied successfully.")
+
+          print("Gradle configuration applied. Firebase active:", has_fb)
           '
 
       - name: Build Debug APK with Gradle
