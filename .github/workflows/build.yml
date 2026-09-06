@@ -71,7 +71,7 @@ jobs:
       - name: Install Capacitor & Mobile Dependencies
         run: |
           npm install --save-dev @capacitor/cli@^6.0.0
-          npm install --save @capacitor/core@^6.0.0 @capacitor/android@^6.0.0 @capacitor-community/admob@^6.0.0
+          npm install --save @capacitor/core@^6.0.0 @capacitor/android@^6.0.0 @capacitor-community/admob@^6.0.0 @capacitor-firebase/authentication@^6.0.0
 
       - name: Initialize Capacitor Android Project
         env:
@@ -122,24 +122,30 @@ jobs:
           print("AndroidManifest.xml and strings.xml updated successfully.")
           '
 
-      - name: Generate High-Res Android App Icons
+      - name: Generate High-Res Android App Icons from icon.png
         run: |
           if [ -f icon.png ]; then
-            echo "Generating high-resolution launcher icons for all Android densities..."
-            densities="mdpi:48:108 hdpi:72:162 xhdpi:96:216 xxhdpi:144:324 xxxhdpi:192:432"
+            echo "Generating high-resolution launcher icons from icon.png for all Android densities..."
+            densities="mdpi:48:108:78 hdpi:72:162:116 xhdpi:96:216:155 xxhdpi:144:324:233 xxxhdpi:192:432:311"
             for item in $densities; do
               dir=$(echo $item | cut -d: -f1)
               size=$(echo $item | cut -d: -f2)
               fg_size=$(echo $item | cut -d: -f3)
+              pad_size=$(echo $item | cut -d: -f4)
               target_dir="android/app/src/main/res/mipmap-$dir"
               mkdir -p "$target_dir"
               convert icon.png -resize "${size}x${size}" "$target_dir/ic_launcher.png"
               convert icon.png -resize "${size}x${size}" "$target_dir/ic_launcher_round.png"
-              convert icon.png -resize "${fg_size}x${fg_size}" "$target_dir/ic_launcher_foreground.png"
+              convert icon.png -resize "${pad_size}x${pad_size}" -gravity center -background none -extent "${fg_size}x${fg_size}" "$target_dir/ic_launcher_foreground.png"
             done
 
             mkdir -p android/app/src/main/res/values
             echo '<?xml version="1.0" encoding="utf-8"?><resources><color name="ic_launcher_background">#0b0f19</color></resources>' > android/app/src/main/res/values/ic_launcher_background.xml
+
+            mkdir -p android/app/src/main/res/mipmap-anydpi-v26
+            echo '<?xml version="1.0" encoding="utf-8"?><adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android"><background android:drawable="@color/ic_launcher_background"/><foreground android:drawable="@mipmap/ic_launcher_foreground"/></adaptive-icon>' > android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
+            echo '<?xml version="1.0" encoding="utf-8"?><adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android"><background android:drawable="@color/ic_launcher_background"/><foreground android:drawable="@mipmap/ic_launcher_foreground"/></adaptive-icon>' > android/app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml
+            
             echo "Custom Ludo icons generated across all mipmap folders!"
           else
             echo "icon.png not found, skipping icon generation."
@@ -149,11 +155,15 @@ jobs:
         run: |
           npx cap sync android
 
-      - name: Configure Gradle & Plugins
-        env:
-          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+      - name: Configure Gradle & Real Firebase Google Services
         run: |
           cp ~/.android/debug.keystore android/app/debug.keystore
+          
+          # Copy real google-services.json from repo into android/app/
+          if [ -f google-services.json ]; then
+            cp google-services.json android/app/google-services.json
+            echo "Real google-services.json copied to android/app/google-services.json"
+          fi
           
           cd android
           chmod +x gradlew
@@ -163,16 +173,6 @@ jobs:
           echo "org.gradle.parallel=false" >> gradle.properties
           echo "org.gradle.caching=false" >> gradle.properties
           
-          SECRET_CONTENT="${GOOGLE_SERVICES_JSON:-}"
-          HAS_REAL_FIREBASE=false
-          if [ ${#SECRET_CONTENT} -gt 100 ]; then
-            if echo "$SECRET_CONTENT" | grep -q "project_id" && echo "$SECRET_CONTENT" | grep -q "client"; then
-              echo "$SECRET_CONTENT" > app/google-services.json
-              HAS_REAL_FIREBASE=true
-              echo "Real google-services.json found and written!"
-            fi
-          fi
-
           python3 -c '
           import os
 
@@ -180,8 +180,7 @@ jobs:
           with open("build.gradle", "r", encoding="utf-8") as f:
               root = f.read()
 
-          has_fb = os.environ.get("HAS_REAL_FIREBASE", "false") == "true"
-          if has_fb and "com.google.gms:google-services" not in root:
+          if "com.google.gms:google-services" not in root:
               root = root.replace("dependencies {", "dependencies {\n        classpath \"com.google.gms:google-services:4.4.2\"")
 
           if "org.jetbrains.kotlin:kotlin-stdlib" not in root:
@@ -194,7 +193,7 @@ jobs:
           with open("app/build.gradle", "r", encoding="utf-8") as f:
               app = f.read()
 
-          if has_fb and "com.google.gms.google-services" not in app:
+          if "com.google.gms.google-services" not in app:
               app += "\napply plugin: \"com.google.gms.google-services\"\n"
 
           if "signingConfigs.debug" not in app:
@@ -204,7 +203,7 @@ jobs:
           with open("app/build.gradle", "w", encoding="utf-8") as f:
               f.write(app)
 
-          print("Gradle configuration applied. Firebase active:", has_fb)
+          print("Gradle configuration applied with Real Firebase Google Services!")
           '
 
       - name: Build Debug APK with Gradle
