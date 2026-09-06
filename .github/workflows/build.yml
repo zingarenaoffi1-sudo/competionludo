@@ -35,15 +35,15 @@ jobs:
           mkdir -p ~/.android
           
           if [ -n "$DEBUG_KEYSTORE_BASE64" ]; then
-            echo "Keystore found in GitHub Secrets. Decoding and applying..."
+            echo "Keystore found in GitHub Secrets. Decoding..."
             echo "$DEBUG_KEYSTORE_BASE64" | base64 --decode > ~/.android/debug.keystore
           else
-            echo "Keystore secret not found. Generating a new debug keystore..."
+            echo "Generating clean debug keystore..."
             keytool -genkey -v -keystore ~/.android/debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=ZingArena Ludo,O=ZingArena,C=IN"
           fi
           
           echo "========================================================="
-          echo "SHA-1 and SHA-256 Fingerprints (for Firebase / Google Login):"
+          echo "SHA-1 & SHA-256 Fingerprints:"
           keytool -list -v -keystore ~/.android/debug.keystore -alias androiddebugkey -storepass android -keypass android | grep -E "SHA1:|SHA256:"
           echo "========================================================="
           
@@ -67,7 +67,7 @@ jobs:
             --exclude='android' \
             --exclude='debug.keystore' \
             ./ ./www/
-          echo "Web directory prepared successfully."
+          echo "Web directory prepared."
 
       - name: Install Capacitor & Mobile Dependencies
         run: |
@@ -78,24 +78,6 @@ jobs:
         env:
           SECRET_ADMOB_APP_ID: ${{ secrets.ADMOB_APP_ID }}
         run: |
-          # Copy or verify capacitor.config.json
-          if [ ! -f capacitor.config.json ]; then
-            cat <<EOF > capacitor.config.json
-            {
-              "appId": "com.zingarena.app",
-              "appName": "ZingArena Ludo",
-              "webDir": "www",
-              "bundledWebRuntime": false,
-              "plugins": {
-                "FirebaseAuthentication": {
-                  "skipNativeAuth": false,
-                  "providers": ["google.com"]
-                }
-              }
-            }
-            EOF
-          fi
-          
           rm -rf android
           npx cap add android
 
@@ -117,7 +99,7 @@ jobs:
           if [ -f icon.png ]; then
             mkdir -p assets
             cp icon.png assets/icon.png
-            npx capacitor-assets generate --android || echo "Icon generation skipped or completed."
+            npx capacitor-assets generate --android || echo "Icon generation complete."
           fi
 
       - name: Sync Capacitor Android
@@ -132,34 +114,34 @@ jobs:
             echo "$GOOGLE_SERVICES_JSON" > android/app/google-services.json
             echo "google-services.json from GitHub Secrets injected."
           else
-            echo "GOOGLE_SERVICES_JSON secret not provided. Creating valid fallback google-services.json to ensure build passes..."
-            cat <<EOF > android/app/google-services.json
-            {
-              "project_info": {
-                "project_number": "100000000000",
-                "project_id": "zingarena-ludo",
-                "storage_bucket": "zingarena-ludo.appspot.com"
-              },
-              "client": [
-                {
-                  "client_info": {
-                    "mobilesdk_app_id": "1:100000000000:android:abcdef123456",
-                    "android_client_info": {
-                      "package_name": "com.zingarena.app"
-                    }
-                  },
-                  "oauth_client": [],
-                  "api_key": [
-                    {
-                      "current_key": "dummy_api_key_for_build"
-                    }
-                  ],
-                  "services": {}
-                }
-              ],
-              "configuration_version": "1"
-            }
-            EOF
+            echo "Creating standard fallback google-services.json..."
+            cat << 'EOF' > android/app/google-services.json
+{
+  "project_info": {
+    "project_number": "100000000000",
+    "project_id": "zingarena-ludo",
+    "storage_bucket": "zingarena-ludo.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:100000000000:android:abcdef123456",
+        "android_client_info": {
+          "package_name": "com.zingarena.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "dummy_api_key_for_build"
+        }
+      ],
+      "services": {}
+    }
+  ],
+  "configuration_version": "1"
+}
+EOF
           fi
 
       - name: Configure Gradle & Plugins
@@ -184,36 +166,37 @@ jobs:
             echo "apply plugin: 'com.google.gms.google-services'" >> app/build.gradle
           fi
           
-          cat <<EOF >> app/build.gradle
+          cat << 'EOF' >> app/build.gradle
 
-          android {
-              signingConfigs {
-                  debug {
-                      storeFile file('debug.keystore')
-                      storePassword 'android'
-                      keyAlias 'androiddebugkey'
-                      keyPassword 'android'
-                  }
-              }
-              buildTypes {
-                  debug {
-                      signingConfig signingConfigs.debug
-                  }
-              }
-          }
-          EOF
+android {
+    signingConfigs {
+        debug {
+            storeFile file('debug.keystore')
+            storePassword 'android'
+            keyAlias 'androiddebugkey'
+            keyPassword 'android'
+        }
+    }
+    buildTypes {
+        debug {
+            signingConfig signingConfigs.debug
+        }
+    }
+}
+EOF
           
-          cat <<EOF >> build.gradle
-          allprojects {
-              configurations.all {
-                  resolutionStrategy {
-                      force 'org.jetbrains.kotlin:kotlin-stdlib:1.9.24'
-                      force 'org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.9.24'
-                      force 'org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.9.24'
-                  }
-              }
-          }
-          EOF
+          cat << 'EOF' >> build.gradle
+
+allprojects {
+    configurations.all {
+        resolutionStrategy {
+            force 'org.jetbrains.kotlin:kotlin-stdlib:1.9.24'
+            force 'org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.9.24'
+            force 'org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.9.24'
+        }
+    }
+}
+EOF
 
       - name: Build Debug APK with Gradle
         run: |
