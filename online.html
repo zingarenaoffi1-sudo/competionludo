@@ -3,124 +3,232 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Ultra Ludo - Online</title>
+    <title>ZingArena Ludo - Online Multiplayer</title>
     <link rel="stylesheet" href="style.css">
-    <style>
-        .dummy-banner {
-            position: absolute;
-            top: 0; left: 50%; transform: translateX(-50%);
-            width: 320px; height: 50px;
-            background: #ffcc00; color: #000;
-            display: none; align-items: center; justify-content: center;
-            font-weight: bold; font-size: 14px;
-            z-index: 1000; border: 2px solid #111; border-top: none;
-            border-bottom-left-radius: 8px; border-bottom-right-radius: 8px;
-        }
-    </style>
 </head>
 <body>
-    <div id="test-banner" class="dummy-banner">AdMob Banner (320x50)</div>
+    <div id="test-banner" class="dummy-banner">
+        <span>📢 AdMob Test Banner (320x50)</span>
+        <button class="banner-close-btn" onclick="document.getElementById('test-banner').style.display='none'">✕</button>
+    </div>
+    <div id="toast-msg" class="toast-message"></div>
 
     <div id="game-wrapper">
         <div class="game-header">
-            <div class="logo-text">ULTRA LUDO (ONLINE)</div>
-            <button class="menu-btn" onclick="window.location.href='index.html'">Main Menu</button>
+            <div class="logo-container">
+                <span class="logo-crown">👑</span>
+                <span class="logo-text" id="online-title-text">ONLINE LUDO</span>
+            </div>
+            <div style="display: flex; gap: 6px;">
+                <button class="menu-btn" onclick="HowToPlayGuide.openModal()" style="padding: 6px 10px;">📖 Rules</button>
+                <button class="menu-btn" onclick="ZingFeatures.showMatchHistoryModal()" style="padding: 6px 10px;">📜 History</button>
+                <button class="menu-btn" onclick="window.location.href='index.html'">Lobby</button>
+            </div>
         </div>
 
-        <div id="my-identity-badge" class="hidden" style="text-align: center; background: #ff9900; color: #000; font-weight: 900; padding: 5px; margin: 5px 10px; border-radius: 5px; text-transform: uppercase;"></div>
+        <div id="my-identity-badge" class="hidden" style="text-align: center; background: linear-gradient(90deg, #ffd700, #f59e0b); color: #0f172a; font-weight: 900; padding: 5px; margin-bottom: 6px; border-radius: 8px; font-size: 12px; letter-spacing: 0.5px;"></div>
 
-        <div class="player-hud"><div class="player-profile" id="profile-red"><div class="avatar red-bg">1</div><div class="player-name">Player 1 (Red)</div></div><div class="player-profile" id="profile-green"><div class="avatar green-bg">2</div><div class="player-name">Player 2 (Green)</div></div></div>
-        <div class="board-container"><div id="ludo-board"></div></div>
-        <div class="player-hud"><div class="player-profile" id="profile-blue"><div class="avatar blue-bg">4</div><div class="player-name">Player 4 (Blue)</div></div><div class="player-profile" id="profile-yellow"><div class="avatar yellow-bg">3</div><div class="player-name">Player 3 (Yellow)</div></div></div>
+        <!-- IN-GAME HUD ACTION BAR: WEBRTC VOICE MIC & CHAT/EMOJIS -->
+        <div class="in-game-action-bar" id="online-hud-bar" style="display: none;">
+            <button class="hud-icon-btn" id="hud-mic-btn" onclick="toggleOnlineVoiceMic()">
+                🎙️ Mic OFF
+            </button>
+            <button class="hud-icon-btn" id="hud-chat-btn" onclick="openOnlineChatPicker()">
+                💬 Quick Chat & Emojis
+            </button>
+        </div>
 
-        <div class="game-footer">
-            <div style="display: flex; flex-direction: column;"><div class="turn-indicator" id="turn-text">WAITING TO START...</div><div id="timer-text" style="font-size: 13px; color: #ffeb3b; font-weight: bold; margin-top: 3px;">⏳ Time left: 25s</div></div>
-            <div class="dice-wrapper"><div id="dice-container">🎲</div></div>
+        <div class="turn-status-banner">
+            <div class="turn-indicator" id="turn-text">WAITING TO CONNECT...</div>
+            <div class="turn-timer-badge" id="timer-text">⏳ Time Left: 25s</div>
+        </div>
+
+        <div class="hud-row">
+            <div class="player-corner" id="corner-red">
+                <div class="player-card" id="profile-red">
+                    <div class="avatar red-bg">1</div>
+                    <div class="player-info">
+                        <div class="player-name">Player 1</div>
+                        <div class="player-status-tag red-text">Red</div>
+                    </div>
+                </div>
+                <div class="corner-dice" id="dice-red" onclick="handleCornerDiceClick('red')">🎲</div>
+            </div>
+
+            <div class="player-corner reverse" id="corner-green">
+                <div class="player-card" id="profile-green">
+                    <div class="avatar green-bg">2</div>
+                    <div class="player-info">
+                        <div class="player-name">Player 2</div>
+                        <div class="player-status-tag green-text">Green</div>
+                    </div>
+                </div>
+                <div class="corner-dice" id="dice-green" onclick="handleCornerDiceClick('green')">🎲</div>
+            </div>
+        </div>
+
+        <div class="board-container">
+            <div id="ludo-board"></div>
+        </div>
+
+        <div class="hud-row">
+            <div class="player-corner" id="corner-blue">
+                <div class="player-card" id="profile-blue">
+                    <div class="avatar blue-bg">4</div>
+                    <div class="player-info">
+                        <div class="player-name">Player 4</div>
+                        <div class="player-status-tag blue-text">Blue</div>
+                    </div>
+                </div>
+                <div class="corner-dice" id="dice-blue" onclick="handleCornerDiceClick('blue')">🎲</div>
+            </div>
+
+            <div class="player-corner reverse" id="corner-yellow">
+                <div class="player-card" id="profile-yellow">
+                    <div class="avatar yellow-bg">3</div>
+                    <div class="player-info">
+                        <div class="player-name">Player 3</div>
+                        <div class="player-status-tag yellow-text">Yellow</div>
+                    </div>
+                </div>
+                <div class="corner-dice" id="dice-yellow" onclick="handleCornerDiceClick('yellow')">🎲</div>
+            </div>
         </div>
 
         <div id="online-modal" class="modal">
-            <div class="modal-content">
-                <h2 style="color: #ff9900; margin-bottom: 15px;">ONLINE MULTIPLAYER</h2>
+            <div class="modal-content" style="max-width: 380px;">
+                <div style="font-size: 34px; margin-bottom: 6px;">🌐</div>
+                <h2 style="color: #ffd700; margin-bottom: 6px; font-weight: 900;">ONLINE MULTIPLAYER</h2>
+                
+                <div style="font-size: 11px; font-weight: 800; color: #cbd5e1; margin-bottom: 6px;">CHOOSE GAME MODE:</div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-bottom: 14px;">
+                    <div id="online-mode-classic" class="mode-select-box active" onclick="setOnlineGameMode('classic')" style="border: 2px solid #ffd700; border-radius: 10px; padding: 8px 4px; cursor: pointer; background: rgba(30,41,59,0.8); text-align: center;">
+                        <div style="font-size: 18px;">🎲</div>
+                        <div style="font-size: 11px; font-weight: 800; color: #fff;">Classic</div>
+                        <div style="font-size: 9px; color: #94a3b8;">4 Tokens</div>
+                    </div>
+                    <div id="online-mode-quick" class="mode-select-box" onclick="setOnlineGameMode('quick')" style="border: 1px solid rgba(255,255,255,0.15); border-radius: 10px; padding: 8px 4px; cursor: pointer; background: rgba(30,41,59,0.8); text-align: center;">
+                        <div style="font-size: 18px;">⚡</div>
+                        <div style="font-size: 11px; font-weight: 800; color: #fff;">Quick</div>
+                        <div style="font-size: 9px; color: #94a3b8;">2 Tokens Win</div>
+                    </div>
+                    <div id="online-mode-team" class="mode-select-box" onclick="setOnlineGameMode('team2v2')" style="border: 1px solid rgba(255,255,255,0.15); border-radius: 10px; padding: 8px 4px; cursor: pointer; background: rgba(30,41,59,0.8); text-align: center;">
+                        <div style="font-size: 18px;">🤝</div>
+                        <div style="font-size: 11px; font-weight: 800; color: #fff;">2v2 Team</div>
+                        <div style="font-size: 9px; color: #94a3b8;">Partner Safe</div>
+                    </div>
+                </div>
+
                 <div id="online-main-options">
-                    <button class="ultra-roll-btn" onclick="showQuickMatch()" style="width: 100%; margin-bottom: 10px;">Quick Match</button>
-                    <button class="ultra-roll-btn" onclick="showCreateRoomOptions()" style="width: 100%; margin-bottom: 10px; background: linear-gradient(to bottom, #2196F3, #0D47A1);">Create Room</button>
-                    <button class="ultra-roll-btn" onclick="showJoinRoomInput()" style="width: 100%; margin-bottom: 15px; background: linear-gradient(to bottom, #9C27B0, #4A148C);">Join Room</button>
-                    <button class="menu-btn" onclick="window.location.href='index.html'" style="width: 100%; padding: 8px;">Back to Main Menu</button>
+                    <button class="ultra-roll-btn" onclick="showQuickMatch()" style="width: 100%; margin-bottom: 10px;">Find Online Match</button>
+                    <button class="ultra-roll-btn" onclick="showCreateRoomOptions()" style="width: 100%; margin-bottom: 10px; background: linear-gradient(180deg, #3b82f6, #1d4ed8); color: white;">Create Private Room</button>
+                    <button class="ultra-roll-btn" onclick="showJoinRoomInput()" style="width: 100%; margin-bottom: 14px; background: linear-gradient(180deg, #a855f7, #7e22ce); color: white;">Join via Room ID</button>
+                    <button class="menu-btn" onclick="window.location.href='index.html'" style="width: 100%; padding: 10px;">Back to Lobby</button>
                 </div>
 
                 <div id="quick-match-sub" class="hidden">
-                    <p style="color: #ddd; margin-bottom: 10px;">Select Match Size</p>
-                    <div id="quick-match-display" style="color: #00ff00; margin: 10px 0; font-size: 14px; font-weight: bold; min-height: 20px;"></div>
+                    <p style="color: #94a3b8; font-size: 13px; margin-bottom: 12px;">Select Match Capacity</p>
+                    <div id="quick-match-display" style="color: #4ade80; margin: 8px 0; font-size: 13px; font-weight: 700; min-height: 18px;"></div>
                     <button class="ultra-roll-btn" onclick="findOnlineMatch(2)" style="width: 100%; margin-bottom: 8px;">2 Players</button>
-                    <button class="ultra-roll-btn" onclick="findOnlineMatch(3)" style="width: 100%; margin-bottom: 8px;">3 Players</button>
+                    <button class="ultra-roll-btn" onclick="findOnlineMatch(3)" id="btn-quick-3p" style="width: 100%; margin-bottom: 8px;">3 Players</button>
                     <button class="ultra-roll-btn" onclick="findOnlineMatch(4)" style="width: 100%; margin-bottom: 8px;">4 Players</button>
-                    <button class="menu-btn" onclick="backToOnlineMain()" style="width: 100%; padding: 8px; margin-top: 5px;">Back</button>
+                    <button class="menu-btn" onclick="backToOnlineMain()" style="width: 100%; padding: 8px; margin-top: 6px;">Back</button>
                 </div>
 
                 <div id="create-room-sub" class="hidden">
-                    <p style="color: #ddd; margin-bottom: 10px;">Select Room Capacity</p>
-                    <button class="ultra-roll-btn" onclick="createPrivateRoom(2)" style="width: 100%; margin-bottom: 8px;">2 Player Room</button>
-                    <button class="ultra-roll-btn" onclick="createPrivateRoom(3)" style="width: 100%; margin-bottom: 8px;">3 Player Room</button>
-                    <button class="ultra-roll-btn" onclick="createPrivateRoom(4)" style="width: 100%; margin-bottom: 8px;">4 Player Room</button>
-                    <div id="room-created-display" style="color: #00ff00; margin: 10px 0; font-size: 14px; font-weight: bold;"></div>
-                    <button class="menu-btn" onclick="backToOnlineMain()" style="width: 100%; padding: 8px; margin-top: 5px;">Back</button>
+                    <p style="color: #94a3b8; font-size: 13px; margin-bottom: 12px;">Choose Room Capacity</p>
+                    <button class="ultra-roll-btn" onclick="createPrivateRoom(2)" style="width: 100%; margin-bottom: 8px;">2 Players</button>
+                    <button class="ultra-roll-btn" onclick="createPrivateRoom(3)" id="btn-create-3p" style="width: 100%; margin-bottom: 8px;">3 Players</button>
+                    <button class="ultra-roll-btn" onclick="createPrivateRoom(4)" style="width: 100%; margin-bottom: 8px;">4 Players</button>
+                    <div id="room-created-display" style="color: #4ade80; margin: 10px 0; font-size: 13px; font-weight: 700;"></div>
+                    <button class="menu-btn" onclick="backToOnlineMain()" style="width: 100%; padding: 8px; margin-top: 6px;">Back</button>
                 </div>
 
                 <div id="join-room-sub" class="hidden">
-                    <p style="color: #ddd; margin-bottom: 10px;">Enter Room ID</p>
-                    <input type="text" id="room-id-input" placeholder="e.g. LUDO_1234" style="width: 100%; padding: 10px; margin-bottom: 10px; border-radius: 5px; border: none; text-align: center; font-weight: bold;">
-                    <button class="ultra-roll-btn" onclick="joinPrivateRoom()" style="width: 100%; margin-bottom: 8px; background: linear-gradient(to bottom, #4CAF50, #2E7D32);">Join Now</button>
-                    <button class="menu-btn" onclick="backToOnlineMain()" style="width: 100%; padding: 8px; margin-top: 5px;">Back</button>
+                    <p style="color: #94a3b8; font-size: 13px; margin-bottom: 12px;">Enter Room ID</p>
+                    <input type="text" id="room-id-input" placeholder="e.g. ROOM_1234" style="width: 100%; padding: 12px; margin-bottom: 12px; border-radius: 10px; border: 2px solid #ffd700; background: #0f172a; color: white; text-align: center; font-weight: 800; font-size: 16px;">
+                    <button class="ultra-roll-btn" onclick="joinPrivateRoom()" style="width: 100%; margin-bottom: 8px; background: linear-gradient(180deg, #22c55e, #16a34a); color: white;">Join Room</button>
+                    <button class="menu-btn" onclick="backToOnlineMain()" style="width: 100%; padding: 8px; margin-top: 6px;">Back</button>
                 </div>
             </div>
         </div>
-        <div id="mode-selection-modal" class="hidden"></div><div id="startup-modal" class="hidden"></div>
+
+        <div id="room-error-modal" class="modal hidden">
+            <div class="modal-content">
+                <div style="font-size: 36px; margin-bottom: 6px;">⚠️</div>
+                <h2 style="color: #ef4444; font-weight: 900; margin-bottom: 8px;">ROOM ERROR</h2>
+                <p id="room-error-text" style="color: #cbd5e1; font-size: 13px; margin-bottom: 18px; line-height: 1.5;">Invalid Room ID or Room is already full!</p>
+                <button class="ultra-roll-btn" onclick="document.getElementById('room-error-modal').classList.add('hidden')" style="width: 100%;">OK</button>
+            </div>
+        </div>
+
+        <div id="victory-modal" class="modal hidden">
+            <div class="modal-content">
+                <div style="font-size: 40px; margin-bottom: 6px;">🏆</div>
+                <h2 style="color: #ffd700; font-weight: 900; margin-bottom: 10px;">MATCH FINISHED!</h2>
+                <div id="victory-podium" style="margin: 15px 0; font-size: 14px; line-height: 1.8;"></div>
+                <button class="ultra-roll-btn" onclick="window.location.reload()" style="width: 100%; margin-bottom: 10px;">Play Again</button>
+                <button class="menu-btn" onclick="window.location.href='index.html'" style="width: 100%; padding: 10px;">Back to Lobby</button>
+            </div>
+        </div>
     </div>
 
+    <script src="admob-config.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', async () => {
-            const bannerTestId = 'ca-app-pub-3940256099942544/9214589741';
+            const bannerTestId = (window.AdMobConfig && window.AdMobConfig.bannerAdId) || 'ca-app-pub-3940256099942544/9214589741';
+            const isTesting = (window.AdMobConfig && typeof window.AdMobConfig.isTesting === 'boolean') ? window.AdMobConfig.isTesting : true;
 
             if (window.Capacitor && Capacitor.Plugins.AdMob) {
                 const { AdMob } = Capacitor.Plugins;
                 try {
-                    await AdMob.initialize({ initializeForTesting: true });
-                    
+                    await AdMob.initialize({ initializeForTesting: isTesting });
                     await AdMob.showBanner({
                         adId: bannerTestId,
                         position: 'TOP_CENTER',
                         margin: 0
                     });
                 } catch(e) {
-                    console.error("Banner Ad failed to load", e);
+                    console.error("Banner Ad failed", e);
                 }
             } else {
                 document.getElementById('test-banner').style.display = 'flex';
             }
         });
 
-        let onlineAdCount = 0;
-        window.showAd = function() {
-            if (onlineAdCount % 2 === 0) {
-                playActualAd();
-            }
-            onlineAdCount++;
-        };
-
-        async function playActualAd() {
+        async function playInterstitialAd() {
+            const adId = (window.AdMobConfig && window.AdMobConfig.interstitialAdId) || 'ca-app-pub-3940256099942544/1033173712';
+            const isTesting = (window.AdMobConfig && typeof window.AdMobConfig.isTesting === 'boolean') ? window.AdMobConfig.isTesting : true;
             if (window.Capacitor && Capacitor.Plugins.AdMob) {
                 const { AdMob } = Capacitor.Plugins;
                 try {
+                    if (window.socket && window.currentOnlineRoomId) {
+                        window.socket.emit('ad-playback-status', { roomId: window.currentOnlineRoomId, isShowing: true });
+                    }
                     await AdMob.prepareInterstitial({
-                        adId: 'ca-app-pub-3940256099942544/1033173712',
-                        isTesting: true
+                        adId: adId,
+                        isTesting: isTesting
                     });
                     await AdMob.showInterstitial();
                 } catch(e) {
-                    console.log("Ad failed to load", e);
+                    console.log("Interstitial failed", e);
+                } finally {
+                    if (window.socket && window.currentOnlineRoomId) {
+                        window.socket.emit('ad-playback-status', { roomId: window.currentOnlineRoomId, isShowing: false });
+                    }
                 }
-            } else {
-                console.log("AdMob only works in the compiled APK!");
+            }
+        }
+        function toggleOnlineVoiceMic() {
+            if (window.ZingFeatures && window.socket && window.currentOnlineRoomId) {
+                const btn = document.getElementById('hud-mic-btn');
+                ZingFeatures.toggleMicrophone(window.socket, window.currentOnlineRoomId, btn);
+            }
+        }
+
+        function openOnlineChatPicker() {
+            if (window.ZingFeatures && window.socket && window.currentOnlineRoomId) {
+                ZingFeatures.openChatPicker(window.socket, window.currentOnlineRoomId, window.myColor, window.activePlayers);
             }
         }
     </script>
@@ -130,6 +238,8 @@
             document.write('<script src="https://cdn.socket.io/4.7.2/socket.io.min.js"><\/script>');
         }
     </script>
+    <script src="how-to-play.js"></script>
+    <script src="game-features.js"></script>
     <script src="script.js"></script>
 </body>
 </html>

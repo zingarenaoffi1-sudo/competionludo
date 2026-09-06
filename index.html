@@ -4,53 +4,149 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>ZingArena Ludo</title>
-    <meta name="description" content="Multiplayer and offline Ludo game with local offline play, online multiplayer, and pro competition modes.">
+    <meta name="description" content="Multiplayer and offline Ludo game with local offline play, vs computer bots, online multiplayer, and pro competition modes.">
     <meta property="og:title" content="ZingArena Ludo">
-    <meta property="og:description" content="Multiplayer and offline Ludo game with local offline play, online multiplayer, and pro competition modes.">
+    <meta property="og:description" content="Multiplayer and offline Ludo game with local offline play, vs computer bots, online multiplayer, and pro competition modes.">
     <link rel="stylesheet" href="style.css">
-    <style>
-        .dummy-banner {
-            position: absolute;
-            top: 0; left: 50%; transform: translateX(-50%);
-            width: 320px; height: 50px;
-            background: #ffcc00; color: #000;
-            display: none; align-items: center; justify-content: center;
-            font-weight: bold; font-size: 14px;
-            z-index: 1000; border: 2px solid #111; border-top: none;
-            border-bottom-left-radius: 8px; border-bottom-right-radius: 8px;
-        }
-    </style>
 </head>
 <body>
-    <div id="test-banner" class="dummy-banner">AdMob Banner (320x50)</div>
+    <div id="test-banner" class="dummy-banner">
+        <span>📢 AdMob Test Banner (320x50)</span>
+        <button class="banner-close-btn" onclick="document.getElementById('test-banner').style.display='none'">✕</button>
+    </div>
 
-    <div id="game-wrapper">
-        <div class="game-header">
-            <div class="logo-text">ZINGARENA LUDO</div>
+    <div id="game-wrapper" style="justify-content: flex-start; min-height: 100vh; padding: 65px 14px 24px 14px;">
+        <!-- TOP HEADER WITH LOGO & HOW TO PLAY BUTTON (SAFELY BELOW BANNER) -->
+        <div style="width: 100%; max-width: 380px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="font-size: 20px;">👑</span>
+                <span style="font-size: 13px; font-weight: 900; color: #ffd700; letter-spacing: 0.5px;">ZINGARENA</span>
+            </div>
+            <button onclick="HowToPlayGuide.openModal()" style="display: flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: 20px; border: 2px solid #ffd700; background: rgba(30, 41, 59, 0.95); color: #ffd700; font-size: 12px; font-weight: 900; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.6); transition: transform 0.2s;">
+                <span style="font-size: 14px;">📖</span>
+                <span>Rules & Guide</span>
+            </button>
         </div>
 
-        <div id="mode-selection-modal" class="modal">
-            <div class="modal-content">
-                <h2 style="color: #ff9900; margin-bottom: 20px;">ZINGARENA LUDO</h2>
-                <p style="color: #ddd; margin-bottom: 20px;">Select Game Mode</p>
-                
-                <button class="ultra-roll-btn" onclick="window.location.href='local.html'" style="width: 100%; margin-bottom: 12px; background: linear-gradient(to bottom, #4CAF50, #2E7D32);">Local Offline</button>
-                
-                <button class="ultra-roll-btn" onclick="window.location.href='online.html'" style="width: 100%; margin-bottom: 12px; background: linear-gradient(to bottom, #2196F3, #0D47A1);">Online Multiplayer</button>
+        <div class="lobby-hero" style="margin-bottom: 22px;">
+            <div style="font-size: 48px; margin-bottom: 4px; filter: drop-shadow(0 0 14px rgba(255,215,0,0.8));">👑</div>
+            <h1 class="lobby-title">ZINGARENA LUDO</h1>
+            <p class="lobby-subtitle">The Royal Multiplayer Board Experience</p>
+        </div>
 
-                <button class="ultra-roll-btn" onclick="window.location.href='competition.html'" style="width: 100%; background: linear-gradient(to right, #ff416c, #ff4b2b); border: 2px solid #ff9900; box-shadow: 0 4px 15px rgba(255, 75, 43, 0.4);">🏆 Pro Competition</button>
+        <!-- LUDO KING STYLE 2x2 BIG BUTTONS GRID -->
+        <div class="ludo-king-grid">
+            <!-- 1. PLAY VS COMPUTER -->
+            <div class="ludo-king-card computer" onclick="window.location.href='bot.html'">
+                <div class="card-icon" style="display: flex; justify-content: center; align-items: center;">
+                    <svg width="44" height="44" viewBox="0 0 48 48" fill="none">
+                        <rect x="8" y="14" width="32" height="26" rx="8" fill="url(#grad-bot)" stroke="#c084fc" stroke-width="2"/>
+                        <circle cx="18" cy="25" r="3.5" fill="#38bdf8"/>
+                        <circle cx="30" cy="25" r="3.5" fill="#38bdf8"/>
+                        <path d="M20 33h8" stroke="#f8fafc" stroke-width="2.5" stroke-linecap="round"/>
+                        <path d="M24 14V6m-3 0h6" stroke="#c084fc" stroke-width="2.5" stroke-linecap="round"/>
+                        <rect x="3" y="22" width="5" height="10" rx="2" fill="#a855f7"/>
+                        <rect x="40" y="22" width="5" height="10" rx="2" fill="#a855f7"/>
+                        <defs>
+                            <linearGradient id="grad-bot" x1="8" y1="14" x2="40" y2="40" gradientUnits="userSpaceOnUse">
+                                <stop stop-color="#7e22ce"/>
+                                <stop offset="1" stop-color="#3b0764"/>
+                            </linearGradient>
+                        </defs>
+                    </svg>
+                </div>
+                <div class="card-title">VS COMPUTER</div>
+                <div class="card-sub">Smart AI Bots</div>
             </div>
+
+            <!-- 2. PASS & PLAY (LOCAL) -->
+            <div class="ludo-king-card local" onclick="window.location.href='local.html'">
+                <div class="card-icon" style="display: flex; justify-content: center; align-items: center;">
+                    <svg width="44" height="44" viewBox="0 0 48 48" fill="none">
+                        <circle cx="18" cy="18" r="7" fill="url(#grad-user1)" stroke="#86efac" stroke-width="2"/>
+                        <path d="M8 38c0-5.5 4.5-9 10-9s10 3.5 10 9" stroke="#86efac" stroke-width="2.5" fill="url(#grad-user1)" stroke-linecap="round"/>
+                        <circle cx="32" cy="16" r="6" fill="url(#grad-user2)" stroke="#4ade80" stroke-width="2"/>
+                        <path d="M25 36c.5-4 3.5-7 8-7s7.5 3 8 7" stroke="#4ade80" stroke-width="2.5" fill="url(#grad-user2)" stroke-linecap="round"/>
+                        <defs>
+                            <linearGradient id="grad-user1" x1="8" y1="11" x2="28" y2="38" gradientUnits="userSpaceOnUse">
+                                <stop stop-color="#22c55e"/>
+                                <stop offset="1" stop-color="#14532d"/>
+                            </linearGradient>
+                            <linearGradient id="grad-user2" x1="25" y1="10" x2="41" y2="36" gradientUnits="userSpaceOnUse">
+                                <stop stop-color="#16a34a"/>
+                                <stop offset="1" stop-color="#052e16"/>
+                            </linearGradient>
+                        </defs>
+                    </svg>
+                </div>
+                <div class="card-title">PASS & PLAY</div>
+                <div class="card-sub">Same Device</div>
+            </div>
+
+            <!-- 3. ONLINE MULTIPLAYER -->
+            <div class="ludo-king-card online" onclick="window.location.href='online.html'">
+                <div class="badge-corner">LIVE</div>
+                <div class="card-icon" style="display: flex; justify-content: center; align-items: center;">
+                    <svg width="44" height="44" viewBox="0 0 48 48" fill="none">
+                        <circle cx="24" cy="24" r="18" fill="url(#grad-globe)" stroke="#60a5fa" stroke-width="2.5"/>
+                        <ellipse cx="24" cy="24" rx="8" ry="18" stroke="#93c5fd" stroke-width="2"/>
+                        <line x1="6" y1="24" x2="42" y2="24" stroke="#93c5fd" stroke-width="2"/>
+                        <path d="M9 15c4.5 3 9.5 4.5 15 4.5s10.5-1.5 15-4.5" stroke="#93c5fd" stroke-width="1.8"/>
+                        <path d="M9 33c4.5-3 9.5-4.5 15-4.5s10.5 1.5 15 4.5" stroke="#93c5fd" stroke-width="1.8"/>
+                        <circle cx="36" cy="12" r="4" fill="#22c55e"/>
+                        <defs>
+                            <linearGradient id="grad-globe" x1="6" y1="6" x2="42" y2="42" gradientUnits="userSpaceOnUse">
+                                <stop stop-color="#2563eb"/>
+                                <stop offset="1" stop-color="#1e3a8a"/>
+                            </linearGradient>
+                        </defs>
+                    </svg>
+                </div>
+                <div class="card-title">ONLINE LUDO</div>
+                <div class="card-sub">Voice & Chat</div>
+            </div>
+
+            <!-- 4. PRO COMPETITION -->
+            <div class="ludo-king-card comp" onclick="window.location.href='competition.html'">
+                <div class="badge-corner" style="background: #ef4444; color: #fff;">ESPORTS</div>
+                <div class="card-icon" style="display: flex; justify-content: center; align-items: center;">
+                    <svg width="44" height="44" viewBox="0 0 48 48" fill="none">
+                        <path d="M14 8h20v14c0 6-4 11-10 11s-10-5-10-11V8z" fill="url(#grad-trophy)" stroke="#fef08a" stroke-width="2"/>
+                        <path d="M14 13H8a4 4 0 00-4 4v2a6 6 0 006 6h4" stroke="#fde047" stroke-width="2.5" stroke-linecap="round"/>
+                        <path d="M34 13h6a4 4 0 014 4v2a6 6 0 01-6 6h-4" stroke="#fde047" stroke-width="2.5" stroke-linecap="round"/>
+                        <path d="M24 33v6m-7 4h14" stroke="#fde047" stroke-width="3" stroke-linecap="round"/>
+                        <defs>
+                            <linearGradient id="grad-trophy" x1="14" y1="8" x2="34" y2="33" gradientUnits="userSpaceOnUse">
+                                <stop stop-color="#facc15"/>
+                                <stop offset="1" stop-color="#ca8a04"/>
+                            </linearGradient>
+                        </defs>
+                    </svg>
+                </div>
+                <div class="card-title">COMPETITION</div>
+                <div class="card-sub">Spin & Tokens</div>
+            </div>
+        </div>
+
+        <div style="text-align: center; margin-top: 28px; font-size: 11px; color: #64748b; font-weight: 600; letter-spacing: 0.5px;">
+            Version 2.0 &bull; Secure Anti-Cheat Gaming
         </div>
     </div>
 
+    <!-- HOW TO PLAY MODAL CONTAINER -->
+    <div id="how-to-play-modal" class="modal hidden"></div>
+
+    <script src="admob-config.js"></script>
+    <script src="how-to-play.js"></script>
     <script>
         document.addEventListener("DOMContentLoaded", async () => {
-            const bannerTestId = 'ca-app-pub-3940256099942544/9214589741'; 
+            const bannerTestId = (window.AdMobConfig && window.AdMobConfig.bannerAdId) || 'ca-app-pub-3940256099942544/9214589741'; 
+            const isTesting = (window.AdMobConfig && typeof window.AdMobConfig.isTesting === 'boolean') ? window.AdMobConfig.isTesting : true;
             
             if (window.Capacitor && Capacitor.Plugins.AdMob) {
                 const { AdMob } = Capacitor.Plugins;
                 try {
-                    await AdMob.initialize({ initializeForTesting: true });
+                    await AdMob.initialize({ initializeForTesting: isTesting });
                     await AdMob.showBanner({
                         adId: bannerTestId,
                         position: 'TOP_CENTER', 

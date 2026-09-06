@@ -3,100 +3,200 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Ultra Ludo - Local Offline</title>
+    <title>ZingArena Ludo - Pass & Play</title>
     <link rel="stylesheet" href="style.css">
-    <style>
-        .dummy-banner {
-            position: absolute;
-            top: 0; left: 50%; transform: translateX(-50%);
-            width: 320px; height: 50px;
-           background: #ffcc00; color: #000;
-            display: none; align-items: center; justify-content: center;
-            font-weight: bold; font-size: 14px;
-            z-index: 1000; border: 2px solid #111; border-top: none;
-            border-bottom-left-radius: 8px; border-bottom-right-radius: 8px;
-        }
-    </style>
 </head>
 <body>
-    <div id="test-banner" class="dummy-banner">AdMob Banner (320x50)</div>
+    <div id="test-banner" class="dummy-banner">
+        <span>📢 AdMob Test Banner (320x50)</span>
+        <button class="banner-close-btn" onclick="document.getElementById('test-banner').style.display='none'">✕</button>
+    </div>
 
     <div id="game-wrapper">
         <div class="game-header">
-            <div class="logo-text">ULTRA LUDO (LOCAL)</div>
+            <div class="logo-container">
+                <span class="logo-crown">👑</span>
+                <span class="logo-text" id="game-mode-title">PASS & PLAY</span>
+            </div>
             <button class="menu-btn" onclick="window.location.href='index.html'">Main Menu</button>
         </div>
 
-        <div id="my-identity-badge" class="hidden" style="text-align: center; background: #ff9900; color: #000; font-weight: 900; padding: 5px; margin: 5px 10px; border-radius: 5px; text-transform: uppercase;"></div>
-
-        <div class="player-hud"><div class="player-profile" id="profile-red"><div class="avatar red-bg">1</div><div class="player-name">Player 1 (Red)</div></div><div class="player-profile" id="profile-green"><div class="avatar green-bg">2</div><div class="player-name">Player 2 (Green)</div></div></div>
-        <div class="board-container"><div id="ludo-board"></div></div>
-        <div class="player-hud"><div class="player-profile" id="profile-blue"><div class="avatar blue-bg">4</div><div class="player-name">Player 4 (Blue)</div></div><div class="player-profile" id="profile-yellow"><div class="avatar yellow-bg">3</div><div class="player-name">Player 3 (Yellow)</div></div></div>
-
-        <div class="game-footer">
-            <div style="display: flex; flex-direction: column;"><div class="turn-indicator" id="turn-text">WAITING TO START...</div><div id="timer-text" style="font-size: 13px; color: #ffeb3b; font-weight: bold; margin-top: 3px;">⏳ Time left: 25s</div></div>
-            <div class="dice-wrapper"><div id="dice-container">🎲</div></div>
+        <div class="turn-status-banner">
+            <div class="turn-indicator" id="turn-text">SELECT MODE TO START</div>
         </div>
-        
-        <div id="startup-modal" class="modal">
-            <div class="modal-content">
-                <h2 style="color: #ff9900; margin-bottom: 20px;">LOCAL OFFLINE</h2>
-                <p style="color: #ddd; margin-bottom: 20px;">Select Players</p>
-                <button class="ultra-roll-btn" onclick="startLocalGame(2)" style="width: 100%; margin-bottom: 10px;">2 Players</button>
-                <button class="ultra-roll-btn" onclick="startLocalGame(3)" style="width: 100%; margin-bottom: 10px;">3 Players</button>
-                <button class="ultra-roll-btn" onclick="startLocalGame(4)" style="width: 100%; margin-bottom: 10px;">4 Players</button>
-                <button class="menu-btn" onclick="window.location.href='index.html'" style="width: 100%; padding: 8px;">Back</button>
+
+        <div class="hud-row">
+            <div class="player-corner" id="corner-red">
+                <div class="player-card" id="profile-red">
+                    <div class="avatar red-bg">1</div>
+                    <div class="player-info">
+                        <div class="player-name">Player 1</div>
+                        <div class="player-status-tag red-text">Red</div>
+                    </div>
+                </div>
+                <div class="corner-dice" id="dice-red" onclick="handleCornerDiceClick('red')">🎲</div>
+            </div>
+
+            <div class="player-corner reverse" id="corner-green">
+                <div class="player-card" id="profile-green">
+                    <div class="avatar green-bg">2</div>
+                    <div class="player-info">
+                        <div class="player-name">Player 2</div>
+                        <div class="player-status-tag green-text">Green</div>
+                    </div>
+                </div>
+                <div class="corner-dice" id="dice-green" onclick="handleCornerDiceClick('green')">🎲</div>
             </div>
         </div>
-        <div id="mode-selection-modal" class="hidden"></div><div id="online-modal" class="hidden"></div>
+
+        <div class="board-container">
+            <div id="ludo-board"></div>
+        </div>
+
+        <div class="hud-row">
+            <div class="player-corner" id="corner-blue">
+                <div class="player-card" id="profile-blue">
+                    <div class="avatar blue-bg">4</div>
+                    <div class="player-info">
+                        <div class="player-name">Player 4</div>
+                        <div class="player-status-tag blue-text">Blue</div>
+                    </div>
+                </div>
+                <div class="corner-dice" id="dice-blue" onclick="handleCornerDiceClick('blue')">🎲</div>
+            </div>
+
+            <div class="player-corner reverse" id="corner-yellow">
+                <div class="player-card" id="profile-yellow">
+                    <div class="avatar yellow-bg">3</div>
+                    <div class="player-info">
+                        <div class="player-name">Player 3</div>
+                        <div class="player-status-tag yellow-text">Yellow</div>
+                    </div>
+                </div>
+                <div class="corner-dice" id="dice-yellow" onclick="handleCornerDiceClick('yellow')">🎲</div>
+            </div>
+        </div>
+
+        <div id="startup-modal" class="modal">
+            <div class="modal-content" style="max-width: 380px;">
+                <div style="font-size: 34px; margin-bottom: 6px;">👑</div>
+                <h2 style="color: #ffd700; margin-bottom: 4px; font-weight: 900;">SELECT GAME MODE</h2>
+                <p style="color: #94a3b8; font-size: 12px; margin-bottom: 14px;">Choose your offline match type and player setup</p>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-bottom: 14px;">
+                    <div id="mode-opt-classic" class="mode-select-box active" onclick="setLocalGameMode('classic')" style="border: 2px solid #ffd700; border-radius: 10px; padding: 10px 4px; cursor: pointer; background: rgba(30,41,59,0.8); text-align: center;">
+                        <div style="font-size: 20px;">🎲</div>
+                        <div style="font-size: 11px; font-weight: 800; color: #fff;">Classic</div>
+                        <div style="font-size: 9px; color: #94a3b8;">4 Tokens Home</div>
+                    </div>
+                    <div id="mode-opt-quick" class="mode-select-box" onclick="setLocalGameMode('quick')" style="border: 1px solid rgba(255,255,255,0.15); border-radius: 10px; padding: 10px 4px; cursor: pointer; background: rgba(30,41,59,0.8); text-align: center;">
+                        <div style="font-size: 20px;">⚡</div>
+                        <div style="font-size: 11px; font-weight: 800; color: #fff;">Quick Ludo</div>
+                        <div style="font-size: 9px; color: #94a3b8;">2 Tokens Home</div>
+                    </div>
+                    <div id="mode-opt-team" class="mode-select-box" onclick="setLocalGameMode('team2v2')" style="border: 1px solid rgba(255,255,255,0.15); border-radius: 10px; padding: 10px 4px; cursor: pointer; background: rgba(30,41,59,0.8); text-align: center;">
+                        <div style="font-size: 20px;">🤝</div>
+                        <div style="font-size: 11px; font-weight: 800; color: #fff;">2 vs 2 Team</div>
+                        <div style="font-size: 9px; color: #94a3b8;">Partner Safe</div>
+                    </div>
+                </div>
+
+                <div style="font-size: 12px; font-weight: 800; color: #cbd5e1; margin-bottom: 8px;">SELECT PLAYERS:</div>
+                <div style="display: flex; gap: 8px; margin-bottom: 14px;">
+                    <button class="ultra-roll-btn" onclick="choosePlayerCount(2)" style="flex: 1; padding: 10px 4px; font-size: 12px;">2 Players</button>
+                    <button class="ultra-roll-btn" onclick="choosePlayerCount(3)" id="btn-3p" style="flex: 1; padding: 10px 4px; font-size: 12px;">3 Players</button>
+                    <button class="ultra-roll-btn" onclick="choosePlayerCount(4)" style="flex: 1; padding: 10px 4px; font-size: 12px;">4 Players</button>
+                </div>
+                <button class="menu-btn" onclick="window.location.href='index.html'" style="width: 100%; padding: 10px;">Back to Lobby</button>
+            </div>
+        </div>
+
+        <div id="fast-track-modal" class="modal hidden">
+            <div class="modal-content">
+                <div style="font-size: 36px; margin-bottom: 6px;">⚡</div>
+                <h2 style="color: #ffd700; margin-bottom: 6px; font-weight: 900;">UNLOCK 1 TOKEN?</h2>
+                <p style="color: #cbd5e1; font-size: 13px; line-height: 1.5; margin-bottom: 18px;">
+                    Watch a short rewarded ad to start with 1 token already out of base for all players, or play normal!
+                </p>
+                <button class="ultra-roll-btn" onclick="unlockTokenViaAd()" style="width: 100%; margin-bottom: 10px; background: linear-gradient(180deg, #ec4899, #f43f5e); color: white;">📺 Watch Ad & Unlock Token</button>
+                <button class="ultra-roll-btn" onclick="startSessionNormally()" style="width: 100%; margin-bottom: 10px; background: linear-gradient(180deg, #22c55e, #16a34a); color: white;">▶ Play Normal</button>
+            </div>
+        </div>
+
+        <div id="victory-modal" class="modal hidden">
+            <div class="modal-content">
+                <div style="font-size: 40px; margin-bottom: 6px;">🏆</div>
+                <h2 style="color: #ffd700; font-weight: 900; margin-bottom: 10px;">MATCH FINISHED!</h2>
+                <div id="victory-podium" style="margin: 15px 0; font-size: 14px; line-height: 1.8;"></div>
+                <button class="ultra-roll-btn" onclick="window.location.reload()" style="width: 100%; margin-bottom: 10px;">Play Again</button>
+                <button class="menu-btn" onclick="window.location.href='index.html'" style="width: 100%; padding: 10px;">Back to Lobby</button>
+            </div>
+        </div>
     </div>
 
+    <script src="admob-config.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', async () => {
-            const bannerTestId = 'ca-app-pub-3940256099942544/9214589741';
+            const bannerTestId = (window.AdMobConfig && window.AdMobConfig.bannerAdId) || 'ca-app-pub-3940256099942544/9214589741';
+            const isTesting = (window.AdMobConfig && typeof window.AdMobConfig.isTesting === 'boolean') ? window.AdMobConfig.isTesting : true;
 
             if (window.Capacitor && Capacitor.Plugins.AdMob) {
                 const { AdMob } = Capacitor.Plugins;
                 try {
-                    await AdMob.initialize({ initializeForTesting: true });
-                    
+                    await AdMob.initialize({ initializeForTesting: isTesting });
                     await AdMob.showBanner({
                         adId: bannerTestId,
                         position: 'TOP_CENTER',
                         margin: 0
                     });
                 } catch(e) {
-                    console.error("Banner Ad failed to load", e);
+                    console.error("Banner Ad failed", e);
                 }
             } else {
                 document.getElementById('test-banner').style.display = 'flex';
             }
         });
 
-        let localMatchCount = 0;
-        window.showAd = function() {
-            localMatchCount++;
-            if (localMatchCount >= 3) {
-                localMatchCount = 0; 
-                playActualAd();
-            }
-        };
-
-        async function playActualAd() {
+        async function playInterstitialAd() {
+            const adId = (window.AdMobConfig && window.AdMobConfig.interstitialAdId) || 'ca-app-pub-3940256099942544/1033173712';
+            const isTesting = (window.AdMobConfig && typeof window.AdMobConfig.isTesting === 'boolean') ? window.AdMobConfig.isTesting : true;
             if (window.Capacitor && Capacitor.Plugins.AdMob) {
                 const { AdMob } = Capacitor.Plugins;
                 try {
                     await AdMob.prepareInterstitial({
-                        adId: 'ca-app-pub-3940256099942544/1033173712',
-                        isTesting: true
+                        adId: adId,
+                        isTesting: isTesting
                     });
                     await AdMob.showInterstitial();
                 } catch(e) {
-                    console.log("Interstitial Ad failed to load", e);
+                    console.log("Interstitial failed", e);
                 }
             }
         }
+
+        async function playRewardedAd(onSuccess) {
+            const adId = (window.AdMobConfig && window.AdMobConfig.rewardedAdId) || 'ca-app-pub-3940256099942544/5224354917';
+            const isTesting = (window.AdMobConfig && typeof window.AdMobConfig.isTesting === 'boolean') ? window.AdMobConfig.isTesting : true;
+            if (window.Capacitor && Capacitor.Plugins.AdMob) {
+                const { AdMob } = Capacitor.Plugins;
+                try {
+                    await AdMob.prepareRewardVideoAd({
+                        adId: adId,
+                        isTesting: isTesting
+                    });
+                    AdMob.addListener('onRewardedVideoAdReward', () => {
+                        if (typeof onSuccess === 'function') onSuccess();
+                    });
+                    await AdMob.showRewardVideoAd();
+                } catch(e) {
+                    if (typeof onSuccess === 'function') onSuccess();
+                }
+            } else {
+                if (typeof onSuccess === 'function') onSuccess();
+            }
+        }
     </script>
+    <script src="how-to-play.js"></script>
     <script src="local.js"></script>
 </body>
 </html>

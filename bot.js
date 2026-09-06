@@ -1,3 +1,7 @@
+// =============================================================================
+// ZINGARENA LUDO - SMART AI BOT ENGINE (OFFLINE VS COMPUTER)
+// =============================================================================
+
 let activePlayers = [];
 let currentPlayerIndex = 0;
 let gameState = 'WAITING_FOR_ROLL';
@@ -7,8 +11,8 @@ const allTokens = {};
 
 let winnersList = [];
 let totalPlayersInGame = 0;
-let pendingPlayerCount = 4;
-let selectedLocalMode = 'classic'; // 'classic', 'quick', 'team2v2', 'bot'
+let botGameMode = 'classic'; // 'classic' or 'quick'
+let botCount = 3; // 1, 2, or 3 bots
 let botColors = [];
 
 const soundDice = new Audio('sounds/board game dice_2.mp3');
@@ -17,10 +21,10 @@ const soundCut = new Audio('sounds/cartoon bonk.mp3');
 const soundWin = new Audio('sounds/success chime_2.mp3');
 
 const playersData = {
-    'red': { name: "Red", label: "Player 1", class: "red-text", startOffset: 0 },
-    'green': { name: "Green", label: "Player 2", class: "green-text", startOffset: 13 },
-    'yellow': { name: "Yellow", label: "Player 3", class: "yellow-text", startOffset: 26 },
-    'blue': { name: "Blue", label: "Player 4", class: "blue-text", startOffset: 39 }
+    'red': { name: "You", label: "Player 1", class: "red-text", startOffset: 0 },
+    'green': { name: "AI Bot 1", label: "Player 2", class: "green-text", startOffset: 13 },
+    'yellow': { name: "AI Bot 2", label: "Player 3", class: "yellow-text", startOffset: 26 },
+    'blue': { name: "AI Bot 3", label: "Player 4", class: "blue-text", startOffset: 39 }
 };
 
 const masterPath = [
@@ -43,86 +47,45 @@ const diceFaces = ['', '⚀', '⚁', '⚂', '⚃', '⚄', '⚅'];
 
 document.addEventListener("DOMContentLoaded", () => {
     createBoard();
-    const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get('mode') === 'bot') {
-        setLocalGameMode('bot');
-    }
 });
 
-function setLocalGameMode(mode) {
-    selectedLocalMode = mode;
-    ['classic', 'quick', 'team', 'bot'].forEach(m => {
-        const el = document.getElementById(`mode-opt-${m}`);
-        if (el) {
-            if ((mode === 'team2v2' && m === 'team') || m === mode) {
-                el.style.border = '2px solid #ffd700';
-            } else {
-                el.style.border = '1px solid rgba(255,255,255,0.15)';
-            }
-        }
-    });
-
+function setBotGameMode(mode) {
+    botGameMode = mode;
+    document.getElementById('mode-opt-classic').style.border = mode === 'classic' ? '2px solid #ffd700' : '1px solid rgba(255,255,255,0.15)';
+    document.getElementById('mode-opt-quick').style.border = mode === 'quick' ? '2px solid #ffd700' : '1px solid rgba(255,255,255,0.15)';
+    
     const titleEl = document.getElementById('game-mode-title');
     if (titleEl) {
-        if (mode === 'quick') titleEl.innerText = '⚡ QUICK LUDO';
-        else if (mode === 'team2v2') titleEl.innerText = '🤝 2 vs 2 TEAM UP';
-        else if (mode === 'bot') titleEl.innerText = '🤖 vs COMPUTER';
-        else titleEl.innerText = 'PASS & PLAY';
-    }
-
-    const btn3p = document.getElementById('btn-3p');
-    if (btn3p) {
-        btn3p.style.display = (mode === 'team2v2') ? 'none' : 'block';
+        titleEl.innerText = mode === 'quick' ? '⚡ QUICK LUDO (VS AI)' : 'VS COMPUTER (CLASSIC)';
     }
 }
 
-function choosePlayerCount(count) {
-    pendingPlayerCount = count;
+function selectBotOpponentCount(count) {
+    botCount = count;
+    [1, 2, 3].forEach(c => {
+        const el = document.getElementById(`bot-count-${c}`);
+        if (el) {
+            el.style.border = c === count ? '2px solid #ffd700' : '1px solid rgba(255,255,255,0.15)';
+        }
+    });
+}
+
+function startBotMatchConfirmed() {
     document.getElementById("startup-modal").classList.add("hidden");
-    document.getElementById("fast-track-modal").classList.remove("hidden");
-}
 
-function unlockTokenViaAd() {
-    document.getElementById("fast-track-modal").classList.add("hidden");
-    if (typeof playRewardedAd === 'function') {
-        playRewardedAd(() => {
-            startLocalGame(pendingPlayerCount, true);
-        });
+    if (botCount === 1) {
+        activePlayers = ['red', 'yellow'];
+        botColors = ['yellow'];
+    } else if (botCount === 2) {
+        activePlayers = ['red', 'green', 'yellow'];
+        botColors = ['green', 'yellow'];
     } else {
-        startLocalGame(pendingPlayerCount, true);
-    }
-}
-
-function startSessionNormally() {
-    document.getElementById("fast-track-modal").classList.add("hidden");
-    startLocalGame(pendingPlayerCount, false);
-}
-
-function startLocalGame(playerCount, unlockOneToken) {
-    if (playerCount === 2) activePlayers = ['red', 'yellow'];
-    else if (playerCount === 3) activePlayers = ['red', 'green', 'yellow'];
-    else activePlayers = ['red', 'green', 'yellow', 'blue'];
-
-    if (selectedLocalMode === 'bot') {
-        botColors = activePlayers.filter(c => c !== 'red');
-        playersData['red'].name = "You";
-        botColors.forEach((bc, idx) => {
-            playersData[bc].name = `AI Bot ${idx + 1}`;
-        });
-    } else {
-        botColors = [];
-        playersData['red'].name = "Red";
-        playersData['green'].name = "Green";
-        playersData['yellow'].name = "Yellow";
-        playersData['blue'].name = "Blue";
+        activePlayers = ['red', 'green', 'yellow', 'blue'];
+        botColors = ['green', 'yellow', 'blue'];
     }
 
-    initGameSession(unlockOneToken);
-}
-
-function initGameSession(unlockOneToken) {
-    winnersList = []; 
-    totalPlayersInGame = activePlayers.length; 
+    winnersList = [];
+    totalPlayersInGame = activePlayers.length;
 
     ['red', 'green', 'yellow', 'blue'].forEach(c => {
         let card = document.getElementById(`profile-${c}`);
@@ -140,14 +103,14 @@ function initGameSession(unlockOneToken) {
     currentPlayerIndex = 0;
     gameState = 'WAITING_FOR_ROLL';
     isMoving = false;
-    spawnTokens(unlockOneToken);
+    spawnTokens(false);
     updateTurnUI();
 }
 
 function handleCornerDiceClick(color) {
     if (gameState !== 'WAITING_FOR_ROLL' || isMoving) return;
     let currentColor = activePlayers[currentPlayerIndex];
-    if (color !== currentColor) return;
+    if (color !== currentColor || botColors.includes(color)) return;
     rollDice();
 }
 
@@ -157,7 +120,7 @@ function updateTurnUI() {
     let isBot = botColors.includes(currentColor);
     
     let turnTextEl = document.getElementById("turn-text");
-    turnTextEl.innerText = isBot ? `${pData.name} is thinking...` : `${pData.name}'s Turn - Roll Dice!`;
+    turnTextEl.innerText = isBot ? `${pData.name} is calculating move...` : `Your Turn! Tap dice to roll.`;
     turnTextEl.className = `turn-indicator ${pData.class}`;
 
     ['red', 'green', 'yellow', 'blue'].forEach(c => {
@@ -174,12 +137,13 @@ function updateTurnUI() {
         }
     });
 
+    // If it's a bot's turn, roll automatically with natural human delay!
     if (isBot && gameState === 'WAITING_FOR_ROLL') {
         setTimeout(() => {
             if (gameState === 'WAITING_FOR_ROLL' && botColors.includes(activePlayers[currentPlayerIndex])) {
                 rollDice();
             }
-        }, 650);
+        }, 700);
     }
 }
 
@@ -218,11 +182,11 @@ function checkAvailableMoves() {
     if (movableTokens.length === 0) {
         setTimeout(() => switchTurn(false), 800);
     } else if (botColors.includes(currentColor)) {
-        // Smart AI bot decision engine
+        // Smart AI Bot decision
         setTimeout(() => {
             let bestIndex = selectSmartBotMove(currentColor, movableTokens);
             moveToken(currentColor, bestIndex);
-        }, 500);
+        }, 550);
     } else if (movableTokens.length === 1) {
         setTimeout(() => moveToken(currentColor, movableTokens[0]), 300);
     } else {
@@ -233,7 +197,7 @@ function checkAvailableMoves() {
 function selectSmartBotMove(color, movableIndices) {
     if (movableIndices.length === 1) return movableIndices[0];
 
-    // Priority 1: Move that captures an opponent
+    // Priority 1: Move that captures/cuts an opponent token!
     for (let idx of movableIndices) {
         let t = allTokens[color][idx];
         let simStep = (t.step === -1) ? 0 : (t.step + currentDiceValue);
@@ -244,15 +208,11 @@ function selectSmartBotMove(color, movableIndices) {
             if (!isSafe) {
                 for (let enemyColor of activePlayers) {
                     if (enemyColor === color) continue;
-                    if (selectedLocalMode === 'team2v2') {
-                        const isTeammate = (color === 'red' && enemyColor === 'yellow') || (color === 'yellow' && enemyColor === 'red') || (color === 'green' && enemyColor === 'blue') || (color === 'blue' && enemyColor === 'green');
-                        if (isTeammate) continue;
-                    }
                     for (let eToken of allTokens[enemyColor]) {
                         if (eToken.step !== -1 && eToken.step <= 51) {
                             let eGlobal = (playersData[enemyColor].startOffset + eToken.step) % 52;
                             if (eGlobal === simGlobal) {
-                                return idx; // Highest priority: CUT!
+                                return idx; // Top priority: Capture!
                             }
                         }
                     }
@@ -342,14 +302,6 @@ function checkCapture(token) {
     let captured = false;
     activePlayers.forEach(enemyColor => {
         if (enemyColor !== token.color) {
-            // In 2v2 team mode, partners cannot cut each other!
-            if (selectedLocalMode === 'team2v2') {
-                const isTeammate = (token.color === 'red' && enemyColor === 'yellow') ||
-                                   (token.color === 'yellow' && enemyColor === 'red') ||
-                                   (token.color === 'green' && enemyColor === 'blue') ||
-                                   (token.color === 'blue' && enemyColor === 'green');
-                if (isTeammate) return;
-            }
             allTokens[enemyColor].forEach(eToken => {
                 if (eToken.step !== -1 && eToken.step <= 51) {
                     let enemyGlobal = (playersData[enemyColor].startOffset + eToken.step) % 52;
@@ -369,8 +321,7 @@ function checkCapture(token) {
 }
 
 function checkPlayerWon(color) {
-    if (selectedLocalMode === 'quick') {
-        // Quick Ludo: 2 tokens home is a win!
+    if (botGameMode === 'quick') {
         return allTokens[color].filter(t => t.step === 56).length >= 2;
     }
     return allTokens[color].every(t => t.step === 56);
@@ -415,136 +366,145 @@ function switchTurn(extraTurn) {
         currentPlayerIndex = (currentPlayerIndex + 1) % activePlayers.length;
     }
     gameState = 'WAITING_FOR_ROLL';
+    isMoving = false;
     updateTurnUI();
 }
 
+function createBoard() {
+    const board = document.getElementById("ludo-board");
+    board.innerHTML = "";
+
+    board.appendChild(createYard("red", 0, 0));
+    board.appendChild(createYard("green", 0, 9));
+    board.appendChild(createYard("blue", 9, 0));
+    board.appendChild(createYard("yellow", 9, 9));
+
+    const center = document.createElement("div");
+    center.className = "center-home";
+    board.appendChild(center);
+
+    for (let r = 0; r < 15; r++) {
+        for (let c = 0; c < 15; c++) {
+            if ((r < 6 && c < 6) || (r < 6 && c > 8) || (r > 8 && c < 6) || (r > 8 && c > 8) || (r >= 6 && r <= 8 && c >= 6 && c <= 8)) {
+                continue;
+            }
+            const cell = document.createElement("div");
+            cell.className = "cell";
+            cell.dataset.r = r;
+            cell.dataset.c = c;
+            cell.style.gridRowStart = r + 1;
+            cell.style.gridColumnStart = c + 1;
+
+            if (r === 7 && c >= 1 && c <= 5) cell.classList.add("home-red");
+            if (c === 7 && r >= 1 && r <= 5) cell.classList.add("home-green");
+            if (r === 7 && c >= 9 && c <= 13) cell.classList.add("home-yellow");
+            if (c === 7 && r >= 9 && r <= 13) cell.classList.add("home-blue");
+
+            if (r === 6 && c === 1) cell.classList.add("start-red");
+            if (r === 1 && c === 8) cell.classList.add("start-green");
+            if (r === 8 && c === 13) cell.classList.add("start-yellow");
+            if (r === 13 && c === 6) cell.classList.add("start-blue");
+
+            if ((r === 8 && c === 2) || (r === 2 && c === 6) || (r === 6 && c === 12) || (r === 12 && c === 8)) {
+                cell.classList.add("safe-cell");
+            }
+
+            board.appendChild(cell);
+        }
+    }
+}
+
+function createYard(color, r, c) {
+    const yard = document.createElement("div");
+    yard.className = `yard ${color}`;
+    yard.style.gridRow = `${r + 1} / span 6`;
+    yard.style.gridColumn = `${c + 1} / span 6`;
+
+    const inner = document.createElement("div");
+    inner.className = "yard-inner";
+
+    for (let i = 0; i < 4; i++) {
+        const spot = document.createElement("div");
+        spot.className = "yard-spot";
+        spot.id = `yard-spot-${color}-${i}`;
+        inner.appendChild(spot);
+    }
+
+    yard.appendChild(inner);
+    return yard;
+}
+
 function spawnTokens(unlockOneToken) {
+    const board = document.getElementById("ludo-board");
+    document.querySelectorAll(".token").forEach(e => e.remove());
+
     ['red', 'green', 'yellow', 'blue'].forEach(color => {
         allTokens[color] = [];
+        if (!activePlayers.includes(color)) return;
+
         for (let i = 0; i < 4; i++) {
-            let tokenEl = document.createElement("div");
-            tokenEl.classList.add("token", `token-${color}`);
-            tokenEl.addEventListener("click", () => moveToken(color, i));
+            const tokenEl = document.createElement("div");
+            tokenEl.className = `token ${color}-token`;
+            tokenEl.id = `token-${color}-${i}`;
+            tokenEl.innerText = i + 1;
+            tokenEl.onclick = () => {
+                if (color === 'red') {
+                    moveToken(color, i);
+                }
+            };
 
-            let initialStep = -1;
-            if (unlockOneToken && i === 0 && activePlayers.includes(color)) {
-                initialStep = 0;
-            }
+            board.appendChild(tokenEl);
 
-            let tokenObj = { color, index: i, step: initialStep, element: tokenEl };
+            const tokenObj = {
+                color: color,
+                index: i,
+                step: (unlockOneToken && i === 0) ? 0 : -1,
+                element: tokenEl
+            };
             allTokens[color].push(tokenObj);
-            const board = document.getElementById("ludo-board");
-            if (board) {
-                board.appendChild(tokenEl);
-            } else {
-                document.body.appendChild(tokenEl);
-            }
             renderTokenPosition(tokenObj);
         }
     });
 }
 
 function renderTokenPosition(token) {
-    const board = document.getElementById("ludo-board");
-    if (!board || !token || !token.element) return;
-    const boardRect = board.getBoundingClientRect();
-
-    let targetEl = null;
+    const el = token.element;
     if (token.step === -1) {
-        targetEl = document.getElementById(`slot-${token.color}-${token.index}`);
-    } else if (token.step <= 51) {
+        const spot = document.getElementById(`yard-spot-${token.color}-${token.index}`);
+        if (spot) {
+            const rect = spot.getBoundingClientRect();
+            const boardRect = document.getElementById("ludo-board").getBoundingClientRect();
+            el.style.top = `${rect.top - boardRect.top + 2}px`;
+            el.style.left = `${rect.left - boardRect.left + 2}px`;
+        }
+    } else if (token.step === 56) {
+        const boardRect = document.getElementById("ludo-board").getBoundingClientRect();
+        const centerOffset = 0.44 * boardRect.width;
+        el.style.top = `${centerOffset}px`;
+        el.style.left = `${centerOffset}px`;
+    } else if (token.step <= 50) {
         let globalIndex = (playersData[token.color].startOffset + token.step) % 52;
         let coords = masterPath[globalIndex];
-        targetEl = document.getElementById(`cell-${coords.r}-${coords.c}`);
+        positionTokenOnGrid(el, coords.r, coords.c);
     } else {
-        let homeIndex = token.step - 52;
-        if (homeIndex < 5) {
-            if (token.color === 'red') targetEl = document.getElementById(`cell-7-${homeIndex + 1}`);
-            if (token.color === 'green') targetEl = document.getElementById(`cell-${homeIndex + 1}-7`);
-            if (token.color === 'yellow') targetEl = document.getElementById(`cell-7-${13 - homeIndex}`);
-            if (token.color === 'blue') targetEl = document.getElementById(`cell-${13 - homeIndex}-7`);
-        } else {
-            targetEl = document.getElementById(`cell-7-7`);
-        }
-    }
-
-    if (targetEl) {
-        const rect = targetEl.getBoundingClientRect();
-        // Exact coordinate calculation relative to ludo-board container
-        const left = (rect.left - boardRect.left) + (rect.width / 2) - 10;
-        const top = (rect.top - boardRect.top) + (rect.height / 2) - 10;
-        token.element.style.left = `${left}px`;
-        token.element.style.top = `${top}px`;
+        let homeIndex = token.step - 51;
+        let coords = getHomePathCoords(token.color, homeIndex);
+        positionTokenOnGrid(el, coords.r, coords.c);
     }
 }
 
-function renderAllTokens() {
-    ['red', 'green', 'yellow', 'blue'].forEach(col => {
-        if (allTokens[col]) {
-            allTokens[col].forEach(t => renderTokenPosition(t));
-        }
-    });
-}
-
-window.addEventListener('resize', () => {
-    renderAllTokens();
-});
-
-function createBoard() {
+function positionTokenOnGrid(el, r, c) {
     const board = document.getElementById("ludo-board");
-    board.innerHTML = "";
+    const cellWidth = board.clientWidth / 15;
+    const cellHeight = board.clientHeight / 15;
 
-    const bases = [
-        { class: 'red-base', color: 'red' },
-        { class: 'green-base', color: 'green' },
-        { class: 'blue-base', color: 'blue' },
-        { class: 'yellow-base', color: 'yellow' }
-    ];
+    el.style.top = `${r * cellHeight + 3}px`;
+    el.style.left = `${c * cellWidth + 3}px`;
+}
 
-    bases.forEach(b => {
-        let baseEl = document.createElement("div");
-        baseEl.classList.add("base", b.class);
-        let inner = document.createElement("div");
-        inner.classList.add("inner-base");
-        for (let i = 0; i < 4; i++) {
-            let slot = document.createElement("div");
-            slot.classList.add("token-slot");
-            slot.id = `slot-${b.color}-${i}`;
-            inner.appendChild(slot);
-        }
-        baseEl.appendChild(inner);
-        board.appendChild(baseEl);
-    });
-
-    for (let r = 0; r < 15; r++) {
-        for (let c = 0; c < 15; c++) {
-            if ((r < 6 && c < 6) || (r < 6 && c > 8) || (r > 8 && c < 6) || (r > 8 && c > 8)) continue;
-
-            let cell = document.createElement("div");
-            cell.classList.add("ludo-cell");
-            cell.id = `cell-${r}-${c}`;
-            cell.style.gridArea = `${r + 1} / ${c + 1} / ${r + 2} / ${c + 2}`;
-
-            if (r === 7 && c > 0 && c < 6) cell.style.backgroundColor = "var(--red-main)";
-            if (c === 7 && r > 0 && r < 6) cell.style.backgroundColor = "var(--green-main)";
-            if (r === 7 && c > 8 && c < 14) cell.style.backgroundColor = "var(--yellow-main)";
-            if (c === 7 && r > 8 && r < 14) cell.style.backgroundColor = "var(--blue-main)";
-
-            if (r === 6 && c === 1) cell.style.backgroundColor = "var(--red-main)";
-            if (r === 1 && c === 8) cell.style.backgroundColor = "var(--green-main)";
-            if (r === 8 && c === 13) cell.style.backgroundColor = "var(--yellow-main)";
-            if (r === 13 && c === 6) cell.style.backgroundColor = "var(--blue-main)";
-
-            safeZones.forEach(z => {
-                if (z.r === r && z.c === c) {
-                    let star = document.createElement("span");
-                    star.classList.add("safe-zone-icon");
-                    star.innerText = "⭐";
-                    cell.appendChild(star);
-                }
-            });
-
-            board.appendChild(cell);
-        }
-    }
+function getHomePathCoords(color, index) {
+    if (color === 'red') return { r: 7, c: 1 + index };
+    if (color === 'green') return { r: 1 + index, c: 7 };
+    if (color === 'yellow') return { r: 7, c: 13 - index };
+    if (color === 'blue') return { r: 13 - index, c: 7 };
 }

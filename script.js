@@ -5,13 +5,13 @@ let currentDiceValue = 0;
 let isMoving = false;
 const allTokens = {};
 
-let turnTimer = null;
 let countdownInterval = null;
 let timeLeft = 25;
-const missedTurns = {};
 
 let myAssignedColor = ""; 
-let currentOnlineRoomId = "";
+window.currentOnlineRoomId = "";
+let onlineMatchCount = 0;
+let currentOnlineGameMode = 'classic'; // 'classic', 'quick', 'team2v2'
 
 const soundDice = new Audio('sounds/board game dice_2.mp3');
 const soundMove = new Audio('sounds/ui pop_2.mp3');
@@ -19,10 +19,10 @@ const soundCut = new Audio('sounds/cartoon bonk.mp3');
 const soundWin = new Audio('sounds/success chime_2.mp3');
 
 const playersData = {
-    'red': { name: "RED'S TURN", class: "red-text", startOffset: 0 },
-    'green': { name: "GREEN'S TURN", class: "green-text", startOffset: 13 },
-    'yellow': { name: "YELLOW'S TURN", class: "yellow-text", startOffset: 26 },
-    'blue': { name: "BLUE'S TURN", class: "blue-text", startOffset: 39 }
+    'red': { name: "Red", label: "Player 1", class: "red-text", startOffset: 0 },
+    'green': { name: "Green", label: "Player 2", class: "green-text", startOffset: 13 },
+    'yellow': { name: "Yellow", label: "Player 3", class: "yellow-text", startOffset: 26 },
+    'blue': { name: "Blue", label: "Player 4", class: "blue-text", startOffset: 39 }
 };
 
 const masterPath = [
@@ -45,30 +45,51 @@ const diceFaces = ['', '⚀', '⚁', '⚂', '⚃', '⚄', '⚅'];
 
 let socket = null;
 
-let lastAdTime = 0;
-function triggerInterstitialAd(reason) {
-    console.log("Interstitial ad triggered for:", reason);
-    let now = Date.now();
-    if (now - lastAdTime < 15000) {
-        console.log("Ad skipped due to rapid click protection.");
-        return;
-    }
-    lastAdTime = now;
-    if (typeof window.showAd === 'function') {
-        window.showAd();
-    }
-}
-
 document.addEventListener("DOMContentLoaded", () => {
     createBoard();
-    document.getElementById("dice-container").addEventListener("click", rollDice);
 
     const socketUrl = (window.location.protocol.startsWith('http') && !window.location.href.includes('capacitor'))
         ? window.location.origin
         : 'https://competionludo.onrender.com';
     socket = io(socketUrl);
+    window.socket = socket;
     setupSocketListeners();
 });
+
+function setOnlineGameMode(mode) {
+    currentOnlineGameMode = mode;
+    ['classic', 'quick', 'team'].forEach(m => {
+        const el = document.getElementById(`online-mode-${m}`);
+        if (el) {
+            if ((mode === 'team2v2' && m === 'team') || m === mode) {
+                el.style.border = '2px solid #ffd700';
+            } else {
+                el.style.border = '1px solid rgba(255,255,255,0.15)';
+            }
+        }
+    });
+
+    const titleEl = document.getElementById('online-title-text');
+    if (titleEl) {
+        if (mode === 'quick') titleEl.innerText = '⚡ QUICK LUDO';
+        else if (mode === 'team2v2') titleEl.innerText = '🤝 2 vs 2 TEAM';
+        else titleEl.innerText = 'ONLINE LUDO';
+    }
+
+    const q3p = document.getElementById('btn-quick-3p');
+    const c3p = document.getElementById('btn-create-3p');
+    if (q3p) q3p.style.display = (mode === 'team2v2') ? 'none' : 'block';
+    if (c3p) c3p.style.display = (mode === 'team2v2') ? 'none' : 'block';
+}
+
+function showToast(msg) {
+    let t = document.getElementById("toast-msg");
+    if (t) {
+        t.innerText = msg;
+        t.style.display = "block";
+        setTimeout(() => { t.style.display = "none"; }, 3000);
+    }
+}
 
 function showQuickMatch() {
     document.getElementById('online-main-options').classList.add('hidden');
@@ -95,12 +116,12 @@ function backToOnlineMain() {
 }
 
 function findOnlineMatch(playersCount) {
-    document.getElementById('quick-match-display').innerText = `Searching for ${playersCount} players... Please wait.`;
-    socket.emit('find-match', { playersRequired: playersCount });
+    document.getElementById('quick-match-display').innerText = `Searching for ${playersCount} players...`;
+    socket.emit('find-match', { playersRequired: playersCount, gameMode: currentOnlineGameMode });
 }
 
 function createPrivateRoom(playersCount) {
-    socket.emit('create-room', { maxPlayers: playersCount });
+    socket.emit('create-room', { maxPlayers: playersCount, gameMode: currentOnlineGameMode });
 }
 
 function joinPrivateRoom() {
@@ -108,51 +129,92 @@ function joinPrivateRoom() {
     if (roomId) {
         socket.emit('join-room', { roomId: roomId });
     } else {
-        alert("Please enter a valid Room ID!");
+        showToast("Please enter a valid Room ID!");
     }
 }
 
 function setupSocketListeners() {
     socket.on('room-created', (data) => {
         myAssignedColor = data.color;
-        currentOnlineRoomId = data.roomId;
-        document.getElementById('room-created-display').innerHTML = `Room Code: <span style="color:#ffcc00; font-size:16px;">${data.roomId}</span><br>Share this code with friends! Waiting for players to join...`;
+        window.currentOnlineRoomId = data.roomId;
+        document.getElementById('room-created-display').innerHTML = `Room Code: <span style="color:#ffd700; font-size:16px;">${data.roomId}</span><br>Waiting for players to join...`;
     });
 
     socket.on('match-found', (data) => {
         myAssignedColor = data.color;
-        currentOnlineRoomId = data.roomId;
+        window.currentOnlineRoomId = data.roomId;
     });
 
     socket.on('joined-success', (data) => {
         myAssignedColor = data.color;
-        currentOnlineRoomId = data.roomId;
+        window.currentOnlineRoomId = data.roomId;
         document.getElementById('online-modal').classList.add('hidden');
-        alert(`Joined room ${data.roomId} successfully! Waiting for host to start...`);
+        showMyIdentity(myAssignedColor);
+        document.getElementById("turn-text").innerText = `Joined Room: ${data.roomId}. Waiting for match start...`;
+    });
+
+    socket.on('room-error', (data) => {
+        document.getElementById('room-error-text').innerText = data.message || "Invalid Room ID or Room is already full!";
+        document.getElementById('room-error-modal').classList.remove('hidden');
     });
 
     socket.on('start-online-game', (data) => {
         document.getElementById('online-modal').classList.add('hidden');
-        triggerInterstitialAd("Online Game Started");
+        onlineMatchCount++;
+        
+        if (onlineMatchCount % 2 !== 0 && typeof playInterstitialAd === 'function') {
+            playInterstitialAd();
+        }
 
         activePlayers = data.players.map(p => p.color);
+        if (!myAssignedColor) {
+            let me = data.players.find(p => p.id === socket.id);
+            if (me) myAssignedColor = me.color;
+        }
+
+        window.myColor = myAssignedColor;
+        window.activePlayers = activePlayers;
+
+        // Reveal in-game HUD action bar (Mic & Chat)
+        const hudBar = document.getElementById('online-hud-bar');
+        if (hudBar) hudBar.style.display = 'flex';
+
+        // Initialize WebRTC Voice & In-game Chat
+        if (window.ZingFeatures) {
+            ZingFeatures.initVoiceChat(socket, window.currentOnlineRoomId, myAssignedColor);
+            ZingFeatures.initInGameChat(socket, window.currentOnlineRoomId);
+        }
+
+        if (data.gameMode === 'quick') {
+            showToast("⚡ QUICK LUDO: First to reach 2 tokens home wins!");
+        } else if (data.gameMode === 'team2v2') {
+            showToast("🤝 2 vs 2 TEAM UP: Partners (Red+Yellow / Green+Blue) cannot cut each other!");
+        }
+
         showMyIdentity(myAssignedColor);
         initGameSessionOnline();
     });
 
     socket.on('remote-dice-rolled', (data) => {
         currentDiceValue = data.diceValue;
+        let color = data.color || activePlayers[currentPlayerIndex];
+
+        let diceEl = document.getElementById(`dice-${color}`);
+        if (diceEl) {
+            diceEl.classList.remove("rolling");
+            diceEl.innerText = diceFaces[currentDiceValue];
+            diceEl.style.color = currentDiceValue === 6 ? "#ff3333" : "#111";
+        }
+
         soundDice.currentTime = 0;
         soundDice.play().catch(e => {});
 
-        const diceContainer = document.getElementById("dice-container");
-        diceContainer.classList.remove("rolling");
-        diceContainer.innerText = diceFaces[currentDiceValue];
-        diceContainer.style.color = currentDiceValue === 6 ? "#ff2a2a" : "#111";
-
         gameState = 'WAITING_FOR_MOVE';
         startTurnTimer();
-        checkAvailableMovesOnline();
+
+        if (color === myAssignedColor) {
+            checkAvailableMovesOnline();
+        }
     });
 
     socket.on('remote-token-moved', (data) => {
@@ -161,48 +223,127 @@ function setupSocketListeners() {
 
     socket.on('turn-updated', (data) => {
         currentPlayerIndex = activePlayers.indexOf(data.currentColor);
-        updateTurnText();
         gameState = 'WAITING_FOR_ROLL';
+        isMoving = false;
         startTurnTimer();
+        updateTurnUIOnline();
     });
 
     socket.on('player-eliminated', (data) => {
-        alert(`🚨 ${data.color.toUpperCase()} has been eliminated from the match!`);
         activePlayers = activePlayers.filter(c => c !== data.color);
-        let profileEl = document.getElementById(`profile-${data.color}`);
-        if (profileEl) profileEl.style.opacity = "0.1";
-        if (allTokens[data.color]) {
-            allTokens[data.color].forEach(t => {
-                if (t.element && t.element.parentNode) t.element.parentNode.removeChild(t.element);
-            });
+        let card = document.getElementById(`profile-${data.color}`);
+        if (card) {
+            card.style.opacity = "0.2";
+            card.classList.remove("active-turn");
         }
+        let dice = document.getElementById(`dice-${data.color}`);
+        if (dice) dice.classList.remove("visible", "active-dice");
     });
 
     socket.on('game-over-broadcast', (data) => {
+        clearTurnTimer();
         soundWin.play().catch(e => {});
-        alert(`🏆 GAME OVER! 🏆\nWinner: ${data.winnerColor ? data.winnerColor.toUpperCase() : 'Player'}`);
-        triggerInterstitialAd("Online Game Finished");
-        setTimeout(() => window.location.reload(), 2000);
+        if (typeof playInterstitialAd === 'function') {
+            playInterstitialAd();
+        }
+
+        const hudBar = document.getElementById('online-hud-bar');
+        if (hudBar) hudBar.style.display = 'none';
+
+        let podiumDiv = document.getElementById("victory-podium");
+        let winnerColor = data.winnerColor || activePlayers[0] || "red";
+        podiumDiv.innerHTML = `<div style="padding: 10px; font-weight: 900; color: #ffd700; font-size: 16px;">🏆 Winner: ${playersData[winnerColor].name}!</div>`;
+
+        // Record Match History (Max 5 items)
+        if (window.ZingFeatures) {
+            const modeName = currentOnlineGameMode === 'quick' ? 'Quick Ludo (Online)' : (currentOnlineGameMode === 'team2v2' ? '2 vs 2 Team (Online)' : 'Online Multiplayer');
+            ZingFeatures.recordLocalMatch({
+                mode: modeName,
+                result: winnerColor === myAssignedColor ? 'WIN' : 'LOSS',
+                score: winnerColor === myAssignedColor ? '+Victory' : '-Defeat',
+                players: activePlayers.length
+            });
+        }
+
+        document.getElementById("victory-modal").classList.remove("hidden");
     });
 }
 
 function showMyIdentity(color) {
-    const badge = document.getElementById('my-identity-badge');
-    badge.classList.remove('hidden');
-    let playerNum = (color === 'red') ? "Player 1" : (color === 'green') ? "Player 2" : (color === 'yellow') ? "Player 3" : "Player 4";
-    badge.innerText = `👉 YOU ARE: ${playerNum} (${color.toUpperCase()}) 👈`;
+    const badge = document.getElementById("my-identity-badge");
+    if (badge && color) {
+        badge.classList.remove("hidden");
+        badge.innerHTML = `👉 YOU ARE: <span style="text-decoration: underline;">${playersData[color].name.toUpperCase()}</span>`;
+    }
 }
 
 function initGameSessionOnline() {
-    activePlayers.forEach(c => document.getElementById(`profile-${c}`).style.opacity = "1");
-    activePlayers.forEach(c => missedTurns[c] = 0);
+    ['red', 'green', 'yellow', 'blue'].forEach(c => {
+        let card = document.getElementById(`profile-${c}`);
+        let dice = document.getElementById(`dice-${c}`);
+        if (activePlayers.includes(c)) {
+            card.style.opacity = "0.5";
+            dice.classList.add("visible");
+            dice.innerText = "🎲";
+        } else {
+            card.style.opacity = "0.15";
+            dice.classList.remove("visible");
+        }
+    });
 
     currentPlayerIndex = 0;
     gameState = 'WAITING_FOR_ROLL';
     isMoving = false;
-    updateTurnText();
-    spawnTokens();
+    spawnTokensOnline();
     startTurnTimer();
+    updateTurnUIOnline();
+}
+
+function handleCornerDiceClick(color) {
+    if (gameState !== 'WAITING_FOR_ROLL' || isMoving) return;
+    let currentColor = activePlayers[currentPlayerIndex];
+    if (color !== myAssignedColor || currentColor !== myAssignedColor) return;
+
+    rollDiceOnline();
+}
+
+function rollDiceOnline() {
+    gameState = 'ROLLING';
+    let diceEl = document.getElementById(`dice-${myAssignedColor}`);
+    if (diceEl) diceEl.classList.add("rolling");
+
+    socket.emit('request-dice-roll', { roomId: window.currentOnlineRoomId });
+}
+
+function updateTurnUIOnline() {
+    let currentColor = activePlayers[currentPlayerIndex];
+    let pData = playersData[currentColor];
+    
+    let turnTextEl = document.getElementById("turn-text");
+    if (currentColor === myAssignedColor) {
+        turnTextEl.innerText = `YOUR TURN! Roll your dice!`;
+    } else {
+        turnTextEl.innerText = `${pData.name}'s Turn...`;
+    }
+    turnTextEl.className = `turn-indicator ${pData.class}`;
+
+    ['red', 'green', 'yellow', 'blue'].forEach(c => {
+        let card = document.getElementById(`profile-${c}`);
+        let dice = document.getElementById(`dice-${c}`);
+        if (c === currentColor) {
+            card.classList.add("active-turn");
+            card.style.opacity = "1";
+            if (c === myAssignedColor && gameState === 'WAITING_FOR_ROLL') {
+                dice.classList.add("active-dice");
+            } else {
+                dice.classList.remove("active-dice");
+            }
+        } else {
+            card.classList.remove("active-turn");
+            if (activePlayers.includes(c)) card.style.opacity = "0.5";
+            dice.classList.remove("active-dice");
+        }
+    });
 }
 
 function startTurnTimer() {
@@ -214,345 +355,214 @@ function startTurnTimer() {
         updateTimerUI();
         if (timeLeft <= 0) clearInterval(countdownInterval);
     }, 1000);
-
-    let currentColor = activePlayers[currentPlayerIndex];
-    turnTimer = setTimeout(() => {
-        handleTurnTimeout(currentColor);
-    }, 25000);
 }
 
 function clearTurnTimer() {
-    if (turnTimer) { clearTimeout(turnTimer); turnTimer = null; }
-    if (countdownInterval) { clearInterval(countdownInterval); countdownInterval = null; }
+    if (countdownInterval) {
+        clearInterval(countdownInterval);
+        countdownInterval = null;
+    }
 }
 
 function updateTimerUI() {
-    let timerEl = document.getElementById("timer-text");
-    if (timerEl) timerEl.innerText = `⏳ Time left: ${timeLeft}s`;
-}
-
-function handleTurnTimeout(color) {
-    if (socket && currentOnlineRoomId) return; 
-
-    if (!missedTurns[color]) missedTurns[color] = 0;
-    missedTurns[color]++;
-
-    if (missedTurns[color] >= 3) {
-        clearTurnTimer();
-        alert(`🚨 ${color.toUpperCase()} missed 3 turns and has been eliminated from the game!`);
-        
-        if (allTokens[color]) {
-            allTokens[color].forEach(t => {
-                if (t.element && t.element.parentNode) t.element.parentNode.removeChild(t.element);
-            });
-        }
-        let profileEl = document.getElementById(`profile-${color}`);
-        if (profileEl) profileEl.style.opacity = "0.1";
-
-        activePlayers = activePlayers.filter(c => c !== color);
-        if (activePlayers.length === 1) {
-            endMatchAndGoToMenu();
-            return;
-        }
-        if (currentPlayerIndex >= activePlayers.length) currentPlayerIndex = 0;
-        updateTurnText();
-        gameState = 'WAITING_FOR_ROLL';
-        startTurnTimer();
-        return;
-    }
-
-    alert(`⚠️ ${color.toUpperCase()} skipped their turn due to inactivity (${missedTurns[color]}/3).`);
-    switchTurnLocal(false);
-}
-
-function endMatchAndGoToMenu() {
-    clearTurnTimer();
-    soundWin.play().catch(e => {});
-    triggerInterstitialAd("Match Finished");
-    setTimeout(() => {
-        alert("🏆 MATCH FINISHED! 🏆");
-        window.location.reload(); 
-    }, 1500);
-}
-
-function createBoard() {
-    const board = document.getElementById("ludo-board");
-    board.innerHTML = ""; 
-    createBase(board, 'red-base', 'red');
-    createBase(board, 'green-base', 'green');
-    createBase(board, 'blue-base', 'blue');
-    createBase(board, 'yellow-base', 'yellow');
-
-    for (let r = 0; r < 15; r++) {
-        for (let c = 0; c < 15; c++) {
-            if ((r < 6 && c < 6) || (r < 6 && c > 8) || (r > 8 && c < 6) || (r > 8 && c > 8)) continue; 
-            const cell = document.createElement("div");
-            cell.classList.add("ludo-cell");
-            cell.id = `cell-${r}-${c}`; 
-            cell.style.gridArea = `${r + 1} / ${c + 1} / span 1 / span 1`;
-
-            if (r === 7 && c > 0 && c < 6) cell.style.backgroundColor = "#ff4d4d"; 
-            if (c === 7 && r > 0 && r < 6) cell.style.backgroundColor = "#4dff4d"; 
-            if (r === 7 && c > 8 && c < 14) cell.style.backgroundColor = "#ffff4d"; 
-            if (c === 7 && r > 8 && r < 14) cell.style.backgroundColor = "#4d4dff"; 
-
-            let isSafe = safeZones.some(zone => zone.r === r && zone.c === c);
-            if (isSafe) {
-                cell.style.backgroundColor = "#e0e0e0"; 
-                let star = document.createElement("span");
-                star.className = "safe-zone-icon";
-                star.innerHTML = "⭐"; 
-                cell.appendChild(star);
-            }
-            if (r >= 6 && r <= 8 && c >= 6 && c <= 8) cell.style.background = "#222";
-            board.appendChild(cell);
-        }
-    }
-}
-
-function createBase(board, colorClass, colorId) {
-    const base = document.createElement("div");
-    base.classList.add("base", colorClass);
-    base.id = colorId + "-base";
-    const innerBox = document.createElement("div");
-    innerBox.classList.add("inner-base");
-    for(let i = 0; i < 4; i++) {
-        const slot = document.createElement("div");
-        slot.classList.add("token-slot");
-        slot.id = `${colorId}-slot-${i}`;
-        innerBox.appendChild(slot);
-    }
-    base.appendChild(innerBox);
-    board.appendChild(base);
-}
-
-function spawnTokens() {
-    activePlayers.forEach(color => {
-        allTokens[color] = [];
-        for (let i = 0; i < 4; i++) {
-            let token = document.createElement("div");
-            token.className = `token token-${color}`;
-            token.id = `token-${color}-${i}`;
-            token.addEventListener('click', () => handleTokenClick(color, i));
-            document.getElementById(`${color}-slot-${i}`).appendChild(token);
-            allTokens[color].push({ element: token, state: 'home', pathPosition: -1 });
-        }
-    });
-}
-
-function rollDice() {
-    if (socket && currentOnlineRoomId) {
-        if (myAssignedColor !== activePlayers[currentPlayerIndex]) {
-            alert("Wait! It's not your turn.");
-            return;
-        }
-    }
-
-    if (activePlayers.length === 0 || gameState !== 'WAITING_FOR_ROLL' || isMoving) return;
-    clearTurnTimer(); 
-    gameState = 'ROLLING';
-    const diceContainer = document.getElementById("dice-container");
-    diceContainer.classList.add("rolling");
-
-    if (socket && currentOnlineRoomId) {
-        socket.emit('request-dice-roll', { roomId: currentOnlineRoomId });
-    } else {
-        setTimeout(() => {
-            soundDice.currentTime = 0;
-            soundDice.play().catch(e => {});
-            
-            diceContainer.classList.remove("rolling");
-            currentDiceValue = Math.floor(Math.random() * 6) + 1; 
-            diceContainer.innerText = diceFaces[currentDiceValue];
-            diceContainer.style.color = currentDiceValue === 6 ? "#ff2a2a" : "#111";
-            gameState = 'WAITING_FOR_MOVE';
-            startTurnTimer(); 
-            checkAvailableMovesLocal();
-        }, 500); 
+    const timerText = document.getElementById("timer-text");
+    if (timerText) {
+        timerText.innerText = `⏳ Time Left: ${timeLeft}s`;
+        timerText.style.color = timeLeft <= 5 ? "#ff3333" : "#ffeb3b";
     }
 }
 
 function checkAvailableMovesOnline() {
-    let currentPlayerColor = activePlayers[currentPlayerIndex];
+    let tokens = allTokens[myAssignedColor];
     let movableTokens = [];
-    allTokens[currentPlayerColor].forEach((tokenObj, index) => {
-        if (tokenObj.state === 'home' && currentDiceValue === 6) movableTokens.push(index); 
-        else if (tokenObj.state === 'active' && tokenObj.pathPosition + currentDiceValue <= 56) movableTokens.push(index); 
+
+    tokens.forEach((token, index) => {
+        if (token.step === -1 && currentDiceValue === 6) movableTokens.push(index);
+        else if (token.step !== -1 && token.step + currentDiceValue <= 56) movableTokens.push(index);
     });
 
-    if (movableTokens.length > 0) {
-        movableTokens.forEach(idx => allTokens[currentPlayerColor][idx].element.classList.add('highlight-move'));
-        if (movableTokens.length === 1 && currentPlayerColor === myAssignedColor) {
-            setTimeout(() => handleTokenClick(currentPlayerColor, movableTokens[0]), 300);
-        }
+    if (movableTokens.length === 1) {
+        setTimeout(() => moveTokenOnline(myAssignedColor, movableTokens[0]), 300);
+    } else if (movableTokens.length > 1) {
+        movableTokens.forEach(idx => tokens[idx].element.classList.add("highlight-move"));
     }
 }
 
-function checkAvailableMovesLocal() {
-    let currentPlayerColor = activePlayers[currentPlayerIndex];
-    let movableTokens = [];
-    allTokens[currentPlayerColor].forEach((tokenObj, index) => {
-        if (tokenObj.state === 'home' && currentDiceValue === 6) movableTokens.push(index); 
-        else if (tokenObj.state === 'active') movableTokens.push(index); 
+function moveTokenOnline(color, tokenIndex) {
+    if (gameState !== 'WAITING_FOR_MOVE' || isMoving) return;
+    if (color !== myAssignedColor) return;
+
+    allTokens[color].forEach(t => t.element.classList.remove("highlight-move"));
+    isMoving = true;
+
+    socket.emit('request-token-move', {
+        roomId: window.currentOnlineRoomId,
+        color: color,
+        tokenIndex: tokenIndex
     });
-
-    if (movableTokens.length === 0) {
-        setTimeout(() => switchTurnLocal(false), 500);
-    } else {
-        movableTokens.forEach(idx => allTokens[currentPlayerColor][idx].element.classList.add('highlight-move'));
-        if (movableTokens.length === 1) {
-            setTimeout(() => handleTokenClick(currentPlayerColor, movableTokens[0]), 300);
-        }
-    }
-}
-
-function handleTokenClick(color, tokenIndex) {
-    if (socket && currentOnlineRoomId && color !== myAssignedColor) return;
-    if (gameState !== 'WAITING_FOR_MOVE' || color !== activePlayers[currentPlayerIndex] || isMoving) return;
-
-    let tokenObj = allTokens[color][tokenIndex];
-    if (!tokenObj.element.classList.contains('highlight-move')) return; 
-
-    allTokens[color].forEach(t => t.element.classList.remove('highlight-move'));
-
-    if (socket && currentOnlineRoomId) {
-        socket.emit('request-token-move', {
-            roomId: currentOnlineRoomId,
-            color: color,
-            tokenIndex: tokenIndex
-        });
-    } else {
-        clearTurnTimer(); 
-        if (tokenObj.state === 'home' && currentDiceValue === 6) {
-            tokenObj.state = 'active';
-            tokenObj.pathPosition = 0; 
-            updateTokenUI(color, tokenIndex);
-            switchTurnLocal(true); 
-        } else {
-            moveTokenStepByStepLocal(color, tokenIndex, currentDiceValue);
-        }
-    }
 }
 
 function moveTokenStepByStepRemote(color, tokenIndex, diceVal, cutDetails) {
-    let tokenObj = allTokens[color][tokenIndex];
-    allTokens[color].forEach(t => t.element.classList.remove('highlight-move'));
+    let token = allTokens[color][tokenIndex];
+    let startStep = token.step;
 
-    if (tokenObj.state === 'home' && diceVal === 6) {
-        tokenObj.state = 'active';
-        tokenObj.pathPosition = 0; 
-        updateTokenUI(color, tokenIndex);
-    } else {
-        isMoving = true; 
-        let stepsTaken = 0;
-        let moveInterval = setInterval(() => {
-            stepsTaken++;
-            tokenObj.pathPosition++;
-            updateTokenUI(color, tokenIndex);
-
-            if (stepsTaken >= diceVal) {
-                clearInterval(moveInterval);
-                setTimeout(() => {
-                    if (cutDetails) {
-                        let enemyToken = allTokens[cutDetails.color][cutDetails.index];
-                        enemyToken.state = 'home';
-                        enemyToken.pathPosition = -1;
-                        document.getElementById(`${cutDetails.color}-slot-${cutDetails.index}`).appendChild(enemyToken.element);
-                        
-                        soundCut.play().catch(e => {});
-                    }
-                    if (tokenObj.pathPosition >= 56) tokenObj.element.style.display = "none"; 
-                    isMoving = false; 
-                }, 300);
-            }
-        }, 250); 
+    if (startStep === -1 && diceVal === 6) {
+        token.step = 0;
+        soundMove.currentTime = 0;
+        soundMove.play().catch(e => {});
+        renderTokenPosition(token);
+        isMoving = false;
+        return;
     }
-}
 
-function moveTokenStepByStepLocal(color, tokenIndex, stepsToMove) {
-    isMoving = true; 
-    let tokenObj = allTokens[color][tokenIndex];
-    let stepsTaken = 0;
+    let targetStep = startStep + diceVal;
+    let currentStep = startStep;
 
     let moveInterval = setInterval(() => {
-        stepsTaken++;
-        tokenObj.pathPosition++;
-        updateTokenUI(color, tokenIndex);
+        currentStep++;
+        token.step = currentStep;
+        renderTokenPosition(token);
+        soundMove.currentTime = 0;
+        soundMove.play().catch(e => {});
 
-        if (stepsTaken >= stepsToMove) {
+        if (currentStep >= targetStep) {
             clearInterval(moveInterval);
-            setTimeout(() => {
-                let cutHappened = checkCaptureLocal(color, tokenIndex);
-                if (tokenObj.pathPosition >= 56) {
-                    tokenObj.element.style.display = "none"; 
-                }
-                isMoving = false; 
-                switchTurnLocal(cutHappened || currentDiceValue === 6);
-            }, 300);
-        }
-    }, 250); 
-}
+            isMoving = false;
 
-function updateTokenUI(color, tokenIndex) {
-    soundMove.currentTime = 0;
-    soundMove.play().catch(e => {});
-
-    let tokenObj = allTokens[color][tokenIndex];
-    let startOffset = playersData[color].startOffset;
-    let globalPos = (startOffset + tokenObj.pathPosition) % 52;
-    if(tokenObj.pathPosition > 50) globalPos = 51; 
-    let targetCoords = masterPath[globalPos];
-    
-    let targetCell = document.getElementById(`cell-${targetCoords.r}-${targetCoords.c}`);
-    if (targetCell) {
-        targetCell.appendChild(tokenObj.element); 
-        tokenObj.element.classList.add('moving');
-        setTimeout(() => tokenObj.element.classList.remove('moving'), 200); 
-    }
-}
-
-function checkCaptureLocal(color, tokenIndex) {
-    let attacker = allTokens[color][tokenIndex];
-    let startOffset = playersData[color].startOffset;
-    let globalPos = (startOffset + attacker.pathPosition) % 52;
-    let targetCoords = masterPath[globalPos];
-    let isSafe = safeZones.some(zone => zone.r === targetCoords.r && zone.c === targetCoords.c);
-    
-    if (isSafe) return false; 
-    let cutHappened = false;
-
-    for (let enemyColor of activePlayers) {
-        if (enemyColor === color) continue; 
-        allTokens[enemyColor].forEach((enemyToken, enemyIndex) => {
-            if (enemyToken.state === 'active') {
-                let enemyGlobalPos = (playersData[enemyColor].startOffset + enemyToken.pathPosition) % 52;
-                if (enemyGlobalPos === globalPos) {
-                    cutHappened = true;
-                    soundCut.play().catch(e => {});
-                    
-                    enemyToken.state = 'home';
-                    enemyToken.pathPosition = -1;
-                    document.getElementById(`${enemyColor}-slot-${enemyIndex}`).appendChild(enemyToken.element);
-                }
+            if (cutDetails) {
+                let enemyToken = allTokens[cutDetails.color][cutDetails.index];
+                enemyToken.step = -1;
+                renderTokenPosition(enemyToken);
+                soundCut.currentTime = 0;
+                soundCut.play().catch(e => {});
             }
-        });
+        }
+    }, 180);
+}
+
+function spawnTokensOnline() {
+    ['red', 'green', 'yellow', 'blue'].forEach(color => {
+        allTokens[color] = [];
+        for (let i = 0; i < 4; i++) {
+            let tokenEl = document.createElement("div");
+            tokenEl.classList.add("token", `token-${color}`);
+            tokenEl.addEventListener("click", () => {
+                if (color === myAssignedColor) moveTokenOnline(color, i);
+            });
+
+            let tokenObj = { color, index: i, step: -1, element: tokenEl };
+            allTokens[color].push(tokenObj);
+            const board = document.getElementById("ludo-board");
+            if (board) {
+                board.appendChild(tokenEl);
+            } else {
+                document.body.appendChild(tokenEl);
+            }
+            renderTokenPosition(tokenObj);
+        }
+    });
+}
+
+function renderTokenPosition(token) {
+    const board = document.getElementById("ludo-board");
+    if (!board || !token || !token.element) return;
+    const boardRect = board.getBoundingClientRect();
+
+    let targetEl = null;
+    if (token.step === -1) {
+        targetEl = document.getElementById(`slot-${token.color}-${token.index}`);
+    } else if (token.step <= 51) {
+        let globalIndex = (playersData[token.color].startOffset + token.step) % 52;
+        let coords = masterPath[globalIndex];
+        targetEl = document.getElementById(`cell-${coords.r}-${coords.c}`);
+    } else {
+        let homeIndex = token.step - 52;
+        if (homeIndex < 5) {
+            if (token.color === 'red') targetEl = document.getElementById(`cell-7-${homeIndex + 1}`);
+            if (token.color === 'green') targetEl = document.getElementById(`cell-${homeIndex + 1}-7`);
+            if (token.color === 'yellow') targetEl = document.getElementById(`cell-7-${13 - homeIndex}`);
+            if (token.color === 'blue') targetEl = document.getElementById(`cell-${13 - homeIndex}-7`);
+        } else {
+            targetEl = document.getElementById(`cell-7-7`);
+        }
     }
-    return cutHappened;
+
+    if (targetEl) {
+        const rect = targetEl.getBoundingClientRect();
+        const left = (rect.left - boardRect.left) + (rect.width / 2) - 10;
+        const top = (rect.top - boardRect.top) + (rect.height / 2) - 10;
+        token.element.style.left = `${left}px`;
+        token.element.style.top = `${top}px`;
+    }
 }
 
-function switchTurnLocal(gotExtraTurn) {
-    clearTurnTimer(); 
-    if (!gotExtraTurn) currentPlayerIndex = (currentPlayerIndex + 1) % activePlayers.length;
-    updateTurnText();
-    gameState = 'WAITING_FOR_ROLL';
-    startTurnTimer(); 
+function renderAllTokens() {
+    ['red', 'green', 'yellow', 'blue'].forEach(col => {
+        if (allTokens[col]) {
+            allTokens[col].forEach(t => renderTokenPosition(t));
+        }
+    });
 }
 
-function updateTurnText() {
-    let currentPlayerColor = activePlayers[currentPlayerIndex];
-    const turnText = document.getElementById("turn-text");
-    if(turnText) {
-        turnText.innerText = playersData[currentPlayerColor].name;
-        turnText.className = playersData[currentPlayerColor].class;
+window.addEventListener('resize', () => {
+    renderAllTokens();
+});
+
+function createBoard() {
+    const board = document.getElementById("ludo-board");
+    board.innerHTML = "";
+
+    const bases = [
+        { class: 'red-base', color: 'red' },
+        { class: 'green-base', color: 'green' },
+        { class: 'blue-base', color: 'blue' },
+        { class: 'yellow-base', color: 'yellow' }
+    ];
+
+    bases.forEach(b => {
+        let baseEl = document.createElement("div");
+        baseEl.classList.add("base", b.class);
+        let inner = document.createElement("div");
+        inner.classList.add("inner-base");
+        for (let i = 0; i < 4; i++) {
+            let slot = document.createElement("div");
+            slot.classList.add("token-slot");
+            slot.id = `slot-${b.color}-${i}`;
+            inner.appendChild(slot);
+        }
+        baseEl.appendChild(inner);
+        board.appendChild(baseEl);
+    });
+
+    for (let r = 0; r < 15; r++) {
+        for (let c = 0; c < 15; c++) {
+            if ((r < 6 && c < 6) || (r < 6 && c > 8) || (r > 8 && c < 6) || (r > 8 && c > 8)) continue;
+
+            let cell = document.createElement("div");
+            cell.classList.add("ludo-cell");
+            cell.id = `cell-${r}-${c}`;
+            cell.style.gridArea = `${r + 1} / ${c + 1} / ${r + 2} / ${c + 2}`;
+
+            if (r === 7 && c > 0 && c < 6) cell.style.backgroundColor = "var(--red-main)";
+            if (c === 7 && r > 0 && r < 6) cell.style.backgroundColor = "var(--green-main)";
+            if (r === 7 && c > 8 && c < 14) cell.style.backgroundColor = "var(--yellow-main)";
+            if (c === 7 && r > 8 && r < 14) cell.style.backgroundColor = "var(--blue-main)";
+
+            if (r === 6 && c === 1) cell.style.backgroundColor = "var(--red-main)";
+            if (r === 1 && c === 8) cell.style.backgroundColor = "var(--green-main)";
+            if (r === 8 && c === 13) cell.style.backgroundColor = "var(--yellow-main)";
+            if (r === 13 && c === 6) cell.style.backgroundColor = "var(--blue-main)";
+
+            safeZones.forEach(z => {
+                if (z.r === r && z.c === c) {
+                    let star = document.createElement("span");
+                    star.classList.add("safe-zone-icon");
+                    star.innerText = "⭐";
+                    cell.appendChild(star);
+                }
+            });
+
+            board.appendChild(cell);
+        }
     }
 }

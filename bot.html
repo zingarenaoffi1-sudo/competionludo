@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ZingArena Ludo - Play vs Computer</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="test-banner" class="dummy-banner">
+        <span>📢 AdMob Test Banner (320x50)</span>
+        <button class="banner-close-btn" onclick="document.getElementById('test-banner').style.display='none'">✕</button>
+    </div>
+
+    <div id="game-wrapper">
+        <div class="game-header">
+            <div class="logo-container">
+                <span class="logo-crown">👑</span>
+                <span class="logo-text" id="game-mode-title">VS COMPUTER (AI)</span>
+            </div>
+            <div style="display: flex; gap: 6px;">
+                <button class="menu-btn" onclick="HowToPlayGuide.openModal()" style="padding: 6px 10px;">📖 Rules</button>
+                <button class="menu-btn" onclick="window.location.href='index.html'">Main Menu</button>
+            </div>
+        </div>
+
+        <div class="turn-status-banner">
+            <div class="turn-indicator" id="turn-text">Choose Bots to Begin!</div>
+            <div class="turn-timer-badge" id="timer-text">🤖 Smart AI Active</div>
+        </div>
+
+        <div class="hud-row">
+            <div class="player-corner" id="corner-red">
+                <div class="player-card" id="profile-red">
+                    <div class="avatar red-bg">1</div>
+                    <div class="player-info">
+                        <div class="player-name" id="name-red">You</div>
+                        <div class="player-status-tag red-text">Human</div>
+                    </div>
+                </div>
+                <div class="corner-dice" id="dice-red" onclick="handleCornerDiceClick('red')">🎲</div>
+            </div>
+
+            <div class="player-corner reverse" id="corner-green">
+                <div class="player-card" id="profile-green">
+                    <div class="avatar green-bg">2</div>
+                    <div class="player-info">
+                        <div class="player-name" id="name-green">AI Bot 1</div>
+                        <div class="player-status-tag green-text">Computer</div>
+                    </div>
+                </div>
+                <div class="corner-dice" id="dice-green" onclick="handleCornerDiceClick('green')">🎲</div>
+            </div>
+        </div>
+
+        <div class="board-container">
+            <div id="ludo-board"></div>
+        </div>
+
+        <div class="hud-row">
+            <div class="player-corner" id="corner-blue">
+                <div class="player-card" id="profile-blue">
+                    <div class="avatar blue-bg">4</div>
+                    <div class="player-info">
+                        <div class="player-name" id="name-blue">AI Bot 3</div>
+                        <div class="player-status-tag blue-text">Computer</div>
+                    </div>
+                </div>
+                <div class="corner-dice" id="dice-blue" onclick="handleCornerDiceClick('blue')">🎲</div>
+            </div>
+
+            <div class="player-corner reverse" id="corner-yellow">
+                <div class="player-card" id="profile-yellow">
+                    <div class="avatar yellow-bg">3</div>
+                    <div class="player-info">
+                        <div class="player-name" id="name-yellow">AI Bot 2</div>
+                        <div class="player-status-tag yellow-text">Computer</div>
+                    </div>
+                </div>
+                <div class="corner-dice" id="dice-yellow" onclick="handleCornerDiceClick('yellow')">🎲</div>
+            </div>
+        </div>
+
+        <!-- BOT SETUP MODAL -->
+        <div id="startup-modal" class="modal">
+            <div class="modal-content" style="max-width: 380px;">
+                <div style="font-size: 34px; margin-bottom: 6px;">🤖</div>
+                <h2 style="color: #ffd700; margin-bottom: 4px; font-weight: 900;">PLAY VS COMPUTER</h2>
+                <p style="color: #94a3b8; font-size: 12px; margin-bottom: 14px;">Challenge intelligent AI bots offline anytime</p>
+                
+                <div style="font-size: 11px; font-weight: 800; color: #cbd5e1; margin-bottom: 6px; text-align: left;">MATCH TYPE:</div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 14px;">
+                    <div id="mode-opt-classic" class="mode-select-box active" onclick="setBotGameMode('classic')" style="border: 2px solid #ffd700; border-radius: 10px; padding: 10px 6px; cursor: pointer; background: rgba(30,41,59,0.8); text-align: center;">
+                        <div style="font-size: 20px;">🎲</div>
+                        <div style="font-size: 12px; font-weight: 800; color: #fff;">Classic</div>
+                        <div style="font-size: 9px; color: #94a3b8;">4 Tokens Home</div>
+                    </div>
+                    <div id="mode-opt-quick" class="mode-select-box" onclick="setBotGameMode('quick')" style="border: 1px solid rgba(255,255,255,0.15); border-radius: 10px; padding: 10px 6px; cursor: pointer; background: rgba(30,41,59,0.8); text-align: center;">
+                        <div style="font-size: 20px;">⚡</div>
+                        <div style="font-size: 12px; font-weight: 800; color: #fff;">Quick Ludo</div>
+                        <div style="font-size: 9px; color: #94a3b8;">2 Tokens Home Wins</div>
+                    </div>
+                </div>
+
+                <div style="font-size: 11px; font-weight: 800; color: #cbd5e1; margin-bottom: 6px; text-align: left;">NUMBER OF OPPONENTS:</div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-bottom: 16px;">
+                    <div id="bot-count-1" class="mode-select-box" onclick="selectBotOpponentCount(1)" style="border: 1px solid rgba(255,255,255,0.15); border-radius: 10px; padding: 10px 4px; cursor: pointer; background: rgba(30,41,59,0.8); text-align: center;">
+                        <div style="font-size: 18px;">👤🤖</div>
+                        <div style="font-size: 11px; font-weight: 800; color: #fff;">1 Bot</div>
+                        <div style="font-size: 9px; color: #94a3b8;">2 Players</div>
+                    </div>
+                    <div id="bot-count-2" class="mode-select-box" onclick="selectBotOpponentCount(2)" style="border: 1px solid rgba(255,255,255,0.15); border-radius: 10px; padding: 10px 4px; cursor: pointer; background: rgba(30,41,59,0.8); text-align: center;">
+                        <div style="font-size: 18px;">👤🤖🤖</div>
+                        <div style="font-size: 11px; font-weight: 800; color: #fff;">2 Bots</div>
+                        <div style="font-size: 9px; color: #94a3b8;">3 Players</div>
+                    </div>
+                    <div id="bot-count-3" class="mode-select-box active" onclick="selectBotOpponentCount(3)" style="border: 2px solid #ffd700; border-radius: 10px; padding: 10px 4px; cursor: pointer; background: rgba(30,41,59,0.8); text-align: center;">
+                        <div style="font-size: 18px;">👤🤖🤖🤖</div>
+                        <div style="font-size: 11px; font-weight: 800; color: #fff;">3 Bots</div>
+                        <div style="font-size: 9px; color: #94a3b8;">4 Players</div>
+                    </div>
+                </div>
+
+                <button class="ultra-roll-btn" onclick="startBotMatchConfirmed()" style="width: 100%; margin-bottom: 8px; padding: 12px; font-size: 14px;">START MATCH 🚀</button>
+                <button class="menu-btn" onclick="window.location.href='index.html'" style="width: 100%; padding: 10px;">Back to Lobby</button>
+            </div>
+        </div>
+
+        <!-- VICTORY MODAL -->
+        <div id="victory-modal" class="modal hidden">
+            <div class="modal-content">
+                <div style="font-size: 40px; margin-bottom: 6px;">🏆</div>
+                <h2 style="color: #ffd700; font-weight: 900; margin-bottom: 10px;">MATCH FINISHED!</h2>
+                <div id="victory-podium" style="margin: 15px 0; font-size: 14px; line-height: 1.8;"></div>
+                <button class="ultra-roll-btn" onclick="window.location.reload()" style="width: 100%; margin-bottom: 10px;">Play Again</button>
+                <button class="menu-btn" onclick="window.location.href='index.html'" style="width: 100%; padding: 10px;">Back to Lobby</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="admob-config.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            const bannerId = (window.AdMobConfig && window.AdMobConfig.bannerAdId) || 'ca-app-pub-3940256099942544/9214589741';
+            const isTesting = (window.AdMobConfig && typeof window.AdMobConfig.isTesting === 'boolean') ? window.AdMobConfig.isTesting : true;
+            if (window.Capacitor && Capacitor.Plugins.AdMob) {
+                const { AdMob } = Capacitor.Plugins;
+                try {
+                    await AdMob.initialize({ initializeForTesting: isTesting });
+                    await AdMob.showBanner({
+                        adId: bannerId,
+                        position: 'TOP_CENTER',
+                        margin: 0
+                    });
+                } catch(e) {
+                    console.error("Banner Ad error", e);
+                }
+            } else {
+                document.getElementById('test-banner').style.display = 'flex';
+            }
+        });
+
+        async function playInterstitialAd() {
+            const adId = (window.AdMobConfig && window.AdMobConfig.interstitialAdId) || 'ca-app-pub-3940256099942544/1033173712';
+            const isTesting = (window.AdMobConfig && typeof window.AdMobConfig.isTesting === 'boolean') ? window.AdMobConfig.isTesting : true;
+            if (window.Capacitor && Capacitor.Plugins.AdMob) {
+                const { AdMob } = Capacitor.Plugins;
+                try {
+                    await AdMob.prepareInterstitial({
+                        adId: adId,
+                        isTesting: isTesting
+                    });
+                    await AdMob.showInterstitial();
+                } catch(e) {
+                    console.log("Interstitial ad error", e);
+                }
+            }
+        }
+    </script>
+    <script src="how-to-play.js"></script>
+    <script src="bot.js"></script>
+</body>
+</html>
