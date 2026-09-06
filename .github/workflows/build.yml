@@ -88,23 +88,24 @@ jobs:
           fi
           echo "Applying AdMob App ID: $FINAL_ADMOB_ID"
 
-          # Update AndroidManifest and app name strings
+          # Update AndroidManifest and app name strings cleanly without invalid XML escapes
           python3 -c '
-          import re, os
+          import os, re
           
-          # 1. AndroidManifest
+          # 1. AndroidManifest.xml
           path = "android/app/src/main/AndroidManifest.xml"
           app_id = os.environ.get("FINAL_ADMOB_ID", "ca-app-pub-3940256099942544~3347511713")
           with open(path, "r", encoding="utf-8") as f:
               content = f.read()
+
+          admob_meta = "\n        <meta-data android:name=\"com.google.android.gms.ads.APPLICATION_ID\" android:value=\"" + app_id + "\"/>\n    </application>"
           if "com.google.android.gms.ads.APPLICATION_ID" not in content:
-              meta = f"    <meta-data android:name=\"com.google.android.gms.ads.APPLICATION_ID\" android:value=\"{app_id}\"/>\n    </application>"
-              content = content.replace("</application>", meta)
-          perms = ["INTERNET", "ACCESS_NETWORK_STATE", "RECORD_AUDIO", "MODIFY_AUDIO_SETTINGS"]
-          for p in perms:
-              perm_str = f"android.permission.{p}"
-              if perm_str not in content:
-                  content = re.sub(r"(<manifest[^>]*>)", r"\1\n    <uses-permission android:name=\"" + perm_str + "\"/>", content)
+              content = content.replace("</application>", admob_meta)
+
+          perms = "\n    <uses-permission android:name=\"android.permission.INTERNET\"/>\n    <uses-permission android:name=\"android.permission.RECORD_AUDIO\"/>\n    <uses-permission android:name=\"android.permission.MODIFY_AUDIO_SETTINGS\"/>\n    <application"
+          if "android.permission.RECORD_AUDIO" not in content:
+              content = content.replace("<application", perms)
+
           with open(path, "w", encoding="utf-8") as f:
               f.write(content)
 
