@@ -65,8 +65,6 @@ jobs:
             --exclude='.github' \
             --exclude='android' \
             --exclude='debug.keystore' \
-            --exclude='icon_old.png' \
-            --exclude='icon_new.svg' \
             ./ ./www/
           echo "Web directory prepared successfully."
 
@@ -90,7 +88,7 @@ jobs:
           fi
           echo "Applying AdMob App ID: $FINAL_ADMOB_ID"
 
-          # Update AndroidManifest using Python
+          # Update AndroidManifest safely
           python3 -c "
           import re, os
           path = 'android/app/src/main/AndroidManifest.xml'
@@ -191,22 +189,22 @@ jobs:
               app += '\napply plugin: \"com.google.gms.google-services\"\n'
           if 'signingConfigs.debug' not in app:
               signing_block = '''
-  android {
-      signingConfigs {
-          debug {
-              storeFile file(\"debug.keystore\")
-              storePassword \"android\"
-              keyAlias \"androiddebugkey\"
-              keyPassword \"android\"
-          }
-      }
-      buildTypes {
-          debug {
-              signingConfig signingConfigs.debug
-          }
-      }
-  }
-  '''
+android {
+    signingConfigs {
+        debug {
+            storeFile file(\"debug.keystore\")
+            storePassword \"android\"
+            keyAlias \"androiddebugkey\"
+            keyPassword \"android\"
+        }
+    }
+    buildTypes {
+        debug {
+            signingConfig signingConfigs.debug
+        }
+    }
+}
+'''
               app += signing_block
           with open('app/build.gradle', 'w', encoding='utf-8') as f:
               f.write(app)
