@@ -1,4 +1,4 @@
-name: Build Ludo APK
+name: Build ZingArena APK
 
 on:
   push:
@@ -28,17 +28,17 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Setup Android Keystore from Secrets
+      - name: Setup Permanent Keystore
         env:
           DEBUG_KEYSTORE_BASE64: ${{ secrets.DEBUG_KEYSTORE_BASE64 }}
         run: |
           mkdir -p ~/.android
           if [ -n "$DEBUG_KEYSTORE_BASE64" ]; then
-            echo "Keystore secret found. Decoding original keystore..."
+            echo "✅ Keystore secret found. Decoding original keystore..."
             echo "$DEBUG_KEYSTORE_BASE64" | base64 --decode > ~/.android/debug.keystore
           else
-            echo "Keystore secret not found. Generating debug keystore as fallback..."
-            keytool -genkey -v -keystore ~/.android/debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Ludo,O=Ludo,C=IN"
+            echo "⚠️ Keystore secret not found. Generating debug keystore as fallback..."
+            keytool -genkey -v -keystore ~/.android/debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=ZingArena,O=ZingArena,C=IN"
           fi
           
           echo "========================================================="
@@ -109,13 +109,13 @@ jobs:
           with open(path, "w", encoding="utf-8") as f:
               f.write(content)
 
-          # 2. App Name strings.xml -> Set app display name to "Ludo"
+          # 2. App Name strings.xml -> Set app display name to "ZingArena"
           strings_path = "android/app/src/main/res/values/strings.xml"
           if os.path.exists(strings_path):
               with open(strings_path, "r", encoding="utf-8") as f:
                   strings_xml = f.read()
-              strings_xml = re.sub(r"<string name=\"app_name\">[^<]*</string>", "<string name=\"app_name\">Ludo</string>", strings_xml)
-              strings_xml = re.sub(r"<string name=\"title_activity_main\">[^<]*</string>", "<string name=\"title_activity_main\">Ludo</string>", strings_xml)
+              strings_xml = re.sub(r"<string name=\"app_name\">[^<]*</string>", "<string name=\"app_name\">ZingArena</string>", strings_xml)
+              strings_xml = re.sub(r"<string name=\"title_activity_main\">[^<]*</string>", "<string name=\"title_activity_main\">ZingArena</string>", strings_xml)
               with open(strings_path, "w", encoding="utf-8") as f:
                   f.write(strings_xml)
 
@@ -146,7 +146,7 @@ jobs:
             echo '<?xml version="1.0" encoding="utf-8"?><adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android"><background android:drawable="@color/ic_launcher_background"/><foreground android:drawable="@mipmap/ic_launcher_foreground"/></adaptive-icon>' > android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
             echo '<?xml version="1.0" encoding="utf-8"?><adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android"><background android:drawable="@color/ic_launcher_background"/><foreground android:drawable="@mipmap/ic_launcher_foreground"/></adaptive-icon>' > android/app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml
             
-            echo "Custom Ludo icons generated across all mipmap folders!"
+            echo "Custom ZingArena icons generated across all mipmap folders!"
           else
             echo "icon.png not found, skipping icon generation."
           fi
@@ -156,13 +156,19 @@ jobs:
           npx cap sync android
 
       - name: Configure Gradle & Real Firebase Google Services
+        env:
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
         run: |
+          # Copy keystore into android/app directory
           cp ~/.android/debug.keystore android/app/debug.keystore
           
-          # Copy real google-services.json from repo into android/app/
-          if [ -f google-services.json ]; then
+          # Copy real google-services.json (from Secrets OR repository file) into android/app/
+          if [ -n "$GOOGLE_SERVICES_JSON" ]; then
+            echo "$GOOGLE_SERVICES_JSON" > android/app/google-services.json
+            echo "Real google-services.json injected from GitHub Secrets!"
+          elif [ -f google-services.json ]; then
             cp google-services.json android/app/google-services.json
-            echo "Real google-services.json copied to android/app/google-services.json"
+            echo "Real google-services.json copied from repository root!"
           fi
           
           cd android
@@ -211,9 +217,9 @@ jobs:
           cd android
           ./gradlew assembleDebug --no-daemon --max-workers=2
 
-      - name: Upload Ludo APK Artifact
+      - name: Upload ZingArena APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Ludo-APK
+          name: ZingArena-APK
           path: android/app/build/outputs/apk/debug/app-debug.apk
           retention-days: 14
