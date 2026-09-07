@@ -40,7 +40,7 @@
             </button>
 
             <div class="auth-divider">
-                <span>OR SIGN IN WITH EMAIL</span>
+                <span id="auth-divider-title">OR SIGN IN WITH EMAIL</span>
             </div>
 
             <div class="auth-card">
@@ -50,16 +50,19 @@
                 </div>
                 <div class="auth-input-group">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-                        <label class="auth-label" for="auth-password" style="margin-bottom: 0;">Password</label>
+                        <label class="auth-label" for="auth-password" id="auth-password-label" style="margin-bottom: 0;">Password</label>
                         <button type="button" class="auth-forgot-link" onclick="forgotPassword()" id="btn-forgot-password">Forgot Password?</button>
                     </div>
-                    <input type="password" id="auth-password" class="auth-input" placeholder="At least 6 characters" autocomplete="current-password">
+                    <input type="password" id="auth-password" class="auth-input" placeholder="Enter your password" autocomplete="current-password">
                 </div>
                 <div id="auth-info-msg" class="auth-info"></div>
                 <div id="auth-error-msg" class="auth-error"></div>
-                <div class="auth-actions-row">
-                    <button type="button" class="btn-auth-signin" onclick="emailPasswordLogin()" id="btn-email-signin">Sign In</button>
-                    <button type="button" class="btn-auth-signup" onclick="emailPasswordSignUp()" id="btn-email-signup">Register</button>
+                <div class="auth-actions-single">
+                    <button type="button" class="btn-auth-primary" onclick="handleAuthSubmit()" id="btn-auth-main">Sign In</button>
+                </div>
+                <div class="auth-toggle-container" id="auth-toggle-container">
+                    <span id="auth-toggle-prompt" style="color: #94a3b8; font-size: 12px;">New user? </span>
+                    <button type="button" class="auth-toggle-link" onclick="toggleAuthMode()" id="btn-toggle-auth">Register here (Get 1,000 Coins)</button>
                 </div>
             </div>
 

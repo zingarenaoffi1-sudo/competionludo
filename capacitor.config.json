@@ -4,8 +4,8 @@
   "webDir": "www",
   "plugins": {
     "FirebaseAuthentication": {
-      "skipNativeAuth": true,
-      "providers": []
+      "skipNativeAuth": false,
+      "providers": ["google.com"]
     }
   },
   "server": {

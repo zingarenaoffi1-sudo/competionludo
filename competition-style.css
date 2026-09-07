@@ -325,6 +325,60 @@ body {
     gap: 8px;
 }
 
+.auth-actions-single {
+    margin-top: 6px;
+    margin-bottom: 10px;
+}
+
+.btn-auth-primary {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 12px 14px;
+    border-radius: 10px;
+    border: none;
+    font-weight: 800;
+    font-size: 14px;
+    background: linear-gradient(135deg, #38bdf8, #0284c7);
+    color: #ffffff;
+    cursor: pointer;
+    box-shadow: 0 4px 14px rgba(2, 132, 199, 0.4);
+    transition: transform 0.15s ease, opacity 0.15s ease, background 0.2s ease;
+}
+
+.btn-auth-primary:active {
+    transform: scale(0.98);
+    opacity: 0.9;
+}
+
+.btn-auth-primary.mode-signup {
+    background: linear-gradient(135deg, #22c55e, #16a34a);
+    box-shadow: 0 4px 14px rgba(22, 163, 74, 0.4);
+}
+
+.auth-toggle-container {
+    text-align: center;
+    font-size: 12px;
+    margin-top: 6px;
+    padding-top: 10px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.auth-toggle-link {
+    background: none;
+    border: none;
+    padding: 0;
+    color: #38bdf8;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    text-decoration: underline;
+    transition: color 0.15s ease;
+}
+
+.auth-toggle-link:hover {
+    color: #7dd3fc;
+}
+
 .btn-auth-signin {
     flex: 1;
     padding: 11px 12px;

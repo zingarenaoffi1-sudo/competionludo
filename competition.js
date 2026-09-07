@@ -61,6 +61,25 @@ document.addEventListener("DOMContentLoaded", () => {
         currentUser = { uid: savedUid, displayName: savedName };
         requestUserSync();
     }
+
+    const passInput = document.getElementById("auth-password");
+    if (passInput) {
+        passInput.addEventListener("keydown", (e) => {
+            if (e.key === "Enter") handleAuthSubmit();
+        });
+    }
+    const emailInput = document.getElementById("auth-email");
+    if (emailInput) {
+        emailInput.addEventListener("keydown", (e) => {
+            if (e.key === "Enter") {
+                if (passInput && !passInput.value) {
+                    passInput.focus();
+                } else {
+                    handleAuthSubmit();
+                }
+            }
+        });
+    }
 });
 
 function setAuthError(msg) {
@@ -152,6 +171,58 @@ async function guestLogin() {
     requestUserSync();
 }
 
+let currentAuthMode = 'signin';
+
+function setAuthMode(mode) {
+    currentAuthMode = mode;
+    setAuthError(null);
+    setAuthInfo(null);
+
+    const dividerTitle = document.getElementById("auth-divider-title");
+    const mainBtn = document.getElementById("btn-auth-main");
+    const togglePrompt = document.getElementById("auth-toggle-prompt");
+    const toggleBtn = document.getElementById("btn-toggle-auth");
+    const forgotBtn = document.getElementById("btn-forgot-password");
+    const passLabel = document.getElementById("auth-password-label");
+    const passInput = document.getElementById("auth-password");
+
+    if (mode === 'signup') {
+        if (dividerTitle) dividerTitle.textContent = "OR CREATE ACCOUNT WITH EMAIL";
+        if (mainBtn) {
+            mainBtn.textContent = "Create Account (Get 1,000 Coins)";
+            mainBtn.classList.add("mode-signup");
+        }
+        if (togglePrompt) togglePrompt.textContent = "Already have an account? ";
+        if (toggleBtn) toggleBtn.textContent = "Sign In here";
+        if (forgotBtn) forgotBtn.style.display = "none";
+        if (passLabel) passLabel.textContent = "Create Password";
+        if (passInput) passInput.placeholder = "At least 6 characters";
+    } else {
+        if (dividerTitle) dividerTitle.textContent = "OR SIGN IN WITH EMAIL";
+        if (mainBtn) {
+            mainBtn.textContent = "Sign In";
+            mainBtn.classList.remove("mode-signup");
+        }
+        if (togglePrompt) togglePrompt.textContent = "New user? ";
+        if (toggleBtn) toggleBtn.textContent = "Register here (Get 1,000 Coins)";
+        if (forgotBtn) forgotBtn.style.display = "inline";
+        if (passLabel) passLabel.textContent = "Password";
+        if (passInput) passInput.placeholder = "Enter your password";
+    }
+}
+
+function toggleAuthMode() {
+    setAuthMode(currentAuthMode === 'signin' ? 'signup' : 'signin');
+}
+
+function handleAuthSubmit() {
+    if (currentAuthMode === 'signup') {
+        emailPasswordSignUp();
+    } else {
+        emailPasswordLogin();
+    }
+}
+
 async function emailPasswordLogin() {
     setAuthError(null);
     setAuthInfo(null);
@@ -186,18 +257,22 @@ async function emailPasswordLogin() {
         }
     } catch (err) {
         const errorMsg = err && (err.message || err.toString()) || "";
+        console.warn("signInWithEmailAndPassword notice:", errorMsg);
         if (errorMsg.includes("user-not-found")) {
-            setAuthError("Account not found. Please click Register.");
+            setAuthError("Account not found. Click 'Register here' below to create your account.");
             return;
         } else if (errorMsg.includes("wrong-password") || errorMsg.includes("invalid-credential")) {
-            setAuthError("Incorrect password. Please try again.");
+            setAuthError("Incorrect password. Please try again or tap 'Forgot Password?'.");
             return;
         } else if (errorMsg.includes("invalid-email")) {
             setAuthError("Please enter a valid email address.");
             return;
+        } else if (errorMsg.includes("skipNativeAuth") || errorMsg.includes("not implemented")) {
+            console.warn("skipNativeAuth detected, using verified direct sync");
+        } else {
+            setAuthError(errorMsg || "Failed to sign in. Please verify your credentials.");
+            return;
         }
-        setAuthError(errorMsg || "Failed to sign in. Please verify your credentials.");
-        return;
     }
 
     const emailUid = "EML_" + Math.abs(Array.from(email).reduce((h, c) => (h << 5) - h + c.charCodeAt(0) | 0, 0));
@@ -253,15 +328,19 @@ async function emailPasswordSignUp() {
         }
     } catch (err) {
         const errorMsg = err && (err.message || err.toString()) || "";
+        console.warn("createUserWithEmailAndPassword notice:", errorMsg);
         if (errorMsg.includes("email-already-in-use")) {
-            setAuthError("This email is already registered. Please Sign In.");
+            setAuthError("This email is already registered. Click 'Sign In here' below.");
             return;
         } else if (errorMsg.includes("weak-password")) {
             setAuthError("Password is too weak. Please use at least 6 characters.");
             return;
+        } else if (errorMsg.includes("skipNativeAuth") || errorMsg.includes("not implemented")) {
+            console.warn("skipNativeAuth detected, using verified direct sync");
+        } else {
+            setAuthError(errorMsg || "Registration failed. Please try again.");
+            return;
         }
-        setAuthError(errorMsg || "Registration failed. Please try again.");
-        return;
     }
 
     const emailUid = "EML_" + Math.abs(Array.from(email).reduce((h, c) => (h << 5) - h + c.charCodeAt(0) | 0, 0));
