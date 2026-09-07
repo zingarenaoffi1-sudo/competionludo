@@ -1,6 +1,6 @@
 {
-  "name": "ZingArena Ludo",
+  "name": "Ludo",
   "description": "Multiplayer and offline Ludo game with local offline play, online multiplayer, and pro competition modes.",
-  "requestFramePermissions": ["microphone"],
+  "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

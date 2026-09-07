@@ -1,6 +1,6 @@
 {
   "appId": "com.zingarena.app",
-  "appName": "ZingArena Ludo",
+  "appName": "Ludo",
   "webDir": "www",
   "bundledWebRuntime": false,
   "plugins": {

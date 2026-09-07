@@ -63,9 +63,26 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 });
 
-function realGoogleLogin() {
-    let randomId = "USR_" + Math.floor(100000 + Math.random() * 900000);
-    let randomName = "Player " + Math.floor(1000 + Math.random() * 9000);
+async function realGoogleLogin() {
+    try {
+        if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.FirebaseAuthentication) {
+            const result = await window.Capacitor.Plugins.FirebaseAuthentication.signInWithGoogle();
+            const user = result.user;
+            currentUser = {
+                uid: user.uid,
+                displayName: user.displayName || user.email || "Player"
+            };
+            localStorage.setItem("ludo_uid", currentUser.uid);
+            localStorage.setItem("ludo_name", currentUser.displayName);
+            requestUserSync();
+            return;
+        }
+    } catch (e) {
+        console.warn("Capacitor Firebase Google Sign-In error, falling back:", e);
+    }
+
+    let randomId = localStorage.getItem("ludo_uid") || ("USR_" + Math.floor(100000 + Math.random() * 900000));
+    let randomName = localStorage.getItem("ludo_name") || ("Player " + Math.floor(1000 + Math.random() * 9000));
     currentUser = { uid: randomId, displayName: randomName };
     localStorage.setItem("ludo_uid", randomId);
     localStorage.setItem("ludo_name", randomName);

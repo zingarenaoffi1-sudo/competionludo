@@ -102,8 +102,8 @@ jobs:
           if "com.google.android.gms.ads.APPLICATION_ID" not in content:
               content = content.replace("</application>", admob_meta)
 
-          perms = "\n    <uses-permission android:name=\"android.permission.INTERNET\"/>\n    <uses-permission android:name=\"android.permission.RECORD_AUDIO\"/>\n    <uses-permission android:name=\"android.permission.MODIFY_AUDIO_SETTINGS\"/>\n    <application"
-          if "android.permission.RECORD_AUDIO" not in content:
+          perms = "\n    <uses-permission android:name=\"android.permission.INTERNET\"/>\n    <application"
+          if "android.permission.INTERNET" not in content:
               content = content.replace("<application", perms)
 
           with open(path, "w", encoding="utf-8") as f:

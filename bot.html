@@ -140,24 +140,27 @@
 
     <script src="admob-config.js"></script>
     <script>
-        document.addEventListener('DOMContentLoaded', async () => {
-            const bannerId = (window.AdMobConfig && window.AdMobConfig.bannerAdId) || 'ca-app-pub-3940256099942544/9214589741';
-            const isTesting = (window.AdMobConfig && typeof window.AdMobConfig.isTesting === 'boolean') ? window.AdMobConfig.isTesting : true;
-            if (window.Capacitor && Capacitor.Plugins.AdMob) {
-                const { AdMob } = Capacitor.Plugins;
-                try {
-                    await AdMob.initialize({ initializeForTesting: isTesting });
-                    await AdMob.showBanner({
-                        adId: bannerId,
-                        position: 'TOP_CENTER',
-                        margin: 0
-                    });
-                } catch(e) {
-                    console.error("Banner Ad error", e);
+        document.addEventListener('DOMContentLoaded', () => {
+            setTimeout(async () => {
+                const bannerId = (window.AdMobConfig && window.AdMobConfig.bannerAdId) || 'ca-app-pub-3940256099942544/9214589741';
+                const isTesting = (window.AdMobConfig && typeof window.AdMobConfig.isTesting === 'boolean') ? window.AdMobConfig.isTesting : true;
+                if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.AdMob) {
+                    const { AdMob } = window.Capacitor.Plugins;
+                    try {
+                        await AdMob.initialize({ initializeForTesting: isTesting });
+                        await AdMob.showBanner({
+                            adId: bannerId,
+                            position: 'TOP_CENTER',
+                            margin: 0
+                        });
+                    } catch(e) {
+                        console.log("Banner Ad safe skip", e);
+                    }
+                } else {
+                    const banner = document.getElementById('test-banner');
+                    if (banner) banner.style.display = 'flex';
                 }
-            } else {
-                document.getElementById('test-banner').style.display = 'flex';
-            }
+            }, 600);
         });
 
         async function playInterstitialAd() {
