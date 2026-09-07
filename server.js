@@ -444,12 +444,15 @@ io.on('connection', (socket) => {
             socket.displayName = name;
             await ensureWeeklyResetIfNeeded();
 
+            const isGuest = Boolean(data && data.isGuest) || (uid && uid.startsWith('GST_')) || (name && name.toLowerCase().startsWith('guest'));
+            const initialTokens = isGuest ? 400 : 1000;
+
             const userRef = db.collection('users').doc(uid);
             const docSnap = await userRef.get();
             let userData;
 
             if (!docSnap.exists) {
-                userData = { name: name, mainWallet: 1000, weeklyWinnings: 0, createdAt: FieldValue.serverTimestamp() };
+                userData = { name: name, mainWallet: initialTokens, weeklyWinnings: 0, isGuest: isGuest, createdAt: FieldValue.serverTimestamp() };
                 await userRef.set(userData);
             } else {
                 userData = docSnap.data();
@@ -472,12 +475,15 @@ io.on('connection', (socket) => {
             socket.displayName = name;
             await ensureWeeklyResetIfNeeded();
 
+            const isGuest = Boolean(data && data.isGuest) || (uid && uid.startsWith('GST_')) || (name && name.toLowerCase().startsWith('guest'));
+            const initialTokens = isGuest ? 400 : 1000;
+
             const userRef = db.collection('users').doc(uid);
             const docSnap = await userRef.get();
             let userData;
 
             if (!docSnap.exists) {
-                userData = { name: name, mainWallet: 1000, weeklyWinnings: 0, createdAt: FieldValue.serverTimestamp() };
+                userData = { name: name, mainWallet: initialTokens, weeklyWinnings: 0, isGuest: isGuest, createdAt: FieldValue.serverTimestamp() };
                 await userRef.set(userData);
             } else {
                 userData = docSnap.data();

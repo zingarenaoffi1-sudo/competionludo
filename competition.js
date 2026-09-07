@@ -96,10 +96,12 @@ async function realGoogleLogin() {
             const user = result.user;
             currentUser = {
                 uid: user.uid,
-                displayName: user.displayName || user.email || "Player"
+                displayName: user.displayName || user.email || "Player",
+                isGuest: false
             };
             localStorage.setItem("ludo_uid", currentUser.uid);
             localStorage.setItem("ludo_name", currentUser.displayName);
+            localStorage.removeItem("ludo_is_guest");
             requestUserSync();
             return;
         }
@@ -109,9 +111,10 @@ async function realGoogleLogin() {
 
     let randomId = localStorage.getItem("ludo_uid") || ("USR_" + Math.floor(100000 + Math.random() * 900000));
     let randomName = localStorage.getItem("ludo_name") || ("Player " + Math.floor(1000 + Math.random() * 9000));
-    currentUser = { uid: randomId, displayName: randomName };
+    currentUser = { uid: randomId, displayName: randomName, isGuest: false };
     localStorage.setItem("ludo_uid", randomId);
     localStorage.setItem("ludo_name", randomName);
+    localStorage.removeItem("ludo_is_guest");
     requestUserSync();
 }
 
@@ -125,10 +128,12 @@ async function guestLogin() {
             const guestName = "Guest " + (user.uid ? user.uid.substring(0, 5).toUpperCase() : Math.floor(1000 + Math.random() * 9000));
             currentUser = {
                 uid: user.uid,
-                displayName: guestName
+                displayName: guestName,
+                isGuest: true
             };
             localStorage.setItem("ludo_uid", currentUser.uid);
             localStorage.setItem("ludo_name", currentUser.displayName);
+            localStorage.setItem("ludo_is_guest", "true");
             requestUserSync();
             return;
         }
@@ -138,11 +143,12 @@ async function guestLogin() {
 
     let guestId = localStorage.getItem("ludo_guest_uid") || ("GST_" + Math.floor(100000 + Math.random() * 900000));
     let guestName = localStorage.getItem("ludo_guest_name") || ("Guest " + Math.floor(1000 + Math.random() * 9000));
-    currentUser = { uid: guestId, displayName: guestName };
+    currentUser = { uid: guestId, displayName: guestName, isGuest: true };
     localStorage.setItem("ludo_uid", guestId);
     localStorage.setItem("ludo_name", guestName);
     localStorage.setItem("ludo_guest_uid", guestId);
     localStorage.setItem("ludo_guest_name", guestName);
+    localStorage.setItem("ludo_is_guest", "true");
     requestUserSync();
 }
 
@@ -169,10 +175,12 @@ async function emailPasswordLogin() {
             const displayName = user.displayName || email.split("@")[0];
             currentUser = {
                 uid: user.uid,
-                displayName: displayName
+                displayName: displayName,
+                isGuest: false
             };
             localStorage.setItem("ludo_uid", currentUser.uid);
             localStorage.setItem("ludo_name", currentUser.displayName);
+            localStorage.removeItem("ludo_is_guest");
             requestUserSync();
             return;
         }
@@ -194,9 +202,10 @@ async function emailPasswordLogin() {
 
     const emailUid = "EML_" + Math.abs(Array.from(email).reduce((h, c) => (h << 5) - h + c.charCodeAt(0) | 0, 0));
     const displayName = email.split("@")[0];
-    currentUser = { uid: emailUid, displayName: displayName };
+    currentUser = { uid: emailUid, displayName: displayName, isGuest: false };
     localStorage.setItem("ludo_uid", emailUid);
     localStorage.setItem("ludo_name", displayName);
+    localStorage.removeItem("ludo_is_guest");
     requestUserSync();
 }
 
@@ -233,10 +242,12 @@ async function emailPasswordSignUp() {
             const displayName = email.split("@")[0];
             currentUser = {
                 uid: user.uid,
-                displayName: displayName
+                displayName: displayName,
+                isGuest: false
             };
             localStorage.setItem("ludo_uid", currentUser.uid);
             localStorage.setItem("ludo_name", currentUser.displayName);
+            localStorage.removeItem("ludo_is_guest");
             requestUserSync();
             return;
         }
@@ -255,9 +266,10 @@ async function emailPasswordSignUp() {
 
     const emailUid = "EML_" + Math.abs(Array.from(email).reduce((h, c) => (h << 5) - h + c.charCodeAt(0) | 0, 0));
     const displayName = email.split("@")[0];
-    currentUser = { uid: emailUid, displayName: displayName };
+    currentUser = { uid: emailUid, displayName: displayName, isGuest: false };
     localStorage.setItem("ludo_uid", emailUid);
     localStorage.setItem("ludo_name", displayName);
+    localStorage.removeItem("ludo_is_guest");
     requestUserSync();
 }
 
@@ -304,15 +316,18 @@ async function forgotPassword() {
 }
 
 function requestUserSync() {
+    const isGuest = Boolean(currentUser.isGuest || (localStorage.getItem("ludo_is_guest") === "true") || (currentUser.uid && currentUser.uid.startsWith("GST_")));
     socket.emit("auth-sync-user", {
         userId: currentUser.uid,
-        name: currentUser.displayName
+        name: currentUser.displayName,
+        isGuest: isGuest
     });
 }
 
 function competitionLogout() {
     localStorage.removeItem("ludo_uid");
     localStorage.removeItem("ludo_name");
+    localStorage.removeItem("ludo_is_guest");
     currentUser = null;
     if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.FirebaseAuthentication) {
         try {
