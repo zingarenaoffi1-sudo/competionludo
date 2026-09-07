@@ -81,12 +81,11 @@ function openBotFastTrackModal() {
 }
 
 function botUnlockTokenViaAd() {
-    // 1. Strict internet check
     if (!navigator.onLine) {
         if (typeof window.showAdToast === 'function') {
-            window.showAdToast("⚠️ इंटरनेट कनेक्शन बंद है! वीडियो देखने और गोटी निकालने के लिए इंटरनेट चालू करें।");
+            window.showAdToast("⚠️ No internet connection! Please connect to internet to watch video and unlock token.");
         } else {
-            alert("⚠️ Internet connection required to watch video and unlock goti!");
+            alert("⚠️ Internet connection required to watch video and unlock token!");
         }
         return;
     }
@@ -94,24 +93,22 @@ function botUnlockTokenViaAd() {
     const btn = document.getElementById("bot-unlock-ad-btn");
     if (btn) btn.innerText = "⏳ Loading Video Ad...";
 
-    // 2. Play Rewarded Ad via Central Controller
     if (typeof window.showZingRewardedAd === 'function') {
         window.showZingRewardedAd({
             onReward: () => {
-                if (btn) btn.innerText = "📺 Watch Ad & Unlock 1 Goti";
+                if (btn) btn.innerText = "📺 Watch Ad & Unlock Token";
                 const modal = document.getElementById("bot-fast-track-modal");
                 if (modal) modal.classList.add("hidden");
                 startBotMatchConfirmed(true);
             },
-            onFail: (err) => {
-                if (btn) btn.innerText = "📺 Watch Ad & Unlock 1 Goti";
-                // Do NOT unlock token and do NOT start game on ad failure!
+            onFail: () => {
+                if (btn) btn.innerText = "📺 Watch Ad & Unlock Token";
             }
         });
     } else {
         if (!navigator.onLine) {
             if (typeof window.showAdToast === 'function') {
-                window.showAdToast("⚠️ इंटरनेट कनेक्शन बंद है!");
+                window.showAdToast("⚠️ No internet connection!");
             }
             return;
         }

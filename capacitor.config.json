@@ -1,11 +1,11 @@
 {
   "appId": "com.zingarena.app",
-  "appName": "ZingArena",
+  "appName": "Ludo",
   "webDir": "www",
   "plugins": {
     "FirebaseAuthentication": {
-      "skipNativeAuth": false,
-      "providers": ["google.com"]
+      "skipNativeAuth": true,
+      "providers": []
     }
   },
   "server": {

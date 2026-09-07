@@ -1,4 +1,4 @@
-name: Build ZingArena APK
+name: Build Ludo APK
 
 on:
   push:
@@ -38,7 +38,7 @@ jobs:
             echo "$DEBUG_KEYSTORE_BASE64" | base64 --decode > ~/.android/debug.keystore
           else
             echo "⚠️ Keystore secret not found. Generating debug keystore as fallback..."
-            keytool -genkey -v -keystore ~/.android/debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=ZingArena,O=ZingArena,C=IN"
+            keytool -genkey -v -keystore ~/.android/debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Ludo,O=Ludo,C=IN"
           fi
           
           echo "========================================================="
@@ -122,13 +122,21 @@ jobs:
             echo '<?xml version="1.0" encoding="utf-8"?><adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android"><background android:drawable="@color/ic_launcher_background"/><foreground android:drawable="@mipmap/ic_launcher_foreground"/></adaptive-icon>' > android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
             echo '<?xml version="1.0" encoding="utf-8"?><adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android"><background android:drawable="@color/ic_launcher_background"/><foreground android:drawable="@mipmap/ic_launcher_foreground"/></adaptive-icon>' > android/app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml
             
-            echo "Custom ZingArena icons generated across all mipmap folders!"
+            echo "Custom Ludo icons generated across all mipmap folders!"
           else
             echo "icon.png not found, skipping icon generation."
           fi
 
       - name: Sync Capacitor Android
+        env:
+          SECRET_ADMOB_APP_ID: ${{ secrets.ADMOB_APP_ID }}
         run: |
+          CONFIG_APP_ID=$(grep -o "appId: *['\"][^'\"]*['\"]" admob-config.js | sed -E "s/appId: *['\"]([^'\"]*)['\"]/\1/" || echo "")
+          FINAL_ADMOB_ID="${SECRET_ADMOB_APP_ID:-$CONFIG_APP_ID}"
+          if [ -z "$FINAL_ADMOB_ID" ]; then
+            FINAL_ADMOB_ID="ca-app-pub-3940256099942544~3347511713"
+          fi
+          export FINAL_ADMOB_ID
           npx cap sync android
           python3 prepare-android.py
 
@@ -194,9 +202,9 @@ jobs:
           cd android
           ./gradlew assembleDebug --no-daemon --max-workers=2
 
-      - name: Upload ZingArena APK Artifact
+      - name: Upload Ludo APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ZingArena-APK
+          name: Ludo-APK
           path: android/app/build/outputs/apk/debug/app-debug.apk
           retention-days: 14

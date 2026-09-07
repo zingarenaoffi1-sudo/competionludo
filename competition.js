@@ -238,7 +238,7 @@ function updateDashboardUI() {
 function showRewardedAdForTokens() {
     if (!navigator.onLine) {
         if (typeof window.showAdToast === 'function') {
-            window.showAdToast("⚠️ इंटरनेट कनेक्शन बंद है! टोकन के लिए वीडियो देखने हेतु इंटरनेट चालू करें।");
+            window.showAdToast("⚠️ No internet connection! Please connect to internet to watch video and claim tokens.");
         } else {
             alert("⚠️ Internet is required to watch video ad and claim tokens!");
         }
@@ -250,9 +250,7 @@ function showRewardedAdForTokens() {
             onReward: () => {
                 claimAdRewardOnServer();
             },
-            onFail: (err) => {
-                // Do NOT reward tokens if video was closed early or offline!
-            }
+            onFail: () => {}
         });
     } else {
         if (!navigator.onLine) return;
