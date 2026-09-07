@@ -63,7 +63,33 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 });
 
+function setAuthError(msg) {
+    const errorEl = document.getElementById("auth-error-msg");
+    if (!errorEl) return;
+    if (msg) {
+        errorEl.textContent = msg;
+        errorEl.style.display = "block";
+    } else {
+        errorEl.textContent = "";
+        errorEl.style.display = "none";
+    }
+}
+
+function setAuthInfo(msg) {
+    const infoEl = document.getElementById("auth-info-msg");
+    if (!infoEl) return;
+    if (msg) {
+        infoEl.textContent = msg;
+        infoEl.style.display = "block";
+    } else {
+        infoEl.textContent = "";
+        infoEl.style.display = "none";
+    }
+}
+
 async function realGoogleLogin() {
+    setAuthError(null);
+    setAuthInfo(null);
     try {
         if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.FirebaseAuthentication) {
             const result = await window.Capacitor.Plugins.FirebaseAuthentication.signInWithGoogle();
@@ -87,6 +113,194 @@ async function realGoogleLogin() {
     localStorage.setItem("ludo_uid", randomId);
     localStorage.setItem("ludo_name", randomName);
     requestUserSync();
+}
+
+async function guestLogin() {
+    setAuthError(null);
+    setAuthInfo(null);
+    try {
+        if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.FirebaseAuthentication) {
+            const result = await window.Capacitor.Plugins.FirebaseAuthentication.signInAnonymously();
+            const user = result.user;
+            const guestName = "Guest " + (user.uid ? user.uid.substring(0, 5).toUpperCase() : Math.floor(1000 + Math.random() * 9000));
+            currentUser = {
+                uid: user.uid,
+                displayName: guestName
+            };
+            localStorage.setItem("ludo_uid", currentUser.uid);
+            localStorage.setItem("ludo_name", currentUser.displayName);
+            requestUserSync();
+            return;
+        }
+    } catch (e) {
+        console.warn("Capacitor Firebase Anonymous sign-in fallback:", e);
+    }
+
+    let guestId = localStorage.getItem("ludo_guest_uid") || ("GST_" + Math.floor(100000 + Math.random() * 900000));
+    let guestName = localStorage.getItem("ludo_guest_name") || ("Guest " + Math.floor(1000 + Math.random() * 9000));
+    currentUser = { uid: guestId, displayName: guestName };
+    localStorage.setItem("ludo_uid", guestId);
+    localStorage.setItem("ludo_name", guestName);
+    localStorage.setItem("ludo_guest_uid", guestId);
+    localStorage.setItem("ludo_guest_name", guestName);
+    requestUserSync();
+}
+
+async function emailPasswordLogin() {
+    setAuthError(null);
+    setAuthInfo(null);
+    const emailInput = document.getElementById("auth-email");
+    const passInput = document.getElementById("auth-password");
+    const email = (emailInput ? emailInput.value : "").trim();
+    const password = (passInput ? passInput.value : "").trim();
+
+    if (!email || !password) {
+        setAuthError("Please enter both email and password.");
+        return;
+    }
+
+    try {
+        if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.FirebaseAuthentication) {
+            const result = await window.Capacitor.Plugins.FirebaseAuthentication.signInWithEmailAndPassword({
+                email: email,
+                password: password
+            });
+            const user = result.user;
+            const displayName = user.displayName || email.split("@")[0];
+            currentUser = {
+                uid: user.uid,
+                displayName: displayName
+            };
+            localStorage.setItem("ludo_uid", currentUser.uid);
+            localStorage.setItem("ludo_name", currentUser.displayName);
+            requestUserSync();
+            return;
+        }
+    } catch (err) {
+        const errorMsg = err && (err.message || err.toString()) || "";
+        if (errorMsg.includes("user-not-found")) {
+            setAuthError("Account not found. Please click Register.");
+            return;
+        } else if (errorMsg.includes("wrong-password") || errorMsg.includes("invalid-credential")) {
+            setAuthError("Incorrect password. Please try again.");
+            return;
+        } else if (errorMsg.includes("invalid-email")) {
+            setAuthError("Please enter a valid email address.");
+            return;
+        }
+        setAuthError(errorMsg || "Failed to sign in. Please verify your credentials.");
+        return;
+    }
+
+    const emailUid = "EML_" + Math.abs(Array.from(email).reduce((h, c) => (h << 5) - h + c.charCodeAt(0) | 0, 0));
+    const displayName = email.split("@")[0];
+    currentUser = { uid: emailUid, displayName: displayName };
+    localStorage.setItem("ludo_uid", emailUid);
+    localStorage.setItem("ludo_name", displayName);
+    requestUserSync();
+}
+
+async function emailPasswordSignUp() {
+    setAuthError(null);
+    setAuthInfo(null);
+    const emailInput = document.getElementById("auth-email");
+    const passInput = document.getElementById("auth-password");
+    const email = (emailInput ? emailInput.value : "").trim();
+    const password = (passInput ? passInput.value : "").trim();
+
+    if (!email || !password) {
+        setAuthError("Please provide an email and password to register.");
+        return;
+    }
+
+    if (!email.includes("@") || !email.includes(".")) {
+        setAuthError("Please enter a valid email address.");
+        return;
+    }
+
+    if (password.length < 6) {
+        setAuthError("Password must be at least 6 characters long.");
+        return;
+    }
+
+    try {
+        if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.FirebaseAuthentication) {
+            const result = await window.Capacitor.Plugins.FirebaseAuthentication.createUserWithEmailAndPassword({
+                email: email,
+                password: password
+            });
+            const user = result.user;
+            const displayName = email.split("@")[0];
+            currentUser = {
+                uid: user.uid,
+                displayName: displayName
+            };
+            localStorage.setItem("ludo_uid", currentUser.uid);
+            localStorage.setItem("ludo_name", currentUser.displayName);
+            requestUserSync();
+            return;
+        }
+    } catch (err) {
+        const errorMsg = err && (err.message || err.toString()) || "";
+        if (errorMsg.includes("email-already-in-use")) {
+            setAuthError("This email is already registered. Please Sign In.");
+            return;
+        } else if (errorMsg.includes("weak-password")) {
+            setAuthError("Password is too weak. Please use at least 6 characters.");
+            return;
+        }
+        setAuthError(errorMsg || "Registration failed. Please try again.");
+        return;
+    }
+
+    const emailUid = "EML_" + Math.abs(Array.from(email).reduce((h, c) => (h << 5) - h + c.charCodeAt(0) | 0, 0));
+    const displayName = email.split("@")[0];
+    currentUser = { uid: emailUid, displayName: displayName };
+    localStorage.setItem("ludo_uid", emailUid);
+    localStorage.setItem("ludo_name", displayName);
+    requestUserSync();
+}
+
+async function forgotPassword() {
+    setAuthError(null);
+    setAuthInfo(null);
+    const emailInput = document.getElementById("auth-email");
+    const email = (emailInput ? emailInput.value : "").trim();
+
+    if (!email) {
+        setAuthError("Please enter your email address above to receive reset link.");
+        if (emailInput) emailInput.focus();
+        return;
+    }
+
+    if (!email.includes("@") || !email.includes(".")) {
+        setAuthError("Please enter a valid email address.");
+        if (emailInput) emailInput.focus();
+        return;
+    }
+
+    try {
+        if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.FirebaseAuthentication) {
+            await window.Capacitor.Plugins.FirebaseAuthentication.sendPasswordResetEmail({
+                email: email
+            });
+            setAuthInfo("Password reset email sent! Check your inbox or spam folder.");
+            return;
+        }
+    } catch (err) {
+        const errorMsg = err && (err.message || err.toString()) || "";
+        if (errorMsg.includes("user-not-found")) {
+            setAuthError("No account found with this email. Please register first.");
+            return;
+        } else if (errorMsg.includes("invalid-email")) {
+            setAuthError("Please enter a valid email address.");
+            return;
+        }
+        setAuthError(errorMsg || "Could not send reset email. Please verify your address.");
+        return;
+    }
+
+    setAuthInfo("Password reset link sent! Check your inbox or spam folder.");
 }
 
 function requestUserSync() {

@@ -178,18 +178,185 @@ body {
 .btn-google {
     background: #ffffff;
     color: #0f172a;
-    padding: 14px 18px;
+    padding: 13px 18px;
     width: 100%;
-    border-radius: 16px;
+    border-radius: 14px;
     font-weight: 800;
     border: none;
-    font-size: 16px;
+    font-size: 15px;
     cursor: pointer;
     box-shadow: 0 4px 15px rgba(255, 255, 255, 0.2);
     display: flex;
     justify-content: center;
     align-items: center;
     gap: 8px;
+    transition: transform 0.15s ease, opacity 0.15s ease;
+}
+
+.btn-google:active {
+    transform: scale(0.98);
+}
+
+.btn-guest {
+    background: linear-gradient(135deg, #10b981, #059669);
+    color: #ffffff;
+    padding: 13px 18px;
+    width: 100%;
+    border-radius: 14px;
+    font-weight: 800;
+    border: none;
+    font-size: 15px;
+    cursor: pointer;
+    box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    margin-top: 10px;
+    transition: transform 0.15s ease;
+}
+
+.btn-guest:active {
+    transform: scale(0.98);
+}
+
+.auth-divider {
+    display: flex;
+    align-items: center;
+    margin: 16px 0 14px;
+    color: #64748b;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.8px;
+}
+
+.auth-divider::before,
+.auth-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: rgba(255, 255, 255, 0.12);
+}
+
+.auth-divider span {
+    padding: 0 10px;
+}
+
+.auth-card {
+    background: rgba(30, 41, 59, 0.7);
+    border: 1px solid rgba(255, 215, 0, 0.2);
+    border-radius: 14px;
+    padding: 14px;
+    text-align: left;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
+}
+
+.auth-input-group {
+    margin-bottom: 10px;
+}
+
+.auth-label {
+    display: block;
+    font-size: 11px;
+    font-weight: 700;
+    color: #cbd5e1;
+    margin-bottom: 4px;
+}
+
+.auth-forgot-link {
+    background: none;
+    border: none;
+    padding: 0;
+    color: #38bdf8;
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+    text-decoration: underline;
+    transition: color 0.15s ease;
+}
+
+.auth-forgot-link:hover {
+    color: #7dd3fc;
+}
+
+.auth-input {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    background: rgba(15, 23, 42, 0.85);
+    color: #ffffff;
+    font-size: 13px;
+    outline: none;
+    transition: border-color 0.2s ease;
+}
+
+.auth-input:focus {
+    border-color: #38bdf8;
+}
+
+.auth-error {
+    color: #f87171;
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.25);
+    padding: 8px 10px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    margin-bottom: 10px;
+    display: none;
+}
+
+.auth-info {
+    color: #34d399;
+    background: rgba(16, 185, 129, 0.12);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    padding: 8px 10px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    margin-bottom: 10px;
+    display: none;
+}
+
+.auth-actions-row {
+    display: flex;
+    gap: 8px;
+}
+
+.btn-auth-signin {
+    flex: 1;
+    padding: 11px 12px;
+    border-radius: 8px;
+    border: none;
+    font-weight: 800;
+    font-size: 13px;
+    background: #38bdf8;
+    color: #0f172a;
+    cursor: pointer;
+    transition: opacity 0.15s ease;
+}
+
+.btn-auth-signin:active {
+    opacity: 0.85;
+}
+
+.btn-auth-signup {
+    flex: 1;
+    padding: 11px 12px;
+    border-radius: 8px;
+    border: 1px solid #38bdf8;
+    font-weight: 800;
+    font-size: 13px;
+    background: rgba(56, 189, 248, 0.1);
+    color: #38bdf8;
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+
+.btn-auth-signup:active {
+    background: rgba(56, 189, 248, 0.2);
 }
 
 .btn-ad {
