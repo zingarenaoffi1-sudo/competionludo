@@ -96,6 +96,19 @@ function requestUserSync() {
     });
 }
 
+function competitionLogout() {
+    localStorage.removeItem("ludo_uid");
+    localStorage.removeItem("ludo_name");
+    currentUser = null;
+    if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.FirebaseAuthentication) {
+        try {
+            window.Capacitor.Plugins.FirebaseAuthentication.signOut();
+        } catch (e) {}
+    }
+    document.getElementById("dashboard-section").classList.add("hidden");
+    document.getElementById("login-section").classList.remove("hidden");
+}
+
 function setupSocketListeners() {
     socket.on("auth-user-loaded", (userData) => {
         currentUser = {
