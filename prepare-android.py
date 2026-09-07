@@ -47,30 +47,18 @@ def main():
             f.write(strings_xml)
         print("Updated strings.xml successfully.")
 
-    # 3. MainActivity.java -> Safe initialization to prevent app startup crash
+    # 3. MainActivity.java -> Standard Capacitor BridgeActivity (Firebase is auto-initialized by Google Services plugin)
     main_act_path = "android/app/src/main/java/com/zingarena/app/MainActivity.java"
     if os.path.exists(main_act_path):
         main_act_content = """package com.zingarena.app;
 
-import android.os.Bundle;
 import com.getcapacitor.BridgeActivity;
-import com.google.firebase.FirebaseApp;
 
-public class MainActivity extends BridgeActivity {
-    @Override
-    public void onCreate(Bundle savedInstanceState) {
-        try {
-            FirebaseApp.initializeApp(this);
-        } catch (Throwable t) {
-            android.util.Log.w("MainActivity", "FirebaseApp init handled: " + t.getMessage());
-        }
-        super.onCreate(savedInstanceState);
-    }
-}
+public class MainActivity extends BridgeActivity {}
 """
         with open(main_act_path, "w", encoding="utf-8") as f:
             f.write(main_act_content)
-        print("Updated MainActivity.java successfully.")
+        print("Updated MainActivity.java to clean BridgeActivity.")
 
     print("prepare-android.py completed.")
 

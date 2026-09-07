@@ -130,6 +130,7 @@ jobs:
       - name: Sync Capacitor Android
         run: |
           npx cap sync android
+          python3 prepare-android.py
 
       - name: Configure Gradle & Real Firebase Google Services
         env:
