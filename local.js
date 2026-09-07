@@ -83,12 +83,41 @@ function choosePlayerCount(count) {
 }
 
 function unlockTokenViaAd() {
-    document.getElementById("fast-track-modal").classList.add("hidden");
-    if (typeof playRewardedAd === 'function') {
-        playRewardedAd(() => {
-            startLocalGame(pendingPlayerCount, true);
+    // 1. Strict internet check
+    if (!navigator.onLine) {
+        if (typeof window.showAdToast === 'function') {
+            window.showAdToast("⚠️ इंटरनेट कनेक्शन बंद है! वीडियो देखने और गोटी निकालने के लिए इंटरनेट चालू करें।");
+        } else {
+            alert("⚠️ Internet connection required to watch video and unlock goti!");
+        }
+        return;
+    }
+
+    const btn = document.getElementById("local-unlock-ad-btn");
+    if (btn) btn.innerText = "⏳ Loading Video Ad...";
+
+    // 2. Play Rewarded Ad via Central Controller
+    if (typeof window.showZingRewardedAd === 'function') {
+        window.showZingRewardedAd({
+            onReward: () => {
+                if (btn) btn.innerText = "📺 Watch Ad & Unlock Token";
+                document.getElementById("fast-track-modal").classList.add("hidden");
+                startLocalGame(pendingPlayerCount, true);
+            },
+            onFail: (err) => {
+                if (btn) btn.innerText = "📺 Watch Ad & Unlock Token";
+                // Do NOT unlock token and do NOT start game on ad failure!
+            }
         });
     } else {
+        // Fallback only if online
+        if (!navigator.onLine) {
+            if (typeof window.showAdToast === 'function') {
+                window.showAdToast("⚠️ इंटरनेट कनेक्शन बंद है!");
+            }
+            return;
+        }
+        document.getElementById("fast-track-modal").classList.add("hidden");
         startLocalGame(pendingPlayerCount, true);
     }
 }

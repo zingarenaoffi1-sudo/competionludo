@@ -175,24 +175,9 @@
 
     <script src="admob-config.js"></script>
     <script>
-        document.addEventListener('DOMContentLoaded', async () => {
-            const bannerTestId = (window.AdMobConfig && window.AdMobConfig.bannerAdId) || 'ca-app-pub-3940256099942544/9214589741';
-            const isTesting = (window.AdMobConfig && typeof window.AdMobConfig.isTesting === 'boolean') ? window.AdMobConfig.isTesting : true;
-
-            if (window.Capacitor && Capacitor.Plugins.AdMob) {
-                const { AdMob } = Capacitor.Plugins;
-                try {
-                    await AdMob.initialize({ initializeForTesting: isTesting });
-                    await AdMob.showBanner({
-                        adId: bannerTestId,
-                        position: 'TOP_CENTER',
-                        margin: 0
-                    });
-                } catch(e) {
-                    console.error("Banner Ad failed", e);
-                }
-            } else {
-                document.getElementById('test-banner').style.display = 'flex';
+        document.addEventListener('DOMContentLoaded', () => {
+            if (window.initZingBannerAd) {
+                window.initZingBannerAd({ delay: 1500 });
             }
         });
 

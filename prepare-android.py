@@ -15,9 +15,18 @@ def main():
         if "com.google.android.gms.ads.APPLICATION_ID" not in content:
             content = content.replace("</application>", admob_meta)
 
-        perms = '\n    <uses-permission android:name="android.permission.INTERNET"/>\n    <application'
+        perms = (
+            '\n    <uses-permission android:name="android.permission.INTERNET"/>'
+            '\n    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>'
+            '\n    <application'
+        )
         if "android.permission.INTERNET" not in content:
             content = content.replace("<application", perms)
+        elif "android.permission.ACCESS_NETWORK_STATE" not in content:
+            content = content.replace("<application", '\n    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>\n    <application')
+
+        if 'android:hardwareAccelerated' not in content:
+            content = content.replace('<application', '<application android:hardwareAccelerated="true"')
 
         with open(manifest_path, "w", encoding="utf-8") as f:
             f.write(content)

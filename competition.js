@@ -236,20 +236,26 @@ function updateDashboardUI() {
 }
 
 function showRewardedAdForTokens() {
-    if (window.Capacitor && Capacitor.Plugins.AdMob) {
-        const { AdMob } = Capacitor.Plugins;
-        AdMob.prepareRewardVideoAd({
-            adId: "ca-app-pub-3940256099942544/5224354917",
-            isTesting: true
-        }).then(() => {
-            AdMob.addListener("onRewardedVideoAdReward", () => {
+    if (!navigator.onLine) {
+        if (typeof window.showAdToast === 'function') {
+            window.showAdToast("⚠️ इंटरनेट कनेक्शन बंद है! टोकन के लिए वीडियो देखने हेतु इंटरनेट चालू करें।");
+        } else {
+            alert("⚠️ Internet is required to watch video ad and claim tokens!");
+        }
+        return;
+    }
+
+    if (typeof window.showZingRewardedAd === 'function') {
+        window.showZingRewardedAd({
+            onReward: () => {
                 claimAdRewardOnServer();
-            });
-            AdMob.showRewardVideoAd();
-        }).catch(err => {
-            claimAdRewardOnServer();
+            },
+            onFail: (err) => {
+                // Do NOT reward tokens if video was closed early or offline!
+            }
         });
     } else {
+        if (!navigator.onLine) return;
         claimAdRewardOnServer();
     }
 }

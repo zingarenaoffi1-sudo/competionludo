@@ -118,7 +118,7 @@
                 <p style="color: #cbd5e1; font-size: 13px; line-height: 1.5; margin-bottom: 18px;">
                     Watch a short rewarded ad to start with 1 token already out of base for all players, or play normal!
                 </p>
-                <button class="ultra-roll-btn" onclick="unlockTokenViaAd()" style="width: 100%; margin-bottom: 10px; background: linear-gradient(180deg, #ec4899, #f43f5e); color: white;">📺 Watch Ad & Unlock Token</button>
+                <button id="local-unlock-ad-btn" class="ultra-roll-btn" onclick="unlockTokenViaAd()" style="width: 100%; margin-bottom: 10px; background: linear-gradient(180deg, #ec4899, #f43f5e); color: white;">📺 Watch Ad & Unlock Token</button>
                 <button class="ultra-roll-btn" onclick="startSessionNormally()" style="width: 100%; margin-bottom: 10px; background: linear-gradient(180deg, #22c55e, #16a34a); color: white;">▶ Play Normal</button>
             </div>
         </div>
@@ -137,27 +137,9 @@
     <script src="admob-config.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            setTimeout(async () => {
-                const bannerTestId = (window.AdMobConfig && window.AdMobConfig.bannerAdId) || 'ca-app-pub-3940256099942544/9214589741';
-                const isTesting = (window.AdMobConfig && typeof window.AdMobConfig.isTesting === 'boolean') ? window.AdMobConfig.isTesting : true;
-
-                if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.AdMob) {
-                    const { AdMob } = window.Capacitor.Plugins;
-                    try {
-                        await AdMob.initialize({ initializeForTesting: isTesting });
-                        await AdMob.showBanner({
-                            adId: bannerTestId,
-                            position: 'TOP_CENTER',
-                            margin: 0
-                        });
-                    } catch(e) {
-                        console.log("Banner Ad safe skip", e);
-                    }
-                } else {
-                    const banner = document.getElementById('test-banner');
-                    if (banner) banner.style.display = 'flex';
-                }
-            }, 600);
+            if (window.initZingBannerAd) {
+                window.initZingBannerAd({ delay: 1500 });
+            }
         });
 
         async function playInterstitialAd() {
@@ -174,28 +156,6 @@
                 } catch(e) {
                     console.log("Interstitial failed", e);
                 }
-            }
-        }
-
-        async function playRewardedAd(onSuccess) {
-            const adId = (window.AdMobConfig && window.AdMobConfig.rewardedAdId) || 'ca-app-pub-3940256099942544/5224354917';
-            const isTesting = (window.AdMobConfig && typeof window.AdMobConfig.isTesting === 'boolean') ? window.AdMobConfig.isTesting : true;
-            if (window.Capacitor && Capacitor.Plugins.AdMob) {
-                const { AdMob } = Capacitor.Plugins;
-                try {
-                    await AdMob.prepareRewardVideoAd({
-                        adId: adId,
-                        isTesting: isTesting
-                    });
-                    AdMob.addListener('onRewardedVideoAdReward', () => {
-                        if (typeof onSuccess === 'function') onSuccess();
-                    });
-                    await AdMob.showRewardVideoAd();
-                } catch(e) {
-                    if (typeof onSuccess === 'function') onSuccess();
-                }
-            } else {
-                if (typeof onSuccess === 'function') onSuccess();
             }
         }
     </script>

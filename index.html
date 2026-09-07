@@ -174,27 +174,11 @@
     <script src="how-to-play.js"></script>
     <script>
         document.addEventListener("DOMContentLoaded", () => {
-            // Safe non-blocking AdMob initialization (does not freeze main thread)
-            setTimeout(async () => {
-                try {
-                    if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.AdMob) {
-                        const { AdMob } = window.Capacitor.Plugins;
-                        const bannerTestId = (window.AdMobConfig && window.AdMobConfig.bannerAdId) || 'ca-app-pub-3940256099942544/9214589741'; 
-                        const isTesting = (window.AdMobConfig && typeof window.AdMobConfig.isTesting === 'boolean') ? window.AdMobConfig.isTesting : true;
-                        await AdMob.initialize({ initializeForTesting: isTesting });
-                        await AdMob.showBanner({
-                            adId: bannerTestId,
-                            position: 'TOP_CENTER', 
-                            margin: 0
-                        });
-                    } else {
-                        const el = document.getElementById('test-banner');
-                        if (el) el.style.display = 'flex';
-                    }
-                } catch(e) {
-                    console.log("Banner safe skip: ", e);
-                }
-            }, 600);
+            // Only loads and displays banner when Internet is ON.
+            // Delay 2500ms ensures app renders smoothly with zero UI freeze / zero ANR on cold boot.
+            if (window.initZingBannerAd) {
+                window.initZingBannerAd({ delay: 2500 });
+            }
         });
     </script>
 </body>

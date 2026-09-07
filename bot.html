@@ -121,8 +121,21 @@
                     </div>
                 </div>
 
-                <button class="ultra-roll-btn" onclick="startBotMatchConfirmed()" style="width: 100%; margin-bottom: 8px; padding: 12px; font-size: 14px;">START MATCH 🚀</button>
+                <button class="ultra-roll-btn" onclick="openBotFastTrackModal()" style="width: 100%; margin-bottom: 8px; padding: 12px; font-size: 14px;">START MATCH 🚀</button>
                 <button class="menu-btn" onclick="window.location.href='index.html'" style="width: 100%; padding: 10px;">Back to Lobby</button>
+            </div>
+        </div>
+
+        <!-- FAST TRACK / UNLOCK 1 TOKEN MODAL (VS BOT) -->
+        <div id="bot-fast-track-modal" class="modal hidden">
+            <div class="modal-content">
+                <div style="font-size: 36px; margin-bottom: 6px;">⚡</div>
+                <h2 style="color: #ffd700; margin-bottom: 6px; font-weight: 900;">UNLOCK 1 GOTI?</h2>
+                <p style="color: #cbd5e1; font-size: 13px; line-height: 1.5; margin-bottom: 18px;">
+                    Watch a short rewarded ad to start with 1 goti already unlocked out of base, or play normal!
+                </p>
+                <button id="bot-unlock-ad-btn" class="ultra-roll-btn" onclick="botUnlockTokenViaAd()" style="width: 100%; margin-bottom: 10px; background: linear-gradient(180deg, #ec4899, #f43f5e); color: white;">📺 Watch Ad & Unlock 1 Goti</button>
+                <button class="ultra-roll-btn" onclick="botStartNormally()" style="width: 100%; margin-bottom: 10px; background: linear-gradient(180deg, #22c55e, #16a34a); color: white;">▶ Play Normal</button>
             </div>
         </div>
 
@@ -141,26 +154,9 @@
     <script src="admob-config.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            setTimeout(async () => {
-                const bannerId = (window.AdMobConfig && window.AdMobConfig.bannerAdId) || 'ca-app-pub-3940256099942544/9214589741';
-                const isTesting = (window.AdMobConfig && typeof window.AdMobConfig.isTesting === 'boolean') ? window.AdMobConfig.isTesting : true;
-                if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.AdMob) {
-                    const { AdMob } = window.Capacitor.Plugins;
-                    try {
-                        await AdMob.initialize({ initializeForTesting: isTesting });
-                        await AdMob.showBanner({
-                            adId: bannerId,
-                            position: 'TOP_CENTER',
-                            margin: 0
-                        });
-                    } catch(e) {
-                        console.log("Banner Ad safe skip", e);
-                    }
-                } else {
-                    const banner = document.getElementById('test-banner');
-                    if (banner) banner.style.display = 'flex';
-                }
-            }, 600);
+            if (window.initZingBannerAd) {
+                window.initZingBannerAd({ delay: 1500 });
+            }
         });
 
         async function playInterstitialAd() {

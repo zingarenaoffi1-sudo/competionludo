@@ -70,8 +70,66 @@ function selectBotOpponentCount(count) {
     });
 }
 
-function startBotMatchConfirmed() {
+function openBotFastTrackModal() {
     document.getElementById("startup-modal").classList.add("hidden");
+    const fastTrack = document.getElementById("bot-fast-track-modal");
+    if (fastTrack) {
+        fastTrack.classList.remove("hidden");
+    } else {
+        startBotMatchConfirmed(false);
+    }
+}
+
+function botUnlockTokenViaAd() {
+    // 1. Strict internet check
+    if (!navigator.onLine) {
+        if (typeof window.showAdToast === 'function') {
+            window.showAdToast("⚠️ इंटरनेट कनेक्शन बंद है! वीडियो देखने और गोटी निकालने के लिए इंटरनेट चालू करें।");
+        } else {
+            alert("⚠️ Internet connection required to watch video and unlock goti!");
+        }
+        return;
+    }
+
+    const btn = document.getElementById("bot-unlock-ad-btn");
+    if (btn) btn.innerText = "⏳ Loading Video Ad...";
+
+    // 2. Play Rewarded Ad via Central Controller
+    if (typeof window.showZingRewardedAd === 'function') {
+        window.showZingRewardedAd({
+            onReward: () => {
+                if (btn) btn.innerText = "📺 Watch Ad & Unlock 1 Goti";
+                const modal = document.getElementById("bot-fast-track-modal");
+                if (modal) modal.classList.add("hidden");
+                startBotMatchConfirmed(true);
+            },
+            onFail: (err) => {
+                if (btn) btn.innerText = "📺 Watch Ad & Unlock 1 Goti";
+                // Do NOT unlock token and do NOT start game on ad failure!
+            }
+        });
+    } else {
+        if (!navigator.onLine) {
+            if (typeof window.showAdToast === 'function') {
+                window.showAdToast("⚠️ इंटरनेट कनेक्शन बंद है!");
+            }
+            return;
+        }
+        const modal = document.getElementById("bot-fast-track-modal");
+        if (modal) modal.classList.add("hidden");
+        startBotMatchConfirmed(true);
+    }
+}
+
+function botStartNormally() {
+    const modal = document.getElementById("bot-fast-track-modal");
+    if (modal) modal.classList.add("hidden");
+    startBotMatchConfirmed(false);
+}
+
+function startBotMatchConfirmed(unlockOneToken = false) {
+    const startupModal = document.getElementById("startup-modal");
+    if (startupModal) startupModal.classList.add("hidden");
 
     if (botCount === 1) {
         activePlayers = ['red', 'yellow'];
@@ -103,7 +161,7 @@ function startBotMatchConfirmed() {
     currentPlayerIndex = 0;
     gameState = 'WAITING_FOR_ROLL';
     isMoving = false;
-    spawnTokens(false);
+    spawnTokens(unlockOneToken);
     updateTurnUI();
 }
 
