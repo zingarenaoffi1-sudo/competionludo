@@ -108,9 +108,9 @@ function setAuthInfo(msg) {
 
 async function realGoogleLogin() {
     setAuthError(null);
-    setAuthInfo(null);
+    setAuthInfo("Connecting to server...");
     try {
-        if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.FirebaseAuthentication) {
+        if (false) {
             const result = await window.Capacitor.Plugins.FirebaseAuthentication.signInWithGoogle();
             const user = result.user;
             currentUser = {
@@ -139,9 +139,9 @@ async function realGoogleLogin() {
 
 async function guestLogin() {
     setAuthError(null);
-    setAuthInfo(null);
+    setAuthInfo("Connecting to server...");
     try {
-        if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.FirebaseAuthentication) {
+        if (false) {
             const result = await window.Capacitor.Plugins.FirebaseAuthentication.signInAnonymously();
             const user = result.user;
             const guestName = "Guest " + (user.uid ? user.uid.substring(0, 5).toUpperCase() : Math.floor(1000 + Math.random() * 9000));
@@ -225,7 +225,7 @@ function handleAuthSubmit() {
 
 async function emailPasswordLogin() {
     setAuthError(null);
-    setAuthInfo(null);
+    setAuthInfo("Connecting to server...");
     const emailInput = document.getElementById("auth-email");
     const passInput = document.getElementById("auth-password");
     const email = (emailInput ? emailInput.value : "").trim();
@@ -237,7 +237,7 @@ async function emailPasswordLogin() {
     }
 
     try {
-        if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.FirebaseAuthentication) {
+        if (false) {
             const result = await window.Capacitor.Plugins.FirebaseAuthentication.signInWithEmailAndPassword({
                 email: email,
                 password: password
@@ -286,7 +286,7 @@ async function emailPasswordLogin() {
 
 async function emailPasswordSignUp() {
     setAuthError(null);
-    setAuthInfo(null);
+    setAuthInfo("Connecting to server...");
     const emailInput = document.getElementById("auth-email");
     const passInput = document.getElementById("auth-password");
     const email = (emailInput ? emailInput.value : "").trim();
@@ -308,7 +308,7 @@ async function emailPasswordSignUp() {
     }
 
     try {
-        if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.FirebaseAuthentication) {
+        if (false) {
             const result = await window.Capacitor.Plugins.FirebaseAuthentication.createUserWithEmailAndPassword({
                 email: email,
                 password: password
@@ -371,7 +371,7 @@ async function forgotPassword() {
     }
 
     try {
-        if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.FirebaseAuthentication) {
+        if (false) {
             await window.Capacitor.Plugins.FirebaseAuthentication.sendPasswordResetEmail({
                 email: email
             });
@@ -396,11 +396,15 @@ async function forgotPassword() {
 
 function requestUserSync() {
     const isGuest = Boolean(currentUser.isGuest || (localStorage.getItem("ludo_is_guest") === "true") || (currentUser.uid && currentUser.uid.startsWith("GST_")));
-    socket.emit("auth-sync-user", {
-        userId: currentUser.uid,
-        name: currentUser.displayName,
-        isGuest: isGuest
-    });
+    if (window.socket) {
+        window.socket.emit("auth-sync-user", {
+            userId: currentUser.uid,
+            name: currentUser.displayName,
+            isGuest: isGuest
+        });
+    } else {
+        setTimeout(requestUserSync, 1000);
+    }
 }
 
 function competitionLogout() {
@@ -408,7 +412,7 @@ function competitionLogout() {
     localStorage.removeItem("ludo_name");
     localStorage.removeItem("ludo_is_guest");
     currentUser = null;
-    if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.FirebaseAuthentication) {
+    if (false) {
         try {
             window.Capacitor.Plugins.FirebaseAuthentication.signOut();
         } catch (e) {}

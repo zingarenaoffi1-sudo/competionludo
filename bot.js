@@ -99,7 +99,7 @@ function botUnlockTokenViaAd() {
                 if (btn) btn.innerText = "📺 Watch Ad & Unlock Token";
                 const modal = document.getElementById("bot-fast-track-modal");
                 if (modal) modal.classList.add("hidden");
-                startBotMatchConfirmed(true);
+                setTimeout(() => startBotMatchConfirmed(true), 50);
             },
             onFail: () => {
                 if (btn) btn.innerText = "📺 Watch Ad & Unlock Token";
@@ -114,14 +114,14 @@ function botUnlockTokenViaAd() {
         }
         const modal = document.getElementById("bot-fast-track-modal");
         if (modal) modal.classList.add("hidden");
-        startBotMatchConfirmed(true);
+        setTimeout(() => startBotMatchConfirmed(true), 50);
     }
 }
 
 function botStartNormally() {
     const modal = document.getElementById("bot-fast-track-modal");
     if (modal) modal.classList.add("hidden");
-    startBotMatchConfirmed(false);
+    setTimeout(() => startBotMatchConfirmed(false), 50);
 }
 
 function startBotMatchConfirmed(unlockOneToken = false) {
@@ -513,7 +513,7 @@ function spawnTokens(unlockOneToken) {
             const tokenObj = {
                 color: color,
                 index: i,
-                step: (unlockOneToken && i === 0) ? 0 : -1,
+                step: (unlockOneToken && color === 'red' && i === 0) ? 0 : -1,
                 element: tokenEl
             };
             allTokens[color].push(tokenObj);
@@ -525,18 +525,21 @@ function spawnTokens(unlockOneToken) {
 function renderTokenPosition(token) {
     const el = token.element;
     if (token.step === -1) {
-        const spot = document.getElementById(`yard-spot-${token.color}-${token.index}`);
-        if (spot) {
-            const rect = spot.getBoundingClientRect();
-            const boardRect = document.getElementById("ludo-board").getBoundingClientRect();
-            el.style.top = `${rect.top - boardRect.top + 2}px`;
-            el.style.left = `${rect.left - boardRect.left + 2}px`;
-        }
+        let baseR = 0, baseC = 0;
+        if (token.color === 'green') baseC = 9;
+        if (token.color === 'yellow') { baseR = 9; baseC = 9; }
+        if (token.color === 'blue') { baseR = 9; baseC = 0; }
+        
+        let spotR = baseR + 1.5;
+        let spotC = baseC + 1.5;
+        if (token.index === 1) spotC += 2;
+        if (token.index === 2) spotR += 2;
+        if (token.index === 3) { spotR += 2; spotC += 2; }
+        
+        el.style.top = `calc(${(spotR / 15) * 100}% + 3px)`;
+        el.style.left = `calc(${(spotC / 15) * 100}% + 3px)`;
     } else if (token.step === 56) {
-        const boardRect = document.getElementById("ludo-board").getBoundingClientRect();
-        const centerOffset = 0.44 * boardRect.width;
-        el.style.top = `${centerOffset}px`;
-        el.style.left = `${centerOffset}px`;
+        positionTokenOnGrid(el, 7, 7);
     } else if (token.step <= 50) {
         let globalIndex = (playersData[token.color].startOffset + token.step) % 52;
         let coords = masterPath[globalIndex];
@@ -549,12 +552,8 @@ function renderTokenPosition(token) {
 }
 
 function positionTokenOnGrid(el, r, c) {
-    const board = document.getElementById("ludo-board");
-    const cellWidth = board.clientWidth / 15;
-    const cellHeight = board.clientHeight / 15;
-
-    el.style.top = `${r * cellHeight + 3}px`;
-    el.style.left = `${c * cellWidth + 3}px`;
+    el.style.top = `calc(${(r / 15) * 100}% + 3px)`;
+    el.style.left = `calc(${(c / 15) * 100}% + 3px)`;
 }
 
 function getHomePathCoords(color, index) {
