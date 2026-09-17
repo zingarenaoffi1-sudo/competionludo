@@ -11,7 +11,7 @@ def main():
         with open(manifest_path, "r", encoding="utf-8") as f:
             content = f.read()
 
-        admob_meta = f'\n        <meta-data android:name="com.google.android.gms.ads.APPLICATION_ID" android:value="{app_id}"/>\n    </application>'
+        admob_meta = f'\n        <meta-data android:name="com.google.android.gms.ads.APPLICATION_ID" android:value="{app_id}"/>\n        <meta-data android:name="com.google.android.gms.ads.DELAY_APP_MEASUREMENT_INIT" android:value="true"/>\n    </application>'
         if "com.google.android.gms.ads.APPLICATION_ID" not in content:
             content = content.replace("</application>", admob_meta)
 
@@ -71,6 +71,16 @@ public class MainActivity extends BridgeActivity {
 """
         with open(main_act_path, "w", encoding="utf-8") as f:
             f.write(main_act_content)
+
+
+    vars_path = "android/variables.gradle"
+    if os.path.exists(vars_path):
+        with open(vars_path, "r", encoding="utf-8") as f:
+            vars_content = f.read()
+        if "rgcfaIncludeGoogle" not in vars_content:
+            vars_content = vars_content.replace("ext {", "ext {\n    rgcfaIncludeGoogle = true\n    rgcfaIncludeFacebook = false")
+            with open(vars_path, "w", encoding="utf-8") as f:
+                f.write(vars_content)
 
 if __name__ == "__main__":
     main()
