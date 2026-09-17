@@ -1,7 +1,6 @@
 const fs = require("fs");
-let code = fs.readFileSync("bot.js", "utf8");
+let code = fs.readFileSync("competition.js", "utf8");
 
-// 1. Rewrite rollDice to use 3D transform instead of flat CSS animation
 const rollDiceRegex = /function rollDice\(\) \{[\s\S]*?checkAvailableMoves\(\);\n    \}, 600\);\n\}/;
 const newRollDice = `function rollDice() {
     if (gameState !== 'WAITING_FOR_ROLL' || isMoving) return;
@@ -43,7 +42,6 @@ const newRollDice = `function rollDice() {
 }`;
 code = code.replace(rollDiceRegex, newRollDice);
 
-// 2. Rewrite moveToken to hop step-by-step
 const moveTokenRegex = /function moveToken\(color, tokenIndex\) \{[\s\S]*?function checkCapture\(token\) \{/m;
 const newMoveToken = `function moveToken(color, tokenIndex) {
     if (gameState !== 'WAITING_FOR_MOVE' || isMoving) return;
@@ -105,76 +103,4 @@ const newMoveToken = `function moveToken(color, tokenIndex) {
 
 function checkCapture(token) {`;
 code = code.replace(moveTokenRegex, newMoveToken);
-
-// 3. Rewrite selectSmartBotMove for advanced AI
-const smartBotRegex = /function selectSmartBotMove\(color, movableIndices\) \{[\s\S]*?return movableIndices\[Math\.floor\(Math\.random\(\) \* movableIndices\.length\)\];\n\}/m;
-const newSmartBot = `function selectSmartBotMove(color, movableIndices) {
-    if (movableIndices.length === 1) return movableIndices[0];
-    
-    let bestScore = -999;
-    let bestIdx = movableIndices[0];
-    
-    for (let idx of movableIndices) {
-        let t = allTokens[color][idx];
-        let score = 0;
-        
-        // Opening from base is very good
-        if (t.step === -1) score += 60;
-        
-        let simStep = (t.step === -1) ? 0 : (t.step + currentDiceValue);
-        
-        // Entering home stretch is excellent
-        if (simStep > 50 && simStep < 56) score += 50;
-        // Winning is top priority
-        if (simStep === 56) score += 1000;
-        
-        if (simStep <= 51) {
-            let simGlobal = (playersData[color].startOffset + simStep) % 52;
-            let simCoords = masterPath[simGlobal];
-            let isSafe = safeZones.some(z => z.r === simCoords.r && z.c === simCoords.c);
-            
-            // Landing on a star is good
-            if (isSafe) score += 40;
-            
-            // Check for cuts (Top priority next to winning)
-            if (!isSafe) {
-                let canCut = false;
-                for (let enemyColor of activePlayers) {
-                    if (enemyColor === color) continue;
-                    for (let eToken of allTokens[enemyColor]) {
-                        if (eToken.step !== -1 && eToken.step <= 51) {
-                            let eGlobal = (playersData[enemyColor].startOffset + eToken.step) % 52;
-                            if (eGlobal === simGlobal) {
-                                canCut = true;
-                                break;
-                            }
-                        }
-                    }
-                }
-                if (canCut) score += 500;
-            }
-            
-            // Try to move tokens that are currently in danger
-            if (t.step !== -1 && t.step <= 51) {
-                let currentGlobal = (playersData[color].startOffset + t.step) % 52;
-                let currentSafe = safeZones.some(z => z.r === masterPath[currentGlobal].r && z.c === masterPath[currentGlobal].c);
-                if (!currentSafe) {
-                    // Just an approximation: if not safe, it's good to move it
-                    score += 20; 
-                }
-            }
-        }
-        
-        // Slight randomization for tie-breakers
-        score += Math.random() * 5;
-        
-        if (score > bestScore) {
-            bestScore = score;
-            bestIdx = idx;
-        }
-    }
-    return bestIdx;
-}`;
-code = code.replace(smartBotRegex, newSmartBot);
-
-fs.writeFileSync("bot.js", code);
+fs.writeFileSync("competition.js", code);
