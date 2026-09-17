@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "node server.js",
     "start": "node server.js",
-    "build": "echo 'Build complete'"
+    "build": "mkdir -p www && cp *.html *.css *.js *.png www/ && cp -r assets sounds www/ 2>/dev/null || true && rm -f www/server.js www/prepare-android.py www/test_script.js www/patch*.js"
   },
   "dependencies": {
     "@capacitor-community/admob": "^6.0.0",
