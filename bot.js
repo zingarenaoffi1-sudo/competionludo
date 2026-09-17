@@ -448,140 +448,145 @@ function switchTurn(extraTurn) {
     updateTurnUI();
 }
 
+function renderTokenPosition(token) {
+    const board = document.getElementById("ludo-board");
+    if (!board || !token || !token.element) return;
+    const boardRect = board.getBoundingClientRect();
+    let targetEl = null;
+
+    if (token.step === -1) {
+        targetEl = document.getElementById(`slot-${token.color}-${token.index}`);
+    } else if (token.step <= 51) {
+        let globalIndex = (playersData[token.color].startOffset + token.step) % 52;
+        let coords = masterPath[globalIndex];
+        targetEl = document.getElementById(`cell-${coords.r}-${coords.c}`);
+    } else {
+        let homeIndex = token.step - 52;
+        if (homeIndex < 5) {
+            if (token.color === 'red') targetEl = document.getElementById(`cell-7-${homeIndex + 1}`);
+            if (token.color === 'green') targetEl = document.getElementById(`cell-${homeIndex + 1}-7`);
+            if (token.color === 'yellow') targetEl = document.getElementById(`cell-7-${13 - homeIndex}`);
+            if (token.color === 'blue') targetEl = document.getElementById(`cell-${13 - homeIndex}-7`);
+        } else {
+            targetEl = document.getElementById(`cell-7-7`);
+        }
+    }
+
+    if (targetEl) {
+        const rect = targetEl.getBoundingClientRect();
+        const left = (rect.left - boardRect.left) + (rect.width / 2) - 10;
+        const top = (rect.top - boardRect.top) + (rect.height / 2) - 10;
+        token.element.style.left = `${left}px`;
+        token.element.style.top = `${top}px`;
+    }
+}
+
+function renderAllTokens() {
+    ['red', 'green', 'yellow', 'blue'].forEach(col => {
+        if (allTokens[col]) {
+            allTokens[col].forEach(t => renderTokenPosition(t));
+        }
+    });
+}
+
+window.addEventListener('resize', () => {
+    renderAllTokens();
+});
+
 function createBoard() {
     const board = document.getElementById("ludo-board");
     board.innerHTML = "";
 
-    board.appendChild(createYard("red", 0, 0));
-    board.appendChild(createYard("green", 0, 9));
-    board.appendChild(createYard("blue", 9, 0));
-    board.appendChild(createYard("yellow", 9, 9));
+    const bases = [
+        { class: 'red-base', color: 'red' },
+        { class: 'green-base', color: 'green' },
+        { class: 'blue-base', color: 'blue' },
+        { class: 'yellow-base', color: 'yellow' }
+    ];
 
-    const center = document.createElement("div");
-    center.className = "center-home";
-    board.appendChild(center);
+    bases.forEach(b => {
+        let baseEl = document.createElement("div");
+        baseEl.classList.add("base", b.class);
+        
+        let inner = document.createElement("div");
+        inner.classList.add("inner-base");
+        
+        for (let i = 0; i < 4; i++) {
+            let slot = document.createElement("div");
+            slot.classList.add("token-slot");
+            slot.id = `slot-${b.color}-${i}`;
+            inner.appendChild(slot);
+        }
+        baseEl.appendChild(inner);
+        board.appendChild(baseEl);
+    });
 
     for (let r = 0; r < 15; r++) {
         for (let c = 0; c < 15; c++) {
-            if ((r < 6 && c < 6) || (r < 6 && c > 8) || (r > 8 && c < 6) || (r > 8 && c > 8) || (r >= 6 && r <= 8 && c >= 6 && c <= 8)) {
-                continue;
-            }
-            const cell = document.createElement("div");
-            cell.className = "cell";
-            cell.dataset.r = r;
-            cell.dataset.c = c;
-            cell.style.gridRowStart = r + 1;
-            cell.style.gridColumnStart = c + 1;
+            if ((r < 6 && c < 6) || (r < 6 && c > 8) || (r > 8 && c < 6) || (r > 8 && c > 8)) continue;
+            
+            let cell = document.createElement("div");
+            cell.classList.add("ludo-cell");
+            cell.id = `cell-${r}-${c}`;
+            cell.style.gridArea = `${r + 1} / ${c + 1} / ${r + 2} / ${c + 2}`;
 
-            if (r === 7 && c >= 1 && c <= 5) cell.classList.add("home-red");
-            if (c === 7 && r >= 1 && r <= 5) cell.classList.add("home-green");
-            if (r === 7 && c >= 9 && c <= 13) cell.classList.add("home-yellow");
-            if (c === 7 && r >= 9 && r <= 13) cell.classList.add("home-blue");
+            if (r === 7 && c > 0 && c < 6) cell.style.backgroundColor = "var(--red-main)";
+            if (c === 7 && r > 0 && r < 6) cell.style.backgroundColor = "var(--green-main)";
+            if (r === 7 && c > 8 && c < 14) cell.style.backgroundColor = "var(--yellow-main)";
+            if (c === 7 && r > 8 && r < 14) cell.style.backgroundColor = "var(--blue-main)";
 
-            if (r === 6 && c === 1) cell.classList.add("start-red");
-            if (r === 1 && c === 8) cell.classList.add("start-green");
-            if (r === 8 && c === 13) cell.classList.add("start-yellow");
-            if (r === 13 && c === 6) cell.classList.add("start-blue");
+            if (r === 6 && c === 1) cell.style.backgroundColor = "var(--red-main)";
+            if (r === 1 && c === 8) cell.style.backgroundColor = "var(--green-main)";
+            if (r === 8 && c === 13) cell.style.backgroundColor = "var(--yellow-main)";
+            if (r === 13 && c === 6) cell.style.backgroundColor = "var(--blue-main)";
 
-            if ((r === 8 && c === 2) || (r === 2 && c === 6) || (r === 6 && c === 12) || (r === 12 && c === 8)) {
-                cell.classList.add("safe-cell");
-            }
+            safeZones.forEach(z => {
+                if (z.r === r && z.c === c) {
+                    let star = document.createElement("span");
+                    star.classList.add("safe-zone-icon");
+                    star.innerText = "⭐";
+                    cell.appendChild(star);
+                }
+            });
 
             board.appendChild(cell);
         }
     }
 }
 
-function createYard(color, r, c) {
-    const yard = document.createElement("div");
-    yard.className = `yard ${color}`;
-    yard.style.gridRow = `${r + 1} / span 6`;
-    yard.style.gridColumn = `${c + 1} / span 6`;
-
-    const inner = document.createElement("div");
-    inner.className = "yard-inner";
-
-    for (let i = 0; i < 4; i++) {
-        const spot = document.createElement("div");
-        spot.className = "yard-spot";
-        spot.id = `yard-spot-${color}-${i}`;
-        inner.appendChild(spot);
-    }
-
-    yard.appendChild(inner);
-    return yard;
-}
-
 function spawnTokens(unlockOneToken) {
-    const board = document.getElementById("ludo-board");
     document.querySelectorAll(".token").forEach(e => e.remove());
-
     ['red', 'green', 'yellow', 'blue'].forEach(color => {
         allTokens[color] = [];
         if (!activePlayers.includes(color)) return;
-
+        
         for (let i = 0; i < 4; i++) {
-            const tokenEl = document.createElement("div");
-            tokenEl.className = `token ${color}-token`;
+            let tokenEl = document.createElement("div");
+            // Important: matching the new standard token class setup
+            tokenEl.classList.add("token", `token-${color}`);
             tokenEl.id = `token-${color}-${i}`;
-            tokenEl.innerText = i + 1;
+            
             tokenEl.onclick = () => {
                 if (color === 'red') {
                     moveToken(color, i);
                 }
             };
-
-            board.appendChild(tokenEl);
-
-            const tokenObj = {
-                color: color,
-                index: i,
-                step: (unlockOneToken && color === 'red' && i === 0) ? 0 : -1,
-                element: tokenEl
-            };
+            
+            let initialStep = -1;
+            if (unlockOneToken && i === 0 && color === 'red') {
+                initialStep = 0;
+            }
+            let tokenObj = { color, index: i, step: initialStep, element: tokenEl };
             allTokens[color].push(tokenObj);
+            
+            const board = document.getElementById("ludo-board");
+            if (board) {
+                board.appendChild(tokenEl);
+            } else {
+                document.body.appendChild(tokenEl);
+            }
             renderTokenPosition(tokenObj);
         }
     });
 }
 
-function renderTokenPosition(token) {
-    const el = token.element;
-    if (token.step === -1) {
-        let baseR = 0, baseC = 0;
-        if (token.color === 'green') baseC = 9;
-        if (token.color === 'yellow') { baseR = 9; baseC = 9; }
-        if (token.color === 'blue') { baseR = 9; baseC = 0; }
-        
-        let spotR = baseR + 1.5;
-        let spotC = baseC + 1.5;
-        if (token.index === 1) spotC += 2;
-        if (token.index === 2) spotR += 2;
-        if (token.index === 3) { spotR += 2; spotC += 2; }
-        
-        el.style.top = `calc(${(spotR / 15) * 100}% + 3px)`;
-        el.style.left = `calc(${(spotC / 15) * 100}% + 3px)`;
-    } else if (token.step === 56) {
-        positionTokenOnGrid(el, 7, 7);
-    } else if (token.step <= 50) {
-        let globalIndex = (playersData[token.color].startOffset + token.step) % 52;
-        let coords = masterPath[globalIndex];
-        positionTokenOnGrid(el, coords.r, coords.c);
-    } else {
-        let homeIndex = token.step - 51;
-        let coords = getHomePathCoords(token.color, homeIndex);
-        positionTokenOnGrid(el, coords.r, coords.c);
-    }
-}
-
-function positionTokenOnGrid(el, r, c) {
-    el.style.top = `calc(${(r / 15) * 100}% + 3px)`;
-    el.style.left = `calc(${(c / 15) * 100}% + 3px)`;
-}
-
-function getHomePathCoords(color, index) {
-    if (color === 'red') return { r: 7, c: 1 + index };
-    if (color === 'green') return { r: 1 + index, c: 7 };
-    if (color === 'yellow') return { r: 7, c: 13 - index };
-    if (color === 'blue') return { r: 13 - index, c: 7 };
-}
