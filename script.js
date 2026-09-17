@@ -40,9 +40,7 @@ const basePawnCoordinates = {
 let socket = null;
 function ensureSocket() {
     if (!socket) {
-        const socketUrl = (window.location.protocol.startsWith('http') && !window.location.href.includes('capacitor'))
-            ? window.location.origin
-            : 'https://competionludo.onrender.com';
+        const socketUrl = (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()) ? 'https://competionludo.onrender.com' : window.location.origin;
         socket = io(socketUrl, { transports: ['websocket', 'polling'], timeout: 10000 });
         window.socket = socket;
         setupSocketListeners();

@@ -46,9 +46,9 @@ function initZingBannerAd(options = {}) {
                 const bannerId = (window.AdMobConfig && window.AdMobConfig.bannerAdId) || 'ca-app-pub-3940256099942544/9214589741';
                 const isTesting = (window.AdMobConfig && typeof window.AdMobConfig.isTesting === 'boolean') ? window.AdMobConfig.isTesting : true;
 
-                if (!_zingBannerInitialized) {
+                if (!sessionStorage.getItem('_zingAdMobInit')) {
                     await AdMob.initialize({ initializeForTesting: isTesting });
-                    _zingBannerInitialized = true;
+                    sessionStorage.setItem('_zingAdMobInit', 'true');
                 }
 
                 await AdMob.showBanner({

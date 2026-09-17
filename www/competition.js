@@ -38,9 +38,7 @@ const diceFaces = ['', '⚀', '⚁', '⚂', '⚃', '⚄', '⚅'];
 let socket = null;
 document.addEventListener("DOMContentLoaded", () => {
     createBoard();
-    const socketUrl = (window.location.protocol.startsWith('http') && !window.location.href.includes('capacitor'))
-        ? window.location.origin
-        : 'https://competionludo.onrender.com';
+    const socketUrl = (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()) ? 'https://competionludo.onrender.com' : window.location.origin;
     socket = io(socketUrl);
     window.socket = socket;
     setupSocketListeners();
@@ -95,7 +93,7 @@ async function realGoogleLogin() {
     setAuthError(null);
     setAuthInfo("Connecting to server...");
     try {
-        if (false) {
+        if (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform() && window.Capacitor.Plugins && window.Capacitor.Plugins.FirebaseAuthentication) {
             const result = await window.Capacitor.Plugins.FirebaseAuthentication.signInWithGoogle();
             const user = result.user;
             currentUser = {
@@ -124,7 +122,7 @@ async function guestLogin() {
     setAuthError(null);
     setAuthInfo("Connecting to server...");
     try {
-        if (false) {
+        if (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform() && window.Capacitor.Plugins && window.Capacitor.Plugins.FirebaseAuthentication) {
             const result = await window.Capacitor.Plugins.FirebaseAuthentication.signInAnonymously();
             const user = result.user;
             const guestName = "Guest " + (user.uid ? user.uid.substring(0, 5).toUpperCase() : Math.floor(1000 + Math.random() * 9000));
@@ -210,7 +208,7 @@ async function emailPasswordLogin() {
         return;
     }
     try {
-        if (false) {
+        if (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform() && window.Capacitor.Plugins && window.Capacitor.Plugins.FirebaseAuthentication) {
             const result = await window.Capacitor.Plugins.FirebaseAuthentication.signInWithEmailAndPassword({
                 email: email,
                 password: password
@@ -275,7 +273,7 @@ async function emailPasswordSignUp() {
         return;
     }
     try {
-        if (false) {
+        if (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform() && window.Capacitor.Plugins && window.Capacitor.Plugins.FirebaseAuthentication) {
             const result = await window.Capacitor.Plugins.FirebaseAuthentication.createUserWithEmailAndPassword({
                 email: email,
                 password: password
@@ -333,7 +331,7 @@ async function forgotPassword() {
         return;
     }
     try {
-        if (false) {
+        if (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform() && window.Capacitor.Plugins && window.Capacitor.Plugins.FirebaseAuthentication) {
             await window.Capacitor.Plugins.FirebaseAuthentication.sendPasswordResetEmail({
                 email: email
             });
@@ -371,7 +369,7 @@ function competitionLogout() {
     localStorage.removeItem("ludo_name");
     localStorage.removeItem("ludo_is_guest");
     currentUser = null;
-    if (false) {
+    if (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform() && window.Capacitor.Plugins && window.Capacitor.Plugins.FirebaseAuthentication) {
         try {
             window.Capacitor.Plugins.FirebaseAuthentication.signOut();
         } catch (e) {}
