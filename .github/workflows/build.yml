@@ -57,15 +57,7 @@ jobs:
       - name: Prepare Web Assets for Capacitor
         run: |
           rm -rf www
-          mkdir -p www
-          rsync -a \
-            --exclude='www' \
-            --exclude='node_modules' \
-            --exclude='.git' \
-            --exclude='.github' \
-            --exclude='android' \
-            --exclude='debug.keystore' \
-            ./ ./www/
+          node build.js
           echo "Web directory prepared successfully."
 
       - name: Install Capacitor & Mobile Dependencies
