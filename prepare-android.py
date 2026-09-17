@@ -64,9 +64,7 @@ import com.getcapacitor.BridgeActivity;
 public class MainActivity extends BridgeActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
-        Thread.setDefaultUncaughtExceptionHandler((thread, throwable) -> {
-            Log.e("LudoCrashProtection", "Crash safely intercepted on thread: " + thread.getName(), throwable);
-        });
+        // Removed UncaughtExceptionHandler
         super.onCreate(savedInstanceState);
     }
 }
