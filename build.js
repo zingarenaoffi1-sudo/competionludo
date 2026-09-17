@@ -4,12 +4,10 @@ const path = require('path');
 const srcDir = __dirname;
 const destDir = path.join(__dirname, 'www');
 
-// Create www if it doesn't exist
 if (!fs.existsSync(destDir)) {
     fs.mkdirSync(destDir);
 }
 
-// Function to copy files
 function copyFiles() {
     const files = fs.readdirSync(srcDir);
     for (const file of files) {
@@ -26,7 +24,6 @@ function copyFiles() {
         } else {
             const ext = path.extname(file);
             if (['.html', '.css', '.js', '.png', '.json', '.jpg', '.jpeg', '.svg'].includes(ext)) {
-                // exclude server.js and build scripts
                 if (!['server.js', 'build.js', 'prepare-android.py', 'test_script.js'].includes(file) && !file.startsWith('patch_')) {
                     fs.copyFileSync(srcPath, destPath);
                 }

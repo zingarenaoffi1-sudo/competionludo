@@ -12,7 +12,6 @@
         <button class="banner-close-btn" onclick="document.getElementById('test-banner').style.display='none'">✕</button>
     </div>
     <div id="toast-msg" class="toast-message"></div>
-
     <div id="game-wrapper">
         <div class="game-header">
             <div class="logo-container">
@@ -25,10 +24,7 @@
                 <button class="menu-btn" onclick="window.location.href='index.html'">Lobby</button>
             </div>
         </div>
-
         <div id="my-identity-badge" class="hidden" style="text-align: center; background: linear-gradient(90deg, #ffd700, #f59e0b); color: #0f172a; font-weight: 900; padding: 5px; margin-bottom: 6px; border-radius: 8px; font-size: 12px; letter-spacing: 0.5px;"></div>
-
-        <!-- IN-GAME HUD ACTION BAR: WEBRTC VOICE MIC & CHAT/EMOJIS -->
         <div class="in-game-action-bar" id="online-hud-bar" style="display: none;">
             <button class="hud-icon-btn" id="hud-mic-btn" onclick="toggleOnlineVoiceMic()">
                 🎙️ Mic OFF
@@ -37,12 +33,10 @@
                 💬 Quick Chat & Emojis
             </button>
         </div>
-
         <div class="turn-status-banner">
             <div class="turn-indicator" id="turn-text">WAITING TO CONNECT...</div>
             <div class="turn-timer-badge" id="timer-text">⏳ Time Left: 25s</div>
         </div>
-
         <div class="hud-row">
             <div class="player-corner" id="corner-red">
                 <div class="player-card" id="profile-red">
@@ -54,7 +48,6 @@
                 </div>
                 <div class="corner-dice" id="dice-red" onclick="handleCornerDiceClick('red')">🎲</div>
             </div>
-
             <div class="player-corner reverse" id="corner-green">
                 <div class="player-card" id="profile-green">
                     <div class="avatar green-bg">2</div>
@@ -66,11 +59,9 @@
                 <div class="corner-dice" id="dice-green" onclick="handleCornerDiceClick('green')">🎲</div>
             </div>
         </div>
-
         <div class="board-container">
             <div id="ludo-board"></div>
         </div>
-
         <div class="hud-row">
             <div class="player-corner" id="corner-blue">
                 <div class="player-card" id="profile-blue">
@@ -82,7 +73,6 @@
                 </div>
                 <div class="corner-dice" id="dice-blue" onclick="handleCornerDiceClick('blue')">🎲</div>
             </div>
-
             <div class="player-corner reverse" id="corner-yellow">
                 <div class="player-card" id="profile-yellow">
                     <div class="avatar yellow-bg">3</div>
@@ -94,12 +84,10 @@
                 <div class="corner-dice" id="dice-yellow" onclick="handleCornerDiceClick('yellow')">🎲</div>
             </div>
         </div>
-
         <div id="online-modal" class="modal">
             <div class="modal-content" style="max-width: 380px;">
                 <div style="font-size: 34px; margin-bottom: 6px;">🌐</div>
                 <h2 style="color: #ffd700; margin-bottom: 6px; font-weight: 900;">ONLINE MULTIPLAYER</h2>
-                
                 <div style="font-size: 11px; font-weight: 800; color: #cbd5e1; margin-bottom: 6px;">CHOOSE GAME MODE:</div>
                 <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-bottom: 14px;">
                     <div id="online-mode-classic" class="mode-select-box active" onclick="setOnlineGameMode('classic')" style="border: 2px solid #ffd700; border-radius: 10px; padding: 8px 4px; cursor: pointer; background: rgba(30,41,59,0.8); text-align: center;">
@@ -118,14 +106,12 @@
                         <div style="font-size: 9px; color: #94a3b8;">Partner Safe</div>
                     </div>
                 </div>
-
                 <div id="online-main-options">
                     <button class="ultra-roll-btn" onclick="showQuickMatch()" style="width: 100%; margin-bottom: 10px;">Find Online Match</button>
                     <button class="ultra-roll-btn" onclick="showCreateRoomOptions()" style="width: 100%; margin-bottom: 10px; background: linear-gradient(180deg, #3b82f6, #1d4ed8); color: white;">Create Private Room</button>
                     <button class="ultra-roll-btn" onclick="showJoinRoomInput()" style="width: 100%; margin-bottom: 14px; background: linear-gradient(180deg, #a855f7, #7e22ce); color: white;">Join via Room ID</button>
                     <button class="menu-btn" onclick="window.location.href='index.html'" style="width: 100%; padding: 10px;">Back to Lobby</button>
                 </div>
-
                 <div id="quick-match-sub" class="hidden">
                     <p style="color: #94a3b8; font-size: 13px; margin-bottom: 12px;">Select Match Capacity</p>
                     <div id="quick-match-display" style="color: #4ade80; margin: 8px 0; font-size: 13px; font-weight: 700; min-height: 18px;"></div>
@@ -134,7 +120,6 @@
                     <button class="ultra-roll-btn" onclick="findOnlineMatch(4)" style="width: 100%; margin-bottom: 8px;">4 Players</button>
                     <button class="menu-btn" onclick="backToOnlineMain()" style="width: 100%; padding: 8px; margin-top: 6px;">Back</button>
                 </div>
-
                 <div id="create-room-sub" class="hidden">
                     <p style="color: #94a3b8; font-size: 13px; margin-bottom: 12px;">Choose Room Capacity</p>
                     <button class="ultra-roll-btn" onclick="createPrivateRoom(2)" style="width: 100%; margin-bottom: 8px;">2 Players</button>
@@ -143,7 +128,6 @@
                     <div id="room-created-display" style="color: #4ade80; margin: 10px 0; font-size: 13px; font-weight: 700;"></div>
                     <button class="menu-btn" onclick="backToOnlineMain()" style="width: 100%; padding: 8px; margin-top: 6px;">Back</button>
                 </div>
-
                 <div id="join-room-sub" class="hidden">
                     <p style="color: #94a3b8; font-size: 13px; margin-bottom: 12px;">Enter Room ID</p>
                     <input type="text" id="room-id-input" placeholder="e.g. ROOM_1234" style="width: 100%; padding: 12px; margin-bottom: 12px; border-radius: 10px; border: 2px solid #ffd700; background: #0f172a; color: white; text-align: center; font-weight: 800; font-size: 16px;">
@@ -152,7 +136,6 @@
                 </div>
             </div>
         </div>
-
         <div id="room-error-modal" class="modal hidden">
             <div class="modal-content">
                 <div style="font-size: 36px; margin-bottom: 6px;">⚠️</div>
@@ -161,7 +144,6 @@
                 <button class="ultra-roll-btn" onclick="document.getElementById('room-error-modal').classList.add('hidden')" style="width: 100%;">OK</button>
             </div>
         </div>
-
         <div id="victory-modal" class="modal hidden">
             <div class="modal-content">
                 <div style="font-size: 40px; margin-bottom: 6px;">🏆</div>
@@ -172,7 +154,6 @@
             </div>
         </div>
     </div>
-
     <script src="admob-config.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
@@ -180,7 +161,6 @@
                 window.initZingBannerAd({ delay: 1500 });
             }
         });
-
         async function playInterstitialAd() {
             const adId = (window.AdMobConfig && window.AdMobConfig.interstitialAdId) || 'ca-app-pub-3940256099942544/1033173712';
             const isTesting = (window.AdMobConfig && typeof window.AdMobConfig.isTesting === 'boolean') ? window.AdMobConfig.isTesting : true;
@@ -210,7 +190,6 @@
                 ZingFeatures.toggleMicrophone(window.socket, window.currentOnlineRoomId, btn);
             }
         }
-
         function openOnlineChatPicker() {
             if (window.ZingFeatures && window.socket && window.currentOnlineRoomId) {
                 ZingFeatures.openChatPicker(window.socket, window.currentOnlineRoomId, window.myColor, window.activePlayers);

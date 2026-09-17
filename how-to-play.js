@@ -1,10 +1,5 @@
-// =============================================================================
-// ZINGARENA LUDO - "HOW TO PLAY" MULTI-LANGUAGE SYSTEM
-// =============================================================================
-
 const HowToPlayGuide = {
     currentLang: 'en',
-
     translations: {
         en: {
             title: "📖 How to Play Ludo",
@@ -199,7 +194,6 @@ const HowToPlayGuide = {
             closeBtn: "বন্ধ করুন"
         }
     },
-
     openModal: function() {
         let modal = document.getElementById('how-to-play-modal');
         if (!modal) {
@@ -209,12 +203,10 @@ const HowToPlayGuide = {
             modal.style.zIndex = '99999';
             document.body.appendChild(modal);
         }
-
         this.renderContent();
         modal.classList.remove('hidden');
         modal.style.display = 'flex';
     },
-
     closeModal: function() {
         const modal = document.getElementById('how-to-play-modal');
         if (modal) {
@@ -222,20 +214,16 @@ const HowToPlayGuide = {
             modal.style.display = 'none';
         }
     },
-
     switchLanguage: function(lang) {
         if (this.translations[lang]) {
             this.currentLang = lang;
             this.renderContent();
         }
     },
-
     renderContent: function() {
         const modal = document.getElementById('how-to-play-modal');
         if (!modal) return;
-
         const t = this.translations[this.currentLang] || this.translations.en;
-
         const languages = [
             { code: 'en', flag: '🇬🇧', label: 'English' },
             { code: 'hi', flag: '🇮🇳', label: 'हिन्दी' },
@@ -244,7 +232,6 @@ const HowToPlayGuide = {
             { code: 'ar', flag: '🇸🇦', label: 'العربية' },
             { code: 'bn', flag: '🇧🇩', label: 'বাংলা' }
         ];
-
         let langButtonsHtml = languages.map(l => {
             const isActive = l.code === this.currentLang;
             const activeStyle = isActive 
@@ -254,14 +241,12 @@ const HowToPlayGuide = {
                 ${l.flag} ${l.label}
             </button>`;
         }).join('');
-
         let modesHtml = t.modes.map(m => {
             return `<div style="background: rgba(15, 23, 42, 0.85); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 12px; margin-bottom: 10px; text-align: left;">
                 <div style="font-weight: 900; color: #ffd700; font-size: 14px; margin-bottom: 6px;">${m.badge}</div>
                 <div style="font-size: 12px; color: #e2e8f0; line-height: 1.6; white-space: pre-line;">${m.content}</div>
             </div>`;
         }).join('');
-
         modal.innerHTML = `
             <div class="modal-content" style="max-width: 480px; width: 92%; max-height: 85vh; display: flex; flex-direction: column; padding: 18px; border-radius: 16px; border: 2px solid #ffd700; background: linear-gradient(180deg, #1e293b, #0f172a); position: relative; box-shadow: 0 20px 40px rgba(0,0,0,0.8);">
                 <!-- Header with Close Cross -->
@@ -269,7 +254,6 @@ const HowToPlayGuide = {
                     <h2 style="color: #ffd700; font-size: 18px; font-weight: 900; margin: 0;">${t.title}</h2>
                     <button onclick="HowToPlayGuide.closeModal()" style="background: rgba(239, 68, 68, 0.2); border: 1px solid rgba(239, 68, 68, 0.5); color: #ef4444; border-radius: 50%; width: 32px; height: 32px; font-size: 16px; font-weight: 900; cursor: pointer; display: flex; align-items: center; justify-content: center;">✕</button>
                 </div>
-
                 <!-- Language Selector -->
                 <div style="margin-bottom: 12px;">
                     <div style="font-size: 11px; font-weight: 800; color: #94a3b8; margin-bottom: 6px; text-align: left;">🌐 ${t.selectLang}:</div>
@@ -277,12 +261,10 @@ const HowToPlayGuide = {
                         ${langButtonsHtml}
                     </div>
                 </div>
-
                 <!-- Scrollable Body with Rules -->
                 <div style="flex: 1; overflow-y: auto; padding-right: 4px; margin-bottom: 12px;">
                     ${modesHtml}
                 </div>
-
                 <!-- Footer Close Button -->
                 <button onclick="HowToPlayGuide.closeModal()" class="ultra-roll-btn" style="width: 100%; padding: 10px; font-weight: 800; border-radius: 10px;">
                     ${t.closeBtn}
@@ -291,5 +273,4 @@ const HowToPlayGuide = {
         `;
     }
 };
-
 window.HowToPlayGuide = HowToPlayGuide;

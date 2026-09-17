@@ -4,27 +4,22 @@ let gameState = 'WAITING_FOR_ROLL';
 let currentDiceValue = 0;
 let isMoving = false;
 const allTokens = {};
-
 let countdownInterval = null;
 let timeLeft = 25;
-
 let currentUser = null;
 let myAssignedColor = "";
 window.currentRoomId = "";
 let compMatchCount = 0;
-
 const soundDice = new Audio('sounds/board game dice_2.mp3');
 const soundMove = new Audio('sounds/ui pop_2.mp3');
 const soundCut = new Audio('sounds/cartoon bonk.mp3');
 const soundWin = new Audio('sounds/success chime_2.mp3');
-
 const playersData = {
     'red': { name: "Red", label: "Player 1", class: "red-text", startOffset: 0 },
     'green': { name: "Green", label: "Player 2", class: "green-text", startOffset: 13 },
     'yellow': { name: "Yellow", label: "Player 3", class: "yellow-text", startOffset: 26 },
     'blue': { name: "Blue", label: "Player 4", class: "blue-text", startOffset: 39 }
 };
-
 const masterPath = [
     {r:6, c:1}, {r:6, c:2}, {r:6, c:3}, {r:6, c:4}, {r:6, c:5}, 
     {r:5, c:6}, {r:4, c:6}, {r:3, c:6}, {r:2, c:6}, {r:1, c:6}, {r:0, c:6}, {r:0, c:7}, {r:0, c:8}, 
@@ -35,33 +30,26 @@ const masterPath = [
     {r:13, c:6}, {r:12, c:6}, {r:11, c:6}, {r:10, c:6}, {r:9, c:6}, 
     {r:8, c:5}, {r:8, c:4}, {r:8, c:3}, {r:8, c:2}, {r:8, c:1}, {r:8, c:0}, {r:7, c:0} 
 ];
-
 const safeZones = [
     {r:6, c:1}, {r:8, c:2}, {r:1, c:8}, {r:2, c:6}, 
     {r:8, c:13}, {r:6, c:12}, {r:13, c:6}, {r:12, c:8}  
 ];
-
 const diceFaces = ['', '⚀', '⚁', '⚂', '⚃', '⚄', '⚅'];
-
 let socket = null;
-
 document.addEventListener("DOMContentLoaded", () => {
     createBoard();
-
     const socketUrl = (window.location.protocol.startsWith('http') && !window.location.href.includes('capacitor'))
         ? window.location.origin
         : 'https://competionludo.onrender.com';
     socket = io(socketUrl);
     window.socket = socket;
     setupSocketListeners();
-
     const savedUid = localStorage.getItem("ludo_uid");
     const savedName = localStorage.getItem("ludo_name");
     if (savedUid && savedName) {
         currentUser = { uid: savedUid, displayName: savedName };
         requestUserSync();
     }
-
     const passInput = document.getElementById("auth-password");
     if (passInput) {
         passInput.addEventListener("keydown", (e) => {
@@ -81,7 +69,6 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 });
-
 function setAuthError(msg) {
     const errorEl = document.getElementById("auth-error-msg");
     if (!errorEl) return;
@@ -93,7 +80,6 @@ function setAuthError(msg) {
         errorEl.style.display = "none";
     }
 }
-
 function setAuthInfo(msg) {
     const infoEl = document.getElementById("auth-info-msg");
     if (!infoEl) return;
@@ -105,7 +91,6 @@ function setAuthInfo(msg) {
         infoEl.style.display = "none";
     }
 }
-
 async function realGoogleLogin() {
     setAuthError(null);
     setAuthInfo("Connecting to server...");
@@ -127,7 +112,6 @@ async function realGoogleLogin() {
     } catch (e) {
         console.warn("Capacitor Firebase Google Sign-In error, falling back:", e);
     }
-
     let randomId = localStorage.getItem("ludo_uid") || ("USR_" + Math.floor(100000 + Math.random() * 900000));
     let randomName = localStorage.getItem("ludo_name") || ("Player " + Math.floor(1000 + Math.random() * 9000));
     currentUser = { uid: randomId, displayName: randomName, isGuest: false };
@@ -136,7 +120,6 @@ async function realGoogleLogin() {
     localStorage.removeItem("ludo_is_guest");
     requestUserSync();
 }
-
 async function guestLogin() {
     setAuthError(null);
     setAuthInfo("Connecting to server...");
@@ -159,7 +142,6 @@ async function guestLogin() {
     } catch (e) {
         console.warn("Capacitor Firebase Anonymous sign-in fallback:", e);
     }
-
     let guestId = localStorage.getItem("ludo_guest_uid") || ("GST_" + Math.floor(100000 + Math.random() * 900000));
     let guestName = localStorage.getItem("ludo_guest_name") || ("Guest " + Math.floor(1000 + Math.random() * 9000));
     currentUser = { uid: guestId, displayName: guestName, isGuest: true };
@@ -170,14 +152,11 @@ async function guestLogin() {
     localStorage.setItem("ludo_is_guest", "true");
     requestUserSync();
 }
-
 let currentAuthMode = 'signin';
-
 function setAuthMode(mode) {
     currentAuthMode = mode;
     setAuthError(null);
     setAuthInfo(null);
-
     const dividerTitle = document.getElementById("auth-divider-title");
     const mainBtn = document.getElementById("btn-auth-main");
     const togglePrompt = document.getElementById("auth-toggle-prompt");
@@ -185,7 +164,6 @@ function setAuthMode(mode) {
     const forgotBtn = document.getElementById("btn-forgot-password");
     const passLabel = document.getElementById("auth-password-label");
     const passInput = document.getElementById("auth-password");
-
     if (mode === 'signup') {
         if (dividerTitle) dividerTitle.textContent = "OR CREATE ACCOUNT WITH EMAIL";
         if (mainBtn) {
@@ -210,11 +188,9 @@ function setAuthMode(mode) {
         if (passInput) passInput.placeholder = "Enter your password";
     }
 }
-
 function toggleAuthMode() {
     setAuthMode(currentAuthMode === 'signin' ? 'signup' : 'signin');
 }
-
 function handleAuthSubmit() {
     if (currentAuthMode === 'signup') {
         emailPasswordSignUp();
@@ -222,7 +198,6 @@ function handleAuthSubmit() {
         emailPasswordLogin();
     }
 }
-
 async function emailPasswordLogin() {
     setAuthError(null);
     setAuthInfo("Connecting to server...");
@@ -230,12 +205,10 @@ async function emailPasswordLogin() {
     const passInput = document.getElementById("auth-password");
     const email = (emailInput ? emailInput.value : "").trim();
     const password = (passInput ? passInput.value : "").trim();
-
     if (!email || !password) {
         setAuthError("Please enter both email and password.");
         return;
     }
-
     try {
         if (false) {
             const result = await window.Capacitor.Plugins.FirebaseAuthentication.signInWithEmailAndPassword({
@@ -274,7 +247,6 @@ async function emailPasswordLogin() {
             return;
         }
     }
-
     const emailUid = "EML_" + Math.abs(Array.from(email).reduce((h, c) => (h << 5) - h + c.charCodeAt(0) | 0, 0));
     const displayName = email.split("@")[0];
     currentUser = { uid: emailUid, displayName: displayName, isGuest: false };
@@ -283,7 +255,6 @@ async function emailPasswordLogin() {
     localStorage.removeItem("ludo_is_guest");
     requestUserSync();
 }
-
 async function emailPasswordSignUp() {
     setAuthError(null);
     setAuthInfo("Connecting to server...");
@@ -291,22 +262,18 @@ async function emailPasswordSignUp() {
     const passInput = document.getElementById("auth-password");
     const email = (emailInput ? emailInput.value : "").trim();
     const password = (passInput ? passInput.value : "").trim();
-
     if (!email || !password) {
         setAuthError("Please provide an email and password to register.");
         return;
     }
-
     if (!email.includes("@") || !email.includes(".")) {
         setAuthError("Please enter a valid email address.");
         return;
     }
-
     if (password.length < 6) {
         setAuthError("Password must be at least 6 characters long.");
         return;
     }
-
     try {
         if (false) {
             const result = await window.Capacitor.Plugins.FirebaseAuthentication.createUserWithEmailAndPassword({
@@ -342,7 +309,6 @@ async function emailPasswordSignUp() {
             return;
         }
     }
-
     const emailUid = "EML_" + Math.abs(Array.from(email).reduce((h, c) => (h << 5) - h + c.charCodeAt(0) | 0, 0));
     const displayName = email.split("@")[0];
     currentUser = { uid: emailUid, displayName: displayName, isGuest: false };
@@ -351,25 +317,21 @@ async function emailPasswordSignUp() {
     localStorage.removeItem("ludo_is_guest");
     requestUserSync();
 }
-
 async function forgotPassword() {
     setAuthError(null);
     setAuthInfo(null);
     const emailInput = document.getElementById("auth-email");
     const email = (emailInput ? emailInput.value : "").trim();
-
     if (!email) {
         setAuthError("Please enter your email address above to receive reset link.");
         if (emailInput) emailInput.focus();
         return;
     }
-
     if (!email.includes("@") || !email.includes(".")) {
         setAuthError("Please enter a valid email address.");
         if (emailInput) emailInput.focus();
         return;
     }
-
     try {
         if (false) {
             await window.Capacitor.Plugins.FirebaseAuthentication.sendPasswordResetEmail({
@@ -390,10 +352,8 @@ async function forgotPassword() {
         setAuthError(errorMsg || "Could not send reset email. Please verify your address.");
         return;
     }
-
     setAuthInfo("Password reset link sent! Check your inbox or spam folder.");
 }
-
 function requestUserSync() {
     const isGuest = Boolean(currentUser.isGuest || (localStorage.getItem("ludo_is_guest") === "true") || (currentUser.uid && currentUser.uid.startsWith("GST_")));
     if (window.socket) {
@@ -406,7 +366,6 @@ function requestUserSync() {
         setTimeout(requestUserSync, 1000);
     }
 }
-
 function competitionLogout() {
     localStorage.removeItem("ludo_uid");
     localStorage.removeItem("ludo_name");
@@ -420,7 +379,6 @@ function competitionLogout() {
     document.getElementById("dashboard-section").classList.add("hidden");
     document.getElementById("login-section").classList.remove("hidden");
 }
-
 function setupSocketListeners() {
     socket.on("auth-user-loaded", (userData) => {
         currentUser = {
@@ -431,7 +389,6 @@ function setupSocketListeners() {
         };
         updateDashboardUI();
     });
-
     socket.on("wallet-updated", (data) => {
         if (currentUser) {
             currentUser.tokens = data.tokens;
@@ -441,70 +398,55 @@ function setupSocketListeners() {
             updateDashboardUI();
         }
     });
-
     socket.on("leaderboard-data", (data) => {
         renderLeaderboard(data.leaderboard || []);
     });
-
     socket.on("match-joined", (data) => {
         window.currentRoomId = data.roomId;
         document.getElementById("dashboard-section").classList.add("hidden");
         document.getElementById("matchmaking-section").classList.remove("hidden");
     });
-
     socket.on("match-cancelled", () => {
         document.getElementById("matchmaking-section").classList.add("hidden");
         document.getElementById("dashboard-section").classList.remove("hidden");
     });
-
     socket.on("matchmaking-error", (data) => {
         document.getElementById("matchmaking-section").classList.add("hidden");
         document.getElementById("dashboard-section").classList.remove("hidden");
     });
-
     socket.on("start-competition-game", (data) => {
         document.getElementById("matchmaking-section").classList.add("hidden");
         document.getElementById("ludo-wrapper").classList.remove("hidden");
-
         compMatchCount++;
         if (compMatchCount % 2 !== 0 && typeof playInterstitialAd === "function") {
             playInterstitialAd();
         }
-
         activePlayers = data.players.map(p => p.color);
         let me = data.players.find(p => p.id === currentUser.uid || p.socketId === socket.id);
         if (me) myAssignedColor = me.color;
-
         showMyIdentity(myAssignedColor);
         initGameSessionOnline();
     });
-
     socket.on("remote-dice-rolled", (data) => {
         currentDiceValue = data.diceValue;
         let color = data.color || activePlayers[currentPlayerIndex];
-
         let diceEl = document.getElementById(`dice-${color}`);
         if (diceEl) {
             diceEl.classList.remove("rolling");
             diceEl.innerText = diceFaces[currentDiceValue];
             diceEl.style.color = currentDiceValue === 6 ? "#ff3333" : "#111";
         }
-
         soundDice.currentTime = 0;
         soundDice.play().catch(e => {});
-
         gameState = "WAITING_FOR_MOVE";
         startTurnTimer();
-
         if (color === myAssignedColor) {
             checkAvailableMovesOnline();
         }
     });
-
     socket.on("remote-token-moved", (data) => {
         moveTokenStepByStepRemote(data.color, data.tokenIndex, data.diceVal, data.cutDetails);
     });
-
     socket.on("turn-updated", (data) => {
         currentPlayerIndex = activePlayers.indexOf(data.currentColor);
         gameState = "WAITING_FOR_ROLL";
@@ -512,7 +454,6 @@ function setupSocketListeners() {
         startTurnTimer();
         updateTurnUIOnline();
     });
-
     socket.on("player-eliminated", (data) => {
         activePlayers = activePlayers.filter(c => c !== data.color);
         let card = document.getElementById(`profile-${data.color}`);
@@ -523,21 +464,18 @@ function setupSocketListeners() {
         let dice = document.getElementById(`dice-${data.color}`);
         if (dice) dice.classList.remove("visible", "active-dice");
     });
-
     socket.on("game-over-broadcast", (data) => {
         clearTurnTimer();
         soundWin.play().catch(e => {});
         if (typeof playInterstitialAd === "function") {
             playInterstitialAd();
         }
-
         let podiumDiv = document.getElementById("victory-podium");
         let winnerColor = data.winnerColor || activePlayers[0] || "red";
         podiumDiv.innerHTML = `<div style="padding: 10px; font-weight: 900; color: #ffd700; font-size: 16px;">🏆 Winner: ${playersData[winnerColor].name}!</div>`;
         document.getElementById("victory-modal").classList.remove("hidden");
     });
 }
-
 function updateDashboardUI() {
     document.getElementById("login-section").classList.add("hidden");
     document.getElementById("dashboard-section").classList.remove("hidden");
@@ -546,7 +484,6 @@ function updateDashboardUI() {
     document.getElementById("weekly-winnings").innerText = currentUser.weeklyWinnings || 0;
     document.getElementById("in-game-wallet").innerText = currentUser.tokens || 0;
 }
-
 function showRewardedAdForTokens() {
     if (!navigator.onLine) {
         if (typeof window.showAdToast === 'function') {
@@ -556,7 +493,6 @@ function showRewardedAdForTokens() {
         }
         return;
     }
-
     if (typeof window.showZingRewardedAd === 'function') {
         window.showZingRewardedAd({
             onReward: () => {
@@ -569,30 +505,25 @@ function showRewardedAdForTokens() {
         claimAdRewardOnServer();
     }
 }
-
 function claimAdRewardOnServer() {
     if (currentUser) {
         socket.emit("claim-ad-reward", { userId: currentUser.uid });
     }
 }
-
 function openLeaderboardView() {
     document.getElementById("dashboard-section").classList.add("hidden");
     document.getElementById("leaderboard-view").classList.remove("hidden");
     socket.emit("get-leaderboard");
 }
-
 function closeLeaderboardView() {
     document.getElementById("leaderboard-view").classList.add("hidden");
     document.getElementById("dashboard-section").classList.remove("hidden");
 }
-
 function renderLeaderboard(list) {
     let podium = document.getElementById("podium-container");
     let rowsContainer = document.getElementById("leaderboard-list");
     podium.innerHTML = "";
     rowsContainer.innerHTML = "";
-
     if (list.length >= 1) {
         let first = list[0];
         podium.innerHTML += `
@@ -623,7 +554,6 @@ function renderLeaderboard(list) {
             </div>
         `;
     }
-
     list.slice(3, 10).forEach((p, idx) => {
         rowsContainer.innerHTML += `
             <div class="leaderboard-row">
@@ -633,7 +563,6 @@ function renderLeaderboard(list) {
         `;
     });
 }
-
 function joinMatch(stake, playerCount) {
     if (!currentUser || currentUser.tokens < stake) {
         return;
@@ -645,13 +574,11 @@ function joinMatch(stake, playerCount) {
         playerCount: playerCount
     });
 }
-
 function cancelMatchmaking() {
     if (currentUser) {
         socket.emit("cancel-matchmaking", { userId: currentUser.uid });
     }
 }
-
 function showMyIdentity(color) {
     const badge = document.getElementById("my-identity-badge");
     if (badge && color) {
@@ -659,7 +586,6 @@ function showMyIdentity(color) {
         badge.innerHTML = `👉 YOU ARE: <span style="text-decoration: underline;">${playersData[color].name.toUpperCase()}</span>`;
     }
 }
-
 function initGameSessionOnline() {
     ['red', 'green', 'yellow', 'blue'].forEach(c => {
         let card = document.getElementById(`profile-${c}`);
@@ -673,7 +599,6 @@ function initGameSessionOnline() {
             dice.classList.remove("visible");
         }
     });
-
     currentPlayerIndex = 0;
     gameState = "WAITING_FOR_ROLL";
     isMoving = false;
@@ -681,27 +606,21 @@ function initGameSessionOnline() {
     startTurnTimer();
     updateTurnUIOnline();
 }
-
 function handleCornerDiceClick(color) {
     if (gameState !== "WAITING_FOR_ROLL" || isMoving) return;
     let currentColor = activePlayers[currentPlayerIndex];
     if (color !== myAssignedColor || currentColor !== myAssignedColor) return;
-
     rollDiceOnline();
 }
-
 function rollDiceOnline() {
     gameState = "ROLLING";
     let diceEl = document.getElementById(`dice-${myAssignedColor}`);
     if (diceEl) diceEl.classList.add("rolling");
-
     socket.emit("request-dice-roll", { roomId: window.currentRoomId });
 }
-
 function updateTurnUIOnline() {
     let currentColor = activePlayers[currentPlayerIndex];
     let pData = playersData[currentColor];
-
     let turnTextEl = document.getElementById("turn-text");
     if (currentColor === myAssignedColor) {
         turnTextEl.innerText = "YOUR TURN! Roll your dice!";
@@ -709,7 +628,6 @@ function updateTurnUIOnline() {
         turnTextEl.innerText = `${pData.name}'s Turn...`;
     }
     turnTextEl.className = `turn-indicator ${pData.class}`;
-
     ['red', 'green', 'yellow', 'blue'].forEach(c => {
         let card = document.getElementById(`profile-${c}`);
         let dice = document.getElementById(`dice-${c}`);
@@ -728,7 +646,6 @@ function updateTurnUIOnline() {
         }
     });
 }
-
 function startTurnTimer() {
     clearTurnTimer();
     timeLeft = 25;
@@ -739,14 +656,12 @@ function startTurnTimer() {
         if (timeLeft <= 0) clearInterval(countdownInterval);
     }, 1000);
 }
-
 function clearTurnTimer() {
     if (countdownInterval) {
         clearInterval(countdownInterval);
         countdownInterval = null;
     }
 }
-
 function updateTimerUI() {
     const timerText = document.getElementById("timer-text");
     if (timerText) {
@@ -754,41 +669,33 @@ function updateTimerUI() {
         timerText.style.color = timeLeft <= 5 ? "#ff3333" : "#ffeb3b";
     }
 }
-
 function checkAvailableMovesOnline() {
     let tokens = allTokens[myAssignedColor];
     let movableTokens = [];
-
     tokens.forEach((token, index) => {
         if (token.step === -1 && currentDiceValue === 6) movableTokens.push(index);
         else if (token.step !== -1 && token.step + currentDiceValue <= 56) movableTokens.push(index);
     });
-
     if (movableTokens.length === 1) {
         setTimeout(() => moveTokenOnline(myAssignedColor, movableTokens[0]), 300);
     } else if (movableTokens.length > 1) {
         movableTokens.forEach(idx => tokens[idx].element.classList.add("highlight-move"));
     }
 }
-
 function moveTokenOnline(color, tokenIndex) {
     if (gameState !== "WAITING_FOR_MOVE" || isMoving) return;
     if (color !== myAssignedColor) return;
-
     allTokens[color].forEach(t => t.element.classList.remove("highlight-move"));
     isMoving = true;
-
     socket.emit("request-token-move", {
         roomId: window.currentRoomId,
         color: color,
         tokenIndex: tokenIndex
     });
 }
-
 function moveTokenStepByStepRemote(color, tokenIndex, diceVal, cutDetails) {
     let token = allTokens[color][tokenIndex];
     let startStep = token.step;
-
     if (startStep === -1 && diceVal === 6) {
         token.step = 0;
         soundMove.currentTime = 0;
@@ -797,21 +704,17 @@ function moveTokenStepByStepRemote(color, tokenIndex, diceVal, cutDetails) {
         isMoving = false;
         return;
     }
-
     let targetStep = startStep + diceVal;
     let currentStep = startStep;
-
     let moveInterval = setInterval(() => {
         currentStep++;
         token.step = currentStep;
         renderTokenPosition(token);
         soundMove.currentTime = 0;
         soundMove.play().catch(e => {});
-
         if (currentStep >= targetStep) {
             clearInterval(moveInterval);
             isMoving = false;
-
             if (cutDetails) {
                 let enemyToken = allTokens[cutDetails.color][cutDetails.index];
                 enemyToken.step = -1;
@@ -822,7 +725,6 @@ function moveTokenStepByStepRemote(color, tokenIndex, diceVal, cutDetails) {
         }
     }, 180);
 }
-
 function spawnTokensOnline() {
     ['red', 'green', 'yellow', 'blue'].forEach(color => {
         allTokens[color] = [];
@@ -832,7 +734,6 @@ function spawnTokensOnline() {
             tokenEl.addEventListener("click", () => {
                 if (color === myAssignedColor) moveTokenOnline(color, i);
             });
-
             let tokenObj = { color, index: i, step: -1, element: tokenEl };
             allTokens[color].push(tokenObj);
             const board = document.getElementById("ludo-board");
@@ -845,12 +746,10 @@ function spawnTokensOnline() {
         }
     });
 }
-
 function renderTokenPosition(token) {
     const board = document.getElementById("ludo-board");
     if (!board || !token || !token.element) return;
     const boardRect = board.getBoundingClientRect();
-
     let targetEl = null;
     if (token.step === -1) {
         targetEl = document.getElementById(`slot-${token.color}-${token.index}`);
@@ -869,7 +768,6 @@ function renderTokenPosition(token) {
             targetEl = document.getElementById("cell-7-7");
         }
     }
-
     if (targetEl) {
         const rect = targetEl.getBoundingClientRect();
         const left = (rect.left - boardRect.left) + (rect.width / 2) - 10;
@@ -878,7 +776,6 @@ function renderTokenPosition(token) {
         token.element.style.top = `${top}px`;
     }
 }
-
 function renderAllTokens() {
     ['red', 'green', 'yellow', 'blue'].forEach(col => {
         if (allTokens[col]) {
@@ -886,22 +783,18 @@ function renderAllTokens() {
         }
     });
 }
-
 window.addEventListener('resize', () => {
     renderAllTokens();
 });
-
 function createBoard() {
     const board = document.getElementById("ludo-board");
     board.innerHTML = "";
-
     const bases = [
         { class: "red-base", color: "red" },
         { class: "green-base", color: "green" },
         { class: "blue-base", color: "blue" },
         { class: "yellow-base", color: "yellow" }
     ];
-
     bases.forEach(b => {
         let baseEl = document.createElement("div");
         baseEl.classList.add("base", b.class);
@@ -916,26 +809,21 @@ function createBoard() {
         baseEl.appendChild(inner);
         board.appendChild(baseEl);
     });
-
     for (let r = 0; r < 15; r++) {
         for (let c = 0; c < 15; c++) {
             if ((r < 6 && c < 6) || (r < 6 && c > 8) || (r > 8 && c < 6) || (r > 8 && c > 8)) continue;
-
             let cell = document.createElement("div");
             cell.classList.add("ludo-cell");
             cell.id = `cell-${r}-${c}`;
             cell.style.gridArea = `${r + 1} / ${c + 1} / ${r + 2} / ${c + 2}`;
-
             if (r === 7 && c > 0 && c < 6) cell.style.backgroundColor = "var(--red-main)";
             if (c === 7 && r > 0 && r < 6) cell.style.backgroundColor = "var(--green-main)";
             if (r === 7 && c > 8 && c < 14) cell.style.backgroundColor = "var(--yellow-main)";
             if (c === 7 && r > 8 && r < 14) cell.style.backgroundColor = "var(--blue-main)";
-
             if (r === 6 && c === 1) cell.style.backgroundColor = "var(--red-main)";
             if (r === 1 && c === 8) cell.style.backgroundColor = "var(--green-main)";
             if (r === 8 && c === 13) cell.style.backgroundColor = "var(--yellow-main)";
             if (r === 13 && c === 6) cell.style.backgroundColor = "var(--blue-main)";
-
             safeZones.forEach(z => {
                 if (z.r === r && z.c === c) {
                     let star = document.createElement("span");
@@ -944,7 +832,6 @@ function createBoard() {
                     cell.appendChild(star);
                 }
             });
-
             board.appendChild(cell);
         }
     }

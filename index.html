@@ -14,9 +14,7 @@
         <span>📢 AdMob Test Banner (320x50)</span>
         <button class="banner-close-btn" onclick="document.getElementById('test-banner').style.display='none'">✕</button>
     </div>
-
     <div id="game-wrapper" style="justify-content: flex-start; min-height: 100vh; padding: 65px 14px 24px 14px;">
-        <!-- TOP HEADER WITH LOGO & RULES BUTTON (SAFELY BELOW BANNER) -->
         <div style="width: 100%; max-width: 380px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
             <div style="display: flex; align-items: center; gap: 8px;">
                 <svg width="22" height="18" viewBox="0 0 64 50" fill="none" style="filter: drop-shadow(0 0 6px rgba(255,215,0,0.8));">
@@ -33,8 +31,6 @@
                 <span>Rules & Guide</span>
             </button>
         </div>
-
-        <!-- ROYAL LUDO HERO -->
         <div class="lobby-hero" style="margin-bottom: 22px;">
             <div style="margin-bottom: 6px;">
                 <svg width="60" height="48" viewBox="0 0 64 50" fill="none" style="filter: drop-shadow(0 0 16px rgba(255,215,0,0.85));">
@@ -58,10 +54,7 @@
             <h1 class="lobby-title">LUDO</h1>
             <p class="lobby-subtitle">The Royal Multiplayer Board Experience</p>
         </div>
-
-        <!-- 2 IN 1 LINE (2x2 GRID) REAL LUDO APP LAYOUT -->
         <div class="ludo-king-grid">
-            <!-- 1. PLAY VS COMPUTER -->
             <div class="ludo-king-card computer" onclick="window.location.href='bot.html'">
                 <div class="card-icon" style="display: flex; justify-content: center; align-items: center;">
                     <svg width="44" height="44" viewBox="0 0 48 48" fill="none">
@@ -83,8 +76,6 @@
                 <div class="card-title">VS COMPUTER</div>
                 <div class="card-sub">Smart AI Bots</div>
             </div>
-
-            <!-- 2. PASS & PLAY (LOCAL) -->
             <div class="ludo-king-card local" onclick="window.location.href='local.html'">
                 <div class="card-icon" style="display: flex; justify-content: center; align-items: center;">
                     <svg width="44" height="44" viewBox="0 0 48 48" fill="none">
@@ -107,8 +98,6 @@
                 <div class="card-title">PASS & PLAY</div>
                 <div class="card-sub">Same Device</div>
             </div>
-
-            <!-- 3. ONLINE MULTIPLAYER -->
             <div class="ludo-king-card online" onclick="window.location.href='online.html'">
                 <div class="badge-corner">LIVE</div>
                 <div class="card-icon" style="display: flex; justify-content: center; align-items: center;">
@@ -130,8 +119,6 @@
                 <div class="card-title">ONLINE LUDO</div>
                 <div class="card-sub">Voice & Chat</div>
             </div>
-
-            <!-- 4. PRO COMPETITION -->
             <div class="ludo-king-card comp" onclick="window.location.href='competition.html'">
                 <div class="badge-corner" style="background: #ef4444; color: #fff;">ESPORTS</div>
                 <div class="card-icon" style="display: flex; justify-content: center; align-items: center;">
@@ -152,11 +139,9 @@
                 <div class="card-sub">Spin & Tokens</div>
             </div>
         </div>
-
         <div style="text-align: center; margin-top: 24px; font-size: 11px; color: #64748b; font-weight: 600; letter-spacing: 0.5px;">
             Version 2.0 &bull; Secure Anti-Cheat Gaming
         </div>
-
         <div style="display: flex; justify-content: center; align-items: center; gap: 12px; margin-top: 10px; font-size: 11px; flex-wrap: wrap;">
             <a href="privacy.html" style="color: #94a3b8; text-decoration: none; padding: 4px 6px; transition: color 0.2s;" onmouseover="this.style.color='#ffd700'" onmouseout="this.style.color='#94a3b8'">Privacy Policy</a>
             <span style="color: #475569;">&bull;</span>
@@ -165,11 +150,7 @@
             <a href="about.html" style="color: #94a3b8; text-decoration: none; padding: 4px 6px; transition: color 0.2s;" onmouseover="this.style.color='#ffd700'" onmouseout="this.style.color='#94a3b8'">About Us</a>
         </div>
     </div>
-
-    <!-- HOW TO PLAY MODAL CONTAINER -->
     <div id="how-to-play-modal" class="modal hidden"></div>
-
-    <!-- Scripts -->
     <script src="admob-config.js"></script>
     <script src="how-to-play.js"></script>
     <script>
