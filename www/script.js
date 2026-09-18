@@ -5,7 +5,7 @@ let currentDiceValue = 0;
 let isMoving = false;
 const allTokens = {};
 let countdownInterval = null;
-let timeLeft = 25;
+let timeLeft = 30;
 let myAssignedColor = "";
 let currentOnlineRoomId = "";
 let currentOnlineGameMode = 'classic';
@@ -418,6 +418,17 @@ function setupSocketListeners() {
         currentPlayerIndex = activePlayers.indexOf(data.currentColor);
         gameState = 'WAITING_FOR_ROLL';
         isMoving = false;
+        if (data.missedTurns) {
+            updateStrikesUI(data.missedTurns);
+        }
+        if (data.skippedColor) {
+            const pName = playersData[data.skippedColor]?.name || data.skippedColor.toUpperCase();
+            if (data.skippedColor === myAssignedColor) {
+                showToast(`⚠️ You missed your turn! (${data.skippedCount}/3 Skips)`);
+            } else {
+                showToast(`⏳ ${pName} missed their turn (${data.skippedCount}/3 Skips)`);
+            }
+        }
         startTurnTimer();
         updateTurnUIOnline();
     });
@@ -425,12 +436,41 @@ function setupSocketListeners() {
     socket.on('player-eliminated', (data) => {
         activePlayers = activePlayers.filter(c => c !== data.color);
         window.activePlayers = activePlayers;
+
+        // 1. Hide all tokens of this player from board completely
+        if (allTokens[data.color]) {
+            allTokens[data.color].forEach(t => {
+                if (t.element) {
+                    t.element.style.display = 'none';
+                    t.element.classList.remove('highlight-move');
+                }
+            });
+        }
+
+        // 2. Mark player card as LEFT
         const card = document.getElementById(`profile-${data.color}`);
         if (card) {
-            card.style.opacity = '0.2';
+            card.classList.add('player-left');
             card.classList.remove('active-turn');
+            const statusTag = card.querySelector('.player-status-tag');
+            if (statusTag) {
+                statusTag.innerHTML = `<span class="player-left-tag">LEFT</span>`;
+            }
+            const strikesContainer = document.getElementById(`strikes-${data.color}`);
+            if (strikesContainer) {
+                strikesContainer.innerHTML = `<span class="player-left-tag">LEFT</span>`;
+            }
         }
-        showToast(`Player ${data.color.toUpperCase()} eliminated.`);
+
+        // 3. Hide their corner dice
+        const dice = document.getElementById(`dice-${data.color}`);
+        if (dice) {
+            dice.classList.remove('visible', 'active-dice', 'rolling');
+            dice.style.display = 'none';
+        }
+
+        const pName = playersData[data.color]?.name || data.color.toUpperCase();
+        showToast(`🚫 ${pName} was removed from match (Left / 3 Skips).`);
     });
 
     socket.on('game-over-broadcast', (data) => {
@@ -441,8 +481,13 @@ function setupSocketListeners() {
 
         const podiumDiv = document.getElementById('victory-podium');
         const winnerColor = data.winnerColor || activePlayers[0] || 'red';
+        const winnerName = data.winnerName || playersData[winnerColor]?.name || winnerColor.toUpperCase();
         if (podiumDiv) {
-            podiumDiv.innerHTML = `<div style="padding: 10px; font-weight: 900; color: #ffd700; font-size: 18px;">🏆 Winner: ${playersData[winnerColor].name}!</div>`;
+            if (data.reason === 'opponent_left') {
+                podiumDiv.innerHTML = `<div style="padding: 10px; font-weight: 900; color: #ffd700; font-size: 18px;">🏆 Winner: ${winnerName}!<div style="font-size: 12px; color: #cbd5e1; margin-top: 4px;">(Opponent Left / Disqualified)</div></div>`;
+            } else {
+                podiumDiv.innerHTML = `<div style="padding: 10px; font-weight: 900; color: #ffd700; font-size: 18px;">🏆 Winner: ${winnerName}!</div>`;
+            }
         }
         const victoryModal = document.getElementById('victory-modal');
         if (victoryModal) victoryModal.classList.remove('hidden');
@@ -465,6 +510,28 @@ function initGameSessionOnline() {
     ['red', 'green', 'yellow', 'blue'].forEach(c => {
         const card = document.getElementById(`profile-${c}`);
         const dice = document.getElementById(`dice-${c}`);
+        const strikesContainer = document.getElementById(`strikes-${c}`);
+        
+        if (card) {
+            card.classList.remove('player-left', 'active-turn');
+            const statusTag = card.querySelector('.player-status-tag');
+            if (statusTag) {
+                statusTag.innerText = playersData[c]?.name || c.toUpperCase();
+            }
+        }
+        if (dice) {
+            dice.style.display = '';
+            dice.classList.remove('active-dice', 'rolling');
+        }
+        if (strikesContainer) {
+            strikesContainer.innerHTML = `
+                <span class="strike-dot" id="dot-${c}-1"></span>
+                <span class="strike-dot" id="dot-${c}-2"></span>
+                <span class="strike-dot" id="dot-${c}-3"></span>
+                <span class="player-strikes-text" id="strike-txt-${c}">0/3</span>
+            `;
+        }
+
         if (activePlayers.includes(c)) {
             if (card) card.style.opacity = '0.5';
             if (dice) {
@@ -482,6 +549,27 @@ function initGameSessionOnline() {
     spawnTokensOnline();
     startTurnTimer();
     updateTurnUIOnline();
+}
+
+function updateStrikesUI(missedTurns) {
+    if (!missedTurns) return;
+    ['red', 'green', 'yellow', 'blue'].forEach(color => {
+        const count = missedTurns[color] || 0;
+        const txtEl = document.getElementById(`strike-txt-${color}`);
+        if (txtEl) {
+            txtEl.innerText = `${Math.min(count, 3)}/3`;
+        }
+        for (let i = 1; i <= 3; i++) {
+            const dot = document.getElementById(`dot-${color}-${i}`);
+            if (dot) {
+                if (i <= count) {
+                    dot.classList.add('missed');
+                } else {
+                    dot.classList.remove('missed');
+                }
+            }
+        }
+    });
 }
 
 function handleCornerDiceClick(color) {
@@ -538,7 +626,7 @@ function updateTurnUIOnline() {
 
 function startTurnTimer() {
     clearTurnTimer();
-    timeLeft = 25;
+    timeLeft = 30;
     updateTimerUI();
     countdownInterval = setInterval(() => {
         timeLeft--;
@@ -625,6 +713,10 @@ function moveTokenStepByStepRemote(color, tokenIndex, diceVal, cutDetails) {
 }
 
 function spawnTokensOnline() {
+    const board = document.getElementById('ludo-board');
+    if (board) {
+        board.querySelectorAll('.token').forEach(el => el.remove());
+    }
     ['red', 'green', 'yellow', 'blue'].forEach(color => {
         allTokens[color] = [];
         for (let i = 0; i < 4; i++) {
@@ -635,9 +727,11 @@ function spawnTokensOnline() {
             });
             const tokenObj = { color, index: i, step: -1, element: tokenEl };
             allTokens[color].push(tokenObj);
-            const board = document.getElementById('ludo-board');
             if (board) {
                 board.appendChild(tokenEl);
+            }
+            if (!activePlayers.includes(color)) {
+                tokenEl.style.display = 'none';
             }
             renderTokenPosition(tokenObj);
         }

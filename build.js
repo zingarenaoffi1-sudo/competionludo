@@ -20,7 +20,7 @@ function copyToDestination(targetDir) {
         
         const stat = fs.statSync(srcPath);
         if (stat.isDirectory()) {
-            if (file === 'assets' || file === 'sounds') {
+            if (file === 'assets' || file === 'sounds' || file === 'screenshots') {
                 fs.cpSync(srcPath, destPath, { recursive: true });
             }
         } else {
