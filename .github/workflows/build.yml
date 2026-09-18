@@ -1,58 +1,49 @@
-name: Build Ludo APK
+name: Build Android APK
 
 on:
   push:
-    branches:
-      - main
-      - master
+    branches: [ "main", "master" ]
   workflow_dispatch:
 
 jobs:
   build:
-    name: Compile Android APK
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Setup Node.js 20
+      - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: ''
+          cache: 'npm'
 
-      - name: Setup Java JDK 17
+      - name: Set up Java 17
         uses: actions/setup-java@v4
         with:
-          distribution: temurin
+          distribution: 'temurin'
           java-version: '17'
 
-      - name: Setup Permanent Keystore
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Project Dependencies
+        run: npm ci || npm install
+
+      - name: Configure Keystore
         env:
-          DEBUG_KEYSTORE_BASE64: ${{ secrets.DEBUG_KEYSTORE_BASE64 }}
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
         run: |
           mkdir -p ~/.android
-          if [ -n "$DEBUG_KEYSTORE_BASE64" ]; then
-            echo "✅ Keystore secret found. Decoding original keystore..."
-            echo "$DEBUG_KEYSTORE_BASE64" | base64 --decode > ~/.android/debug.keystore
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            echo "Using keystore from GitHub Secrets..."
+            echo "$KEYSTORE_BASE64" | base64 -d > ~/.android/debug.keystore
           else
-            echo "⚠️ Keystore secret not found. Generating debug keystore as fallback..."
+            echo "Generating signing keystore..."
             keytool -genkey -v -keystore ~/.android/debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Ludo,O=Ludo,C=IN"
           fi
-          
-          echo "========================================================="
-          echo "Keystore SHA-1 / SHA-256 Fingerprints:"
-          keytool -list -v -keystore ~/.android/debug.keystore -alias androiddebugkey -storepass android -keypass android | grep -E "SHA1:|SHA256:" || true
-          echo "========================================================="
-          
           cp ~/.android/debug.keystore ./debug.keystore
-
-      - name: Upload Keystore Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: Debug-Keystore
-          path: debug.keystore
 
       - name: Prepare Web Assets for Capacitor
         run: |
@@ -71,29 +62,21 @@ jobs:
         run: |
           rm -rf android
           npx cap add android
-
-          # Copy google-services.json immediately if available
           if [ -f google-services.json ]; then
             cp google-services.json android/app/google-services.json
             echo "google-services.json placed in android/app/"
           fi
-
-          # Detect AdMob App ID
           CONFIG_APP_ID=$(grep -o "appId: *['\"][^'\"]*['\"]" admob-config.js | sed -E "s/appId: *['\"]([^'\"]*)['\"]/\1/" || echo "")
           FINAL_ADMOB_ID="${SECRET_ADMOB_APP_ID:-$CONFIG_APP_ID}"
           if [ -z "$FINAL_ADMOB_ID" ]; then
             FINAL_ADMOB_ID="ca-app-pub-3940256099942544~3347511713"
           fi
           export FINAL_ADMOB_ID
-          echo "Applying AdMob App ID: $FINAL_ADMOB_ID"
-
-          # Update AndroidManifest, strings.xml, and MainActivity to prevent any crash
           python3 prepare-android.py
 
-      - name: Generate High-Res Android App Icons from icon.png
+      - name: Generate High-Res Android App Icons
         run: |
           if [ -f icon.png ]; then
-            echo "Generating high-resolution launcher icons from icon.png for all Android densities..."
             densities="mdpi:48:108:78 hdpi:72:162:116 xhdpi:96:216:155 xxhdpi:144:324:233 xxxhdpi:192:432:311"
             for item in $densities; do
               dir=$(echo $item | cut -d: -f1)
@@ -106,17 +89,11 @@ jobs:
               convert icon.png -resize "${size}x${size}" "$target_dir/ic_launcher_round.png"
               convert icon.png -resize "${pad_size}x${pad_size}" -gravity center -background none -extent "${fg_size}x${fg_size}" "$target_dir/ic_launcher_foreground.png"
             done
-
             mkdir -p android/app/src/main/res/values
             echo '<?xml version="1.0" encoding="utf-8"?><resources><color name="ic_launcher_background">#0b0f19</color></resources>' > android/app/src/main/res/values/ic_launcher_background.xml
-
             mkdir -p android/app/src/main/res/mipmap-anydpi-v26
             echo '<?xml version="1.0" encoding="utf-8"?><adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android"><background android:drawable="@color/ic_launcher_background"/><foreground android:drawable="@mipmap/ic_launcher_foreground"/></adaptive-icon>' > android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
             echo '<?xml version="1.0" encoding="utf-8"?><adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android"><background android:drawable="@color/ic_launcher_background"/><foreground android:drawable="@mipmap/ic_launcher_foreground"/></adaptive-icon>' > android/app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml
-            
-            echo "Custom Ludo icons generated across all mipmap folders!"
-          else
-            echo "icon.png not found, skipping icon generation."
           fi
 
       - name: Sync Capacitor Android
@@ -132,64 +109,41 @@ jobs:
           npx cap sync android
           python3 prepare-android.py
 
-      - name: Configure Gradle & Real Firebase Google Services
+      - name: Configure Gradle & Firebase
         env:
           GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
         run: |
-          # Copy keystore into android/app directory
           cp ~/.android/debug.keystore android/app/debug.keystore
-          
-          # Copy real google-services.json (from Secrets OR repository file) into android/app/
           if [ -n "$GOOGLE_SERVICES_JSON" ]; then
             echo "$GOOGLE_SERVICES_JSON" > android/app/google-services.json
-            echo "Real google-services.json injected from GitHub Secrets!"
           elif [ -f google-services.json ]; then
             cp google-services.json android/app/google-services.json
-            echo "Real google-services.json copied from repository root!"
           fi
-          
           cd android
           chmod +x gradlew
-          
           echo "org.gradle.jvmargs=-Xmx3g -XX:MaxMetaspaceSize=768m" >> gradle.properties
           echo "org.gradle.daemon=false" >> gradle.properties
           echo "org.gradle.parallel=false" >> gradle.properties
           echo "org.gradle.caching=false" >> gradle.properties
-          
           python3 -c '
-          import os
-
-          # 1. Root build.gradle
           with open("build.gradle", "r", encoding="utf-8") as f:
               root = f.read()
-
           if "com.google.gms:google-services" not in root:
               root = root.replace("dependencies {", "dependencies {\n        classpath \"com.google.gms:google-services:4.4.2\"")
-
           if "org.jetbrains.kotlin:kotlin-stdlib" not in root:
               root += "\nallprojects { configurations.all { resolutionStrategy { force \"org.jetbrains.kotlin:kotlin-stdlib:1.9.24\"; force \"org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.9.24\"; force \"org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.9.24\" } } }\n"
-
           with open("build.gradle", "w", encoding="utf-8") as f:
               f.write(root)
 
-          # 2. App build.gradle
           with open("app/build.gradle", "r", encoding="utf-8") as f:
               app = f.read()
-
           if "com.google.gms.google-services" not in app:
               app += "\napply plugin: \"com.google.gms.google-services\"\n"
-
           if "signingConfigs.release" not in app:
               signing_cfg = """
 android {
     signingConfigs {
         release {
-            storeFile file("debug.keystore")
-            storePassword "android"
-            keyAlias "androiddebugkey"
-            keyPassword "android"
-        }
-        debug {
             storeFile file("debug.keystore")
             storePassword "android"
             keyAlias "androiddebugkey"
@@ -202,37 +156,22 @@ android {
             minifyEnabled false
             shrinkResources false
         }
-        debug {
-            signingConfig signingConfigs.debug
-        }
     }
 }
 """
               app += signing_cfg
-
           with open("app/build.gradle", "w", encoding="utf-8") as f:
               f.write(app)
-
-          print("Gradle configuration applied with Real Firebase Google Services!")
           '
 
-      - name: Build Release & Debug APK with Gradle
+      - name: Build Release APK with Gradle
         run: |
           cd android
-          ./gradlew assembleRelease assembleDebug --no-daemon --max-workers=2
-          echo "Built APKs:"
-          ls -la app/build/outputs/apk/*/*.apk
+          ./gradlew assembleRelease --no-daemon --max-workers=2
 
-      - name: Upload Ludo Release APK Artifact (For Amazon & Play Store)
+      - name: Upload Ludo Release APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: Ludo-Release-APK
           path: android/app/build/outputs/apk/release/app-release.apk
-          retention-days: 14
-
-      - name: Upload Ludo Debug APK Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: Ludo-Debug-APK
-          path: android/app/build/outputs/apk/debug/app-debug.apk
           retention-days: 14
