@@ -134,6 +134,33 @@
                     <button class="ultra-roll-btn" onclick="joinPrivateRoom()" style="width: 100%; margin-bottom: 8px; background: linear-gradient(180deg, #22c55e, #16a34a); color: white;">Join Room</button>
                     <button class="menu-btn" onclick="backToOnlineMain()" style="width: 100%; padding: 8px; margin-top: 6px;">Back</button>
                 </div>
+                <div id="matchmaking-sub" class="hidden">
+                    <div style="font-size: 40px; margin-bottom: 8px;">⏳</div>
+                    <h3 style="color: #ffd700; font-size: 18px; font-weight: 900; margin-bottom: 6px;">SEARCHING MATCH...</h3>
+                    <div id="matchmaking-status-text" style="color: #4ade80; font-size: 13px; font-weight: 700; margin-bottom: 12px;">Looking for players...</div>
+                    <p style="color: #94a3b8; font-size: 12px; margin-bottom: 16px;">Matching you with online players. Please wait...</p>
+                    <button class="menu-btn" onclick="cancelOnlineMatchmaking()" style="width: 100%; padding: 10px; background: rgba(239, 68, 68, 0.2); border: 1px solid #ef4444; color: #fca5a5;">Cancel Search</button>
+                </div>
+                <div id="custom-room-lobby" class="hidden">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                        <span id="custom-room-mode-tag" style="background: rgba(255,215,0,0.15); border: 1px solid #ffd700; color: #ffd700; font-size: 11px; font-weight: 800; padding: 4px 8px; border-radius: 6px;">CLASSIC ROOM</span>
+                        <span id="custom-room-slots-tag" style="color: #94a3b8; font-size: 11px; font-weight: 700;">1 / 4 Players</span>
+                    </div>
+                    <div style="background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(255,215,0,0.4); border-radius: 12px; padding: 12px; margin-bottom: 14px; text-align: center;">
+                        <div style="font-size: 11px; color: #94a3b8; font-weight: 700; margin-bottom: 4px;">ROOM ID</div>
+                        <div id="custom-room-id-display" style="font-size: 24px; font-weight: 900; color: #ffd700; letter-spacing: 2px; margin-bottom: 8px;">ROOM_XXXX</div>
+                        <button class="ultra-roll-btn" onclick="copyCustomRoomId()" style="padding: 6px 14px; font-size: 11px; margin: 0 auto; background: rgba(255,215,0,0.2); border: 1px solid #ffd700; color: #ffd700;">📋 Copy Room ID</button>
+                    </div>
+                    <div style="font-size: 11px; font-weight: 800; color: #cbd5e1; margin-bottom: 8px; text-align: left;">CONNECTED PLAYERS:</div>
+                    <div id="custom-room-players-list" style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px;"></div>
+                    <div id="custom-room-host-actions">
+                        <button id="btn-start-custom-match" class="ultra-roll-btn" onclick="startCustomRoomMatch()" style="width: 100%; margin-bottom: 8px; background: linear-gradient(180deg, #22c55e, #16a34a); color: white;">🚀 Start Match</button>
+                    </div>
+                    <div id="custom-room-guest-status" class="hidden" style="color: #fbbf24; font-size: 12px; font-weight: 800; margin-bottom: 10px; text-align: center;">
+                        ⏳ Waiting for Host to start match...
+                    </div>
+                    <button class="menu-btn" onclick="leaveCustomRoom()" style="width: 100%; padding: 8px; background: rgba(239, 68, 68, 0.2); border: 1px solid rgba(239,68,68,0.4); color: #fca5a5;">Leave Room</button>
+                </div>
             </div>
         </div>
         <div id="room-error-modal" class="modal hidden">
@@ -164,24 +191,43 @@
         async function playInterstitialAd() {
             const adId = (window.AdMobConfig && window.AdMobConfig.interstitialAdId) || 'ca-app-pub-3940256099942544/1033173712';
             const isTesting = (window.AdMobConfig && typeof window.AdMobConfig.isTesting === 'boolean') ? window.AdMobConfig.isTesting : true;
-            if (window.Capacitor && Capacitor.Plugins.AdMob) {
-                const { AdMob } = Capacitor.Plugins;
-                try {
-                    if (window.socket && window.currentOnlineRoomId) {
-                        window.socket.emit('ad-playback-status', { roomId: window.currentOnlineRoomId, isShowing: true });
+            if (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform() && window.Capacitor.Plugins && window.Capacitor.Plugins.AdMob) {
+                const { AdMob } = window.Capacitor.Plugins;
+                return new Promise(async (resolve) => {
+                    let finished = false;
+                    const finish = () => {
+                        if (!finished) {
+                            finished = true;
+                            if (window.socket && window.currentOnlineRoomId) {
+                                window.socket.emit('ad-playback-status', { roomId: window.currentOnlineRoomId, isShowing: false });
+                            }
+                            resolve();
+                        }
+                    };
+                    const safetyTimeout = setTimeout(finish, 8000);
+                    try {
+                        if (window.socket && window.currentOnlineRoomId) {
+                            window.socket.emit('ad-playback-status', { roomId: window.currentOnlineRoomId, isShowing: true });
+                        }
+                        const dismissListener = await AdMob.addListener('onInterstitialAdDismissed', () => {
+                            clearTimeout(safetyTimeout);
+                            if (dismissListener && dismissListener.remove) dismissListener.remove();
+                            finish();
+                        });
+                        const failListener = await AdMob.addListener('onInterstitialAdFailedToLoad', () => {
+                            clearTimeout(safetyTimeout);
+                            if (failListener && failListener.remove) failListener.remove();
+                            finish();
+                        });
+                        await AdMob.prepareInterstitial({ adId: adId, isTesting: isTesting });
+                        await AdMob.showInterstitial();
+                    } catch(e) {
+                        clearTimeout(safetyTimeout);
+                        finish();
                     }
-                    await AdMob.prepareInterstitial({
-                        adId: adId,
-                        isTesting: isTesting
-                    });
-                    await AdMob.showInterstitial();
-                } catch(e) {
-                    console.log("Interstitial failed", e);
-                } finally {
-                    if (window.socket && window.currentOnlineRoomId) {
-                        window.socket.emit('ad-playback-status', { roomId: window.currentOnlineRoomId, isShowing: false });
-                    }
-                }
+                });
+            } else {
+                return Promise.resolve();
             }
         }
         function toggleOnlineVoiceMic() {

@@ -232,7 +232,7 @@ async function emailPasswordLogin() {
         if (errorMsg.includes("user-not-found")) {
             setAuthError("Account not found. Click 'Register here' below to create your account.");
             return;
-        } else if (errorMsg.includes("wrong-password") || errorMsg.includes("invalid-credential")) {
+        } else if (errorMsg.includes("wrong-password") || errorMsg.includes("invalid-credential") || errorMsg.includes("credential is incorrect") || errorMsg.includes("malformed")) {
             setAuthError("Incorrect password. Please try again or tap 'Forgot Password?'.");
             return;
         } else if (errorMsg.includes("invalid-email")) {

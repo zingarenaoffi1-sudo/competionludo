@@ -577,31 +577,103 @@ io.on('connection', (socket) => {
             io.to(roomId).emit('start-online-game', { players: roomData, roomId: roomId, mode: 'free', gameMode: gameMode });
         }
     });
+    socket.on('cancel-match', () => {
+        for (let key in waitingPlayers) {
+            waitingPlayers[key] = waitingPlayers[key].filter(s => s.id !== socket.id);
+        }
+        socket.emit('match-cancelled');
+    });
     socket.on('create-room', (data) => {
         const max = parseInt(data.maxPlayers, 10);
         const gameMode = data.gameMode || 'classic';
+        const playerName = (data && data.playerName) ? String(data.playerName).trim().slice(0, 15) : 'Host';
         if (!VALID_COUNTS.includes(max)) return;
         const roomId = 'ROOM_' + crypto.randomInt(1000, 9999);
         socket.join(roomId);
-        rooms[roomId] = { type: 'free', gameMode: gameMode, max: max, players: [{ id: socket.id, color: 'red', name: 'Host' }], active: false };
-        socket.emit('room-created', { roomId: roomId, color: 'red', gameMode: gameMode });
+        rooms[roomId] = {
+            type: 'free',
+            gameMode: gameMode,
+            max: max,
+            hostId: socket.id,
+            players: [{ id: socket.id, color: 'red', name: playerName, isHost: true }],
+            active: false
+        };
+        socket.emit('room-created', {
+            roomId: roomId,
+            color: 'red',
+            gameMode: gameMode,
+            maxPlayers: max,
+            players: rooms[roomId].players,
+            isHost: true
+        });
     });
     socket.on('join-room', (data) => {
-        const roomId = data && data.roomId ? String(data.roomId).trim() : '';
+        const roomId = data && data.roomId ? String(data.roomId).trim().toUpperCase() : '';
+        const playerName = (data && data.playerName) ? String(data.playerName).trim().slice(0, 15) : ('Player ' + ((rooms[roomId]?.players?.length || 0) + 1));
         const room = rooms[roomId];
         if (room && !room.active && room.players.length < room.max) {
             const colors = ['red', 'green', 'yellow', 'blue'];
             const pColor = colors[room.players.length];
-            room.players.push({ id: socket.id, color: pColor, name: `Player ${room.players.length + 1}` });
+            const newPlayer = { id: socket.id, color: pColor, name: playerName, isHost: false };
+            room.players.push(newPlayer);
             socket.join(roomId);
-            socket.emit('joined-success', { roomId: roomId, color: pColor, gameMode: room.gameMode });
-            if (room.players.length === room.max) {
-                room.active = true;
-                initRoomGameState(roomId, room.players);
-                io.to(roomId).emit('start-online-game', { players: room.players, roomId: roomId, mode: 'free', gameMode: room.gameMode });
-            }
+            socket.emit('joined-success', {
+                roomId: roomId,
+                color: pColor,
+                gameMode: room.gameMode,
+                maxPlayers: room.max,
+                players: room.players,
+                isHost: false
+            });
+            io.to(roomId).emit('room-players-updated', {
+                roomId: roomId,
+                players: room.players,
+                maxPlayers: room.max,
+                gameMode: room.gameMode
+            });
         } else {
             socket.emit('room-error', { message: 'Invalid Room ID or Room is already full!' });
+        }
+    });
+    socket.on('start-custom-room', (data) => {
+        const roomId = data && data.roomId ? String(data.roomId).trim().toUpperCase() : '';
+        const room = rooms[roomId];
+        if (!room || room.active) return;
+        if (room.hostId !== socket.id) {
+            socket.emit('room-error', { message: 'Only the room host can start the match!' });
+            return;
+        }
+        if (room.players.length < 2) {
+            socket.emit('room-error', { message: 'At least 2 players are required to start the match!' });
+            return;
+        }
+        room.active = true;
+        initRoomGameState(roomId, room.players);
+        io.to(roomId).emit('start-online-game', {
+            players: room.players,
+            roomId: roomId,
+            mode: 'free',
+            gameMode: room.gameMode
+        });
+    });
+    socket.on('leave-custom-room', (data) => {
+        const roomId = data && data.roomId ? String(data.roomId).trim().toUpperCase() : '';
+        const room = rooms[roomId];
+        if (!room || room.active) return;
+        socket.leave(roomId);
+        if (room.hostId === socket.id) {
+            io.to(roomId).emit('room-closed', { message: 'The host has closed the room.' });
+            delete rooms[roomId];
+        } else {
+            room.players = room.players.filter(p => p.id !== socket.id);
+            const colors = ['red', 'green', 'yellow', 'blue'];
+            room.players.forEach((p, idx) => { p.color = colors[idx]; });
+            io.to(roomId).emit('room-players-updated', {
+                roomId: roomId,
+                players: room.players,
+                maxPlayers: room.max,
+                gameMode: room.gameMode
+            });
         }
     });
     socket.on('request-dice-roll', (data) => {
@@ -840,6 +912,28 @@ io.on('connection', (socket) => {
             waitingPlayers[size] = waitingPlayers[size].filter(s => s.id !== socket.id);
         }
         await removeFromCompQueues(socket, true); 
+        for (let roomId in rooms) {
+            let room = rooms[roomId];
+            if (room && !room.active && room.players) {
+                let pIndex = room.players.findIndex(p => p.id === socket.id);
+                if (pIndex !== -1) {
+                    if (room.hostId === socket.id) {
+                        io.to(roomId).emit('room-closed', { message: 'The host disconnected.' });
+                        delete rooms[roomId];
+                    } else {
+                        room.players = room.players.filter(p => p.id !== socket.id);
+                        const colors = ['red', 'green', 'yellow', 'blue'];
+                        room.players.forEach((p, idx) => { p.color = colors[idx]; });
+                        io.to(roomId).emit('room-players-updated', {
+                            roomId: roomId,
+                            players: room.players,
+                            maxPlayers: room.max,
+                            gameMode: room.gameMode
+                        });
+                    }
+                }
+            }
+        }
         for(let roomId in activeRooms) {
             let room = activeRooms[roomId];
             let pIndex = room.players.findIndex(p => p.id === socket.id);
