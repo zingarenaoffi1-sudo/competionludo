@@ -830,3 +830,198 @@ body {
     50% { transform: scale(1.3) translateY(-15px); box-shadow: 6px 15px 12px rgba(0,0,0,0.3); }
     100% { transform: scale(1) translateY(0); box-shadow: 2px 4px 6px rgba(0,0,0,0.5); }
 }
+
+/* =========================================================
+   ROYAL LUDO SPLASH & INSTANT TRANSITION SCREEN
+   100% Copyright-Free Pure Vector / CSS3 Native Architecture
+========================================================= */
+.ludo-splash-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 99999;
+    background: radial-gradient(circle at center, #1e293b 0%, #080d1a 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 1;
+    transition: opacity 0.35s ease;
+}
+.ludo-splash-overlay.hidden {
+    display: none !important;
+}
+.ludo-splash-overlay.fade-out {
+    opacity: 0;
+    pointer-events: none;
+}
+.ludo-splash-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    max-width: 320px;
+    width: 90%;
+    padding: 24px;
+}
+.ludo-emblem-wrap {
+    position: relative;
+    margin-bottom: 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+.ludo-crown-icon {
+    animation: crownFloat 2s ease-in-out infinite;
+    margin-bottom: -12px;
+    z-index: 3;
+}
+@keyframes crownFloat {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-6px); }
+}
+.ludo-emblem-disc {
+    width: 96px;
+    height: 96px;
+    border-radius: 50%;
+    border: 4px solid #ffd700;
+    box-shadow: 0 0 25px rgba(255, 215, 0, 0.55), inset 0 0 10px rgba(0,0,0,0.4);
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    overflow: hidden;
+    position: relative;
+    animation: discPulse 3s ease-in-out infinite;
+}
+@keyframes discPulse {
+    0%, 100% { transform: scale(1); box-shadow: 0 0 20px rgba(255, 215, 0, 0.4); }
+    50% { transform: scale(1.04); box-shadow: 0 0 32px rgba(255, 215, 0, 0.75); }
+}
+.ludo-emblem-disc .quad.red { background: linear-gradient(135deg, #ff4444, #b91c1c); }
+.ludo-emblem-disc .quad.green { background: linear-gradient(135deg, #22c55e, #15803d); }
+.ludo-emblem-disc .quad.yellow { background: linear-gradient(135deg, #facc15, #a16207); }
+.ludo-emblem-disc .quad.blue { background: linear-gradient(135deg, #3b82f6, #1d4ed8); }
+.emblem-center-star {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: #ffffff;
+    border: 2px solid #ffd700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.6);
+}
+.splash-brand-title {
+    font-size: 32px;
+    font-weight: 900;
+    color: #ffd700;
+    letter-spacing: 4px;
+    text-shadow: 0 0 15px rgba(255, 215, 0, 0.75);
+    margin-top: 4px;
+}
+.splash-brand-subtitle {
+    font-size: 12px;
+    font-weight: 800;
+    color: #38bdf8;
+    letter-spacing: 2.5px;
+    margin-top: 2px;
+}
+.splash-dice-scene {
+    width: 44px;
+    height: 44px;
+    perspective: 350px;
+    margin: 22px auto 16px auto;
+}
+.splash-dice-cube {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    transform-style: preserve-3d;
+    animation: splashDiceTumble 1.8s infinite linear;
+}
+@keyframes splashDiceTumble {
+    0% { transform: rotateX(0deg) rotateY(0deg) rotateZ(0deg); }
+    100% { transform: rotateX(360deg) rotateY(720deg) rotateZ(360deg); }
+}
+.s-face {
+    position: absolute;
+    width: 44px;
+    height: 44px;
+    background: #ffffff;
+    border: 2px solid #e2e8f0;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 26px;
+    color: #ef4444;
+    font-weight: 900;
+    box-shadow: inset 0 0 6px rgba(0,0,0,0.15);
+}
+.s-face.s-front  { transform: translateZ(22px); }
+.s-face.s-back   { transform: rotateY(180deg) translateZ(22px); color: #1e293b; }
+.s-face.s-right  { transform: rotateY(90deg) translateZ(22px); color: #1e293b; }
+.s-face.s-left   { transform: rotateY(-90deg) translateZ(22px); color: #ef4444; }
+.s-face.s-top    { transform: rotateX(90deg) translateZ(22px); color: #1e293b; }
+.s-face.s-bottom { transform: rotateX(-90deg) translateZ(22px); color: #1e293b; }
+
+.splash-progress-track {
+    width: 100%;
+    max-width: 250px;
+    height: 8px;
+    background: rgba(255, 255, 255, 0.12);
+    border-radius: 20px;
+    overflow: hidden;
+    margin-top: 10px;
+    border: 1px solid rgba(255, 215, 0, 0.35);
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.5);
+}
+.splash-progress-fill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #eab308, #22c55e, #ffd700);
+    border-radius: 20px;
+    transition: width 0.35s ease;
+    box-shadow: 0 0 12px rgba(34, 197, 94, 0.85);
+}
+.splash-status-text {
+    font-size: 12px;
+    font-weight: 600;
+    color: #94a3b8;
+    margin-top: 10px;
+    letter-spacing: 0.5px;
+}
+
+/* Background Music Global Floating / Header Button */
+.ludo-music-toggle-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 20px;
+    border: 1.5px solid #38bdf8;
+    background: rgba(15, 23, 42, 0.85);
+    color: #38bdf8;
+    font-size: 11px;
+    font-weight: 800;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+.ludo-music-toggle-btn:hover {
+    background: rgba(56, 189, 248, 0.15);
+    transform: scale(1.03);
+}
+.ludo-music-toggle-btn.muted {
+    border-color: #64748b;
+    color: #94a3b8;
+}
+

@@ -11,7 +11,7 @@ let currentOnlineRoomId = "";
 let currentOnlineGameMode = 'classic';
 let isRoomHost = false;
 let currentRoomData = null;
-let quickMatchAdCounter = parseInt(sessionStorage.getItem('quickMatchAdCounter') || '0', 10);
+let quickMatchAdCounter = parseInt(localStorage.getItem('quickMatchAdCounter') || '0', 10);
 
 const soundDice = new Audio('sounds/board game dice_2.mp3');
 const soundMove = new Audio('sounds/ui pop_2.mp3');
@@ -129,9 +129,10 @@ function backToOnlineMain() {
 }
 
 async function findOnlineMatch(playersCount) {
-    const shouldShowAd = (quickMatchAdCounter % 3 === 0);
+    // Alternate ad schedule: 1st click shows ad, 2nd skipped, 3rd shows ad, 4th skipped, etc.
+    const shouldShowAd = (quickMatchAdCounter % 2 === 0);
     quickMatchAdCounter++;
-    sessionStorage.setItem('quickMatchAdCounter', String(quickMatchAdCounter));
+    localStorage.setItem('quickMatchAdCounter', String(quickMatchAdCounter));
 
     const statusEl = document.getElementById('quick-match-display');
     if (statusEl) statusEl.innerText = shouldShowAd ? "Loading ad..." : "Connecting...";
