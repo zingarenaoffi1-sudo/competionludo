@@ -306,15 +306,9 @@ function moveToken(color, tokenIndex) {
         }
         token.step = currentStep;
         renderTokenPosition(token);
-        token.element.classList.remove("hopping");
-        void token.element.offsetWidth; 
-        token.element.classList.add("hopping");
         soundMove.currentTime = 0;
         soundMove.play().catch(e => {});
-        setTimeout(() => {
-            token.element.classList.remove("hopping");
-            doHop(currentStep + 1);
-        }, 200);
+        setTimeout(() => doHop(currentStep + 1), 200);
     }
     doHop(startStep + 1);
 }
@@ -352,6 +346,11 @@ function checkCapture(token) {
     return captured;
 }
 function checkPlayerWon(color) {
+    if (selectedLocalMode === 'team2v2') {
+        const partner = (color === 'red') ? 'yellow' : (color === 'yellow') ? 'red' : (color === 'green') ? 'blue' : 'green';
+        const myTeamWon = allTokens[color].every(t => t.step === 56) && (allTokens[partner] ? allTokens[partner].every(t => t.step === 56) : true);
+        return myTeamWon;
+    }
     if (selectedLocalMode === 'quick') {
         return allTokens[color].filter(t => t.step === 56).length >= 2;
     }

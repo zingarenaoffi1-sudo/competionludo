@@ -215,31 +215,79 @@ function startTurnTimer(roomId) {
     if (!room || !room.active || !room.gameState) return;
     if (room.gameState.timerId) clearTimeout(room.gameState.timerId);
     if (room.gameState.pausedByAd) return;
+    // Exactly 30 seconds turn timer as requested
     room.gameState.timerId = setTimeout(() => {
         handleTurnTimeout(roomId);
-    }, 25000);
+    }, 30000);
 }
 function handleTurnTimeout(roomId) {
     let room = rooms[roomId];
     if (!room || !room.gameState || room.gameState.pausedByAd) return;
-        let gs = room.gameState;
+    let gs = room.gameState;
+    if (!gs.activePlayers || gs.activePlayers.length === 0) return;
     let currentColor = gs.activePlayers[gs.turnIndex];
-    gs.missedTurns[currentColor]++;
-    if (gs.missedTurns[currentColor] >= 3) {
+    if (!currentColor) return;
+
+    gs.missedTurns[currentColor] = (gs.missedTurns[currentColor] || 0) + 1;
+    let currentMissed = gs.missedTurns[currentColor];
+
+    if (currentMissed >= 3) {
+        // Player missed 3 chances: remove from match
         gs.activePlayers = gs.activePlayers.filter(c => c !== currentColor);
-        io.to(roomId).emit('player-eliminated', { color: currentColor, reason: 'timeout' });
+        io.to(roomId).emit('player-eliminated', { 
+            color: currentColor, 
+            reason: 'timeout',
+            missedTurns: gs.missedTurns 
+        });
+
+        // If only 1 player remains, they immediately win the match
         if (gs.activePlayers.length <= 1) {
             room.active = false;
+            if (gs.timerId) clearTimeout(gs.timerId);
             let winner = gs.activePlayers[0];
-            io.to(roomId).emit('game-over-broadcast', { winnerColor: winner, prize: room.prize || 0 });
+            let winnerPlayerObj = room.players ? room.players.find(p => p.color === winner) : null;
+            let winnerName = winnerPlayerObj ? (winnerPlayerObj.name || winner.toUpperCase()) : winner.toUpperCase();
+            if (room.type === 'comp' && winnerPlayerObj && winnerPlayerObj.uid) {
+                creditUserWinnings(winnerPlayerObj.uid, room.prize || 0);
+            }
+            if (room.players) {
+                room.players.forEach(p => {
+                    if (p.uid) {
+                        recordMatchHistory(p.uid, {
+                            mode: room.gameMode === 'quick' ? 'Quick Ludo' : (room.gameMode === 'team2v2' ? '2 vs 2 Team' : (room.type === 'comp' ? 'Pro Competition' : 'Online Classic')),
+                            result: (p.color === winner) ? 'WIN' : 'LOSS',
+                            prize: (p.color === winner) ? (room.prize || 0) : 0,
+                            stake: room.stake || room.entryFee || 0
+                        });
+                    }
+                });
+            }
+            io.to(roomId).emit('game-over-broadcast', { 
+                winnerColor: winner, 
+                winnerName: winnerName,
+                winnerId: winnerPlayerObj ? winnerPlayerObj.id : null,
+                prize: room.prize || 0,
+                reason: 'opponent_left'
+            });
             return;
         }
-        if (gs.turnIndex >= gs.activePlayers.length) gs.turnIndex = 0;
+
+        // 3 or 4-player game with multiple players still active: continue match
+        if (gs.turnIndex >= gs.activePlayers.length) {
+            gs.turnIndex = 0;
+        }
     } else {
+        // Skip this chance and pass to next player
         gs.turnIndex = (gs.turnIndex + 1) % gs.activePlayers.length;
     }
+
     gs.state = 'WAITING_FOR_ROLL';
-    io.to(roomId).emit('turn-updated', { currentColor: gs.activePlayers[gs.turnIndex], missedTurns: gs.missedTurns });
+    io.to(roomId).emit('turn-updated', { 
+        currentColor: gs.activePlayers[gs.turnIndex], 
+        missedTurns: gs.missedTurns,
+        skippedColor: currentColor,
+        skippedCount: currentMissed
+    });
     startTurnTimer(roomId);
 }
 function hasValidMoves(roomId) {
@@ -258,7 +306,11 @@ function switchTurn(roomId, gotExtraTurn) {
     let gs = room.gameState;
     if (!gotExtraTurn) gs.turnIndex = (gs.turnIndex + 1) % gs.activePlayers.length;
     gs.state = 'WAITING_FOR_ROLL';
-    io.to(roomId).emit('turn-updated', { currentColor: gs.activePlayers[gs.turnIndex], extraTurn: gotExtraTurn });
+    io.to(roomId).emit('turn-updated', { 
+        currentColor: gs.activePlayers[gs.turnIndex], 
+        extraTurn: gotExtraTurn,
+        missedTurns: gs.missedTurns 
+    });
     startTurnTimer(roomId);
 }
 const REWARD_TIERS = [50000, 45000, 40000, 35000, 30000, 25000, 20000, 15000, 10000, 5000];
@@ -914,31 +966,76 @@ io.on('connection', (socket) => {
         await removeFromCompQueues(socket, true); 
         for (let roomId in rooms) {
             let room = rooms[roomId];
-            if (room && !room.active && room.players) {
-                let pIndex = room.players.findIndex(p => p.id === socket.id);
-                if (pIndex !== -1) {
-                    if (room.hostId === socket.id) {
-                        io.to(roomId).emit('room-closed', { message: 'The host disconnected.' });
-                        delete rooms[roomId];
-                    } else {
-                        room.players = room.players.filter(p => p.id !== socket.id);
-                        const colors = ['red', 'green', 'yellow', 'blue'];
-                        room.players.forEach((p, idx) => { p.color = colors[idx]; });
-                        io.to(roomId).emit('room-players-updated', {
-                            roomId: roomId,
-                            players: room.players,
-                            maxPlayers: room.max,
-                            gameMode: room.gameMode
+            if (!room || !room.players) continue;
+            let pIndex = room.players.findIndex(p => p.id === socket.id);
+            if (pIndex === -1) continue;
+
+            if (!room.active) {
+                // In custom room waiting lobby
+                if (room.hostId === socket.id) {
+                    io.to(roomId).emit('room-closed', { message: 'The host disconnected.' });
+                    delete rooms[roomId];
+                } else {
+                    room.players = room.players.filter(p => p.id !== socket.id);
+                    const colors = ['red', 'green', 'yellow', 'blue'];
+                    room.players.forEach((p, idx) => { p.color = colors[idx]; });
+                    io.to(roomId).emit('room-players-updated', {
+                        roomId: roomId,
+                        players: room.players,
+                        maxPlayers: room.max,
+                        gameMode: room.gameMode
+                    });
+                }
+            } else if (room.active && room.gameState) {
+                // In an active match
+                const disconnectedColor = room.players[pIndex].color;
+                const gs = room.gameState;
+                if (gs.activePlayers.includes(disconnectedColor)) {
+                    gs.activePlayers = gs.activePlayers.filter(c => c !== disconnectedColor);
+                    io.to(roomId).emit('player-eliminated', { 
+                        color: disconnectedColor, 
+                        reason: 'disconnect',
+                        missedTurns: gs.missedTurns 
+                    });
+
+                    if (gs.activePlayers.length <= 1) {
+                        room.active = false;
+                        if (gs.timerId) clearTimeout(gs.timerId);
+                        const winner = gs.activePlayers[0];
+                        const winnerPlayerObj = room.players.find(p => p.color === winner);
+                        const winnerName = winnerPlayerObj ? (winnerPlayerObj.name || winner.toUpperCase()) : winner.toUpperCase();
+                        if (room.type === 'comp' && winnerPlayerObj && winnerPlayerObj.uid) {
+                            creditUserWinnings(winnerPlayerObj.uid, room.prize || 0);
+                        }
+                        room.players.forEach(p => {
+                            if (p.uid) {
+                                recordMatchHistory(p.uid, {
+                                    mode: room.gameMode === 'quick' ? 'Quick Ludo' : (room.gameMode === 'team2v2' ? '2 vs 2 Team' : (room.type === 'comp' ? 'Pro Competition' : 'Online Classic')),
+                                    result: (p.color === winner) ? 'WIN' : 'LOSS',
+                                    prize: (p.color === winner) ? (room.prize || 0) : 0,
+                                    stake: room.stake || room.entryFee || 0
+                                });
+                            }
                         });
+                        io.to(roomId).emit('game-over-broadcast', { 
+                            winnerColor: winner, 
+                            winnerName: winnerName,
+                            winnerId: winnerPlayerObj ? winnerPlayerObj.id : null,
+                            prize: room.prize || 0,
+                            reason: 'opponent_left'
+                        });
+                    } else {
+                        if (gs.turnIndex >= gs.activePlayers.length) {
+                            gs.turnIndex = 0;
+                        }
+                        gs.state = 'WAITING_FOR_ROLL';
+                        io.to(roomId).emit('turn-updated', { 
+                            currentColor: gs.activePlayers[gs.turnIndex], 
+                            missedTurns: gs.missedTurns 
+                        });
+                        startTurnTimer(roomId);
                     }
                 }
-            }
-        }
-        for(let roomId in activeRooms) {
-            let room = activeRooms[roomId];
-            let pIndex = room.players.findIndex(p => p.id === socket.id);
-            if(pIndex !== -1) {
-                io.to(roomId).emit('playerDisconnected', { color: room.players[pIndex].color, msg: 'Player disconnected. Bot taking over soon...' });
             }
         }
     });

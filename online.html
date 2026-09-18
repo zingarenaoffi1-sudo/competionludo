@@ -115,7 +115,7 @@
         </div>
         <div class="turn-status-banner">
             <div class="turn-indicator" id="turn-text">WAITING TO CONNECT...</div>
-            <div class="turn-timer-badge" id="timer-text">⏳ Time Left: 25s</div>
+            <div class="turn-timer-badge" id="timer-text">⏳ Time Left: 30s</div>
         </div>
         <div class="hud-row">
             <div class="player-corner" id="corner-red">
@@ -124,6 +124,12 @@
                     <div class="player-info">
                         <div class="player-name">Player 1</div>
                         <div class="player-status-tag red-text">Red</div>
+                        <div class="player-strikes-container" id="strikes-red">
+                            <span class="strike-dot" id="dot-red-1"></span>
+                            <span class="strike-dot" id="dot-red-2"></span>
+                            <span class="strike-dot" id="dot-red-3"></span>
+                            <span class="player-strikes-text" id="strike-txt-red">0/3</span>
+                        </div>
                     </div>
                 </div>
                 <div class="corner-dice" id="dice-red" onclick="handleCornerDiceClick('red')">🎲</div>
@@ -134,6 +140,12 @@
                     <div class="player-info">
                         <div class="player-name">Player 2</div>
                         <div class="player-status-tag green-text">Green</div>
+                        <div class="player-strikes-container" id="strikes-green">
+                            <span class="strike-dot" id="dot-green-1"></span>
+                            <span class="strike-dot" id="dot-green-2"></span>
+                            <span class="strike-dot" id="dot-green-3"></span>
+                            <span class="player-strikes-text" id="strike-txt-green">0/3</span>
+                        </div>
                     </div>
                 </div>
                 <div class="corner-dice" id="dice-green" onclick="handleCornerDiceClick('green')">🎲</div>
@@ -149,6 +161,12 @@
                     <div class="player-info">
                         <div class="player-name">Player 4</div>
                         <div class="player-status-tag blue-text">Blue</div>
+                        <div class="player-strikes-container" id="strikes-blue">
+                            <span class="strike-dot" id="dot-blue-1"></span>
+                            <span class="strike-dot" id="dot-blue-2"></span>
+                            <span class="strike-dot" id="dot-blue-3"></span>
+                            <span class="player-strikes-text" id="strike-txt-blue">0/3</span>
+                        </div>
                     </div>
                 </div>
                 <div class="corner-dice" id="dice-blue" onclick="handleCornerDiceClick('blue')">🎲</div>
@@ -159,6 +177,12 @@
                     <div class="player-info">
                         <div class="player-name">Player 3</div>
                         <div class="player-status-tag yellow-text">Yellow</div>
+                        <div class="player-strikes-container" id="strikes-yellow">
+                            <span class="strike-dot" id="dot-yellow-1"></span>
+                            <span class="strike-dot" id="dot-yellow-2"></span>
+                            <span class="strike-dot" id="dot-yellow-3"></span>
+                            <span class="player-strikes-text" id="strike-txt-yellow">0/3</span>
+                        </div>
                     </div>
                 </div>
                 <div class="corner-dice" id="dice-yellow" onclick="handleCornerDiceClick('yellow')">🎲</div>

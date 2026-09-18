@@ -266,6 +266,58 @@ body {
     font-weight: 600;
     color: #94a3b8;
 }
+.player-strikes-container {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    margin-top: 2px;
+}
+.strike-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    display: inline-block;
+    transition: all 0.2s ease;
+}
+.strike-dot.missed {
+    background: #ef4444 !important;
+    border-color: #f87171 !important;
+    box-shadow: 0 0 5px rgba(239, 68, 68, 0.9);
+}
+.player-strikes-text {
+    font-size: 8px;
+    font-weight: 800;
+    color: #94a3b8;
+    margin-left: 2px;
+    letter-spacing: 0.3px;
+}
+.player-left-tag {
+    display: inline-block;
+    background: #dc2626;
+    color: #ffffff;
+    font-size: 9px;
+    font-weight: 900;
+    padding: 1px 5px;
+    border-radius: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-top: 2px;
+    box-shadow: 0 0 8px rgba(220, 38, 38, 0.8);
+    animation: leftBlink 1.4s infinite alternate;
+}
+@keyframes leftBlink {
+    0% { opacity: 0.85; }
+    100% { opacity: 1; }
+}
+.player-card.player-left {
+    opacity: 0.25 !important;
+    filter: grayscale(0.85);
+    border-color: #64748b !important;
+    box-shadow: none !important;
+    pointer-events: none;
+}
 .red-bg { background-color: var(--red-main) !important; }
 .green-bg { background-color: var(--green-main) !important; }
 .yellow-bg { background-color: var(--yellow-main) !important; }
@@ -1024,4 +1076,5 @@ body {
     border-color: #64748b;
     color: #94a3b8;
 }
+
 
