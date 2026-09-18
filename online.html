@@ -214,45 +214,12 @@
             }
         });
         async function playInterstitialAd() {
-            const adId = (window.AdMobConfig && window.AdMobConfig.interstitialAdId) || 'ca-app-pub-3940256099942544/1033173712';
-            const isTesting = (window.AdMobConfig && typeof window.AdMobConfig.isTesting === 'boolean') ? window.AdMobConfig.isTesting : true;
-            if (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform() && window.Capacitor.Plugins && window.Capacitor.Plugins.AdMob) {
-                const { AdMob } = window.Capacitor.Plugins;
-                return new Promise(async (resolve) => {
-                    let finished = false;
-                    const finish = () => {
-                        if (!finished) {
-                            finished = true;
-                            if (window.socket && window.currentOnlineRoomId) {
-                                window.socket.emit('ad-playback-status', { roomId: window.currentOnlineRoomId, isShowing: false });
-                            }
-                            resolve();
-                        }
-                    };
-                    const safetyTimeout = setTimeout(finish, 8000);
-                    try {
-                        if (window.socket && window.currentOnlineRoomId) {
-                            window.socket.emit('ad-playback-status', { roomId: window.currentOnlineRoomId, isShowing: true });
-                        }
-                        const dismissListener = await AdMob.addListener('onInterstitialAdDismissed', () => {
-                            clearTimeout(safetyTimeout);
-                            if (dismissListener && dismissListener.remove) dismissListener.remove();
-                            finish();
-                        });
-                        const failListener = await AdMob.addListener('onInterstitialAdFailedToLoad', () => {
-                            clearTimeout(safetyTimeout);
-                            if (failListener && failListener.remove) failListener.remove();
-                            finish();
-                        });
-                        await AdMob.prepareInterstitial({ adId: adId, isTesting: isTesting });
-                        await AdMob.showInterstitial();
-                    } catch(e) {
-                        clearTimeout(safetyTimeout);
-                        finish();
-                    }
-                });
-            } else {
-                return Promise.resolve();
+            if (!navigator.onLine) {
+                console.log("[AdMob] Offline: Skipping interstitial ad.");
+                return;
+            }
+            if (typeof window.showZingInterstitialAd === 'function') {
+                await window.showZingInterstitialAd();
             }
         }
         function toggleOnlineVoiceMic() {

@@ -6,7 +6,7 @@
     <title>Ludo - Pro Competition</title>
     <link rel="stylesheet" href="competition-style.css">
 </head>
-<body>
+<body style="margin: 0; background: #080d1a;">
     <div id="test-banner" class="dummy-banner">
         <span>📢 AdMob Test Banner (320x50)</span>
         <button class="banner-close-btn" onclick="document.getElementById('test-banner').style.display='none'">✕</button>
@@ -64,7 +64,7 @@
                 <a href="terms.html" style="color: #38bdf8; text-decoration: underline;">Terms</a> and 
                 <a href="privacy.html" style="color: #38bdf8; text-decoration: underline;">Privacy Policy</a>.
             </p>
-            <button class="menu-btn" onclick="window.location.href='index.html'" style="width: 100%;">Back to Main Menu</button>
+            <button class="menu-btn" onclick="LudoSplash.navigate('index.html', 'MAIN LOBBY')" style="width: 100%;">Back to Main Menu</button>
             <div style="display: flex; justify-content: center; align-items: center; gap: 12px; margin-top: 24px; font-size: 11px; flex-wrap: wrap;">
                 <a href="privacy.html" style="color: #94a3b8; text-decoration: none;">Privacy Policy</a>
                 <span style="color: #475569;">&bull;</span>
@@ -76,7 +76,10 @@
     </div>
     <div id="dashboard-section" class="dashboard hidden">
         <div class="player-name-box" style="position: relative;">
-            <button onclick="competitionLogout()" style="position: absolute; right: 12px; top: 12px; background: rgba(239, 68, 68, 0.2); border: 1px solid rgba(239, 68, 68, 0.4); color: #fca5a5; font-size: 11px; font-weight: 800; padding: 4px 10px; border-radius: 8px; cursor: pointer;">🚪 Logout</button>
+            <div style="position: absolute; right: 12px; top: 12px; display: flex; gap: 6px; align-items: center;">
+                <button class="ludo-music-toggle-btn" onclick="LudoMusic.toggleMute()">🎵 Music ON</button>
+                <button onclick="competitionLogout()" style="background: rgba(239, 68, 68, 0.2); border: 1px solid rgba(239, 68, 68, 0.4); color: #fca5a5; font-size: 11px; font-weight: 800; padding: 4px 10px; border-radius: 8px; cursor: pointer;">🚪 Logout</button>
+            </div>
             <div class="game-title">LUDO PRO</div>
             <h3 id="player-name">Player Name</h3>
             <span class="aura-badge">PRO ARENA</span>
@@ -192,7 +195,7 @@
         <div id="my-identity-badge" class="hidden" style="text-align: center; background: linear-gradient(90deg, #ffd700, #f59e0b); color: #0f172a; font-weight: 900; padding: 5px; margin-bottom: 6px; border-radius: 8px; font-size: 12px; letter-spacing: 0.5px;"></div>
         <div class="turn-status-banner">
             <div class="turn-indicator" id="turn-text">WAITING TO START...</div>
-            <div class="turn-timer-badge" id="timer-text">⏳ Time Left: 25s</div>
+            <div class="turn-timer-badge" id="timer-text">⏳ Time Left: 30s</div>
         </div>
         <div class="hud-row">
             <div class="player-corner" id="corner-red">
@@ -201,6 +204,12 @@
                     <div class="player-info">
                         <div class="player-name">Player 1</div>
                         <div class="player-status-tag red-text">Red</div>
+                        <div class="player-strikes-container" id="strikes-red">
+                            <span class="strike-dot" id="dot-red-1"></span>
+                            <span class="strike-dot" id="dot-red-2"></span>
+                            <span class="strike-dot" id="dot-red-3"></span>
+                            <span class="player-strikes-text" id="strike-txt-red">0/3</span>
+                        </div>
                     </div>
                 </div>
                 <div class="corner-dice" id="dice-red" onclick="handleCornerDiceClick('red')">🎲</div>
@@ -211,6 +220,12 @@
                     <div class="player-info">
                         <div class="player-name">Player 2</div>
                         <div class="player-status-tag green-text">Green</div>
+                        <div class="player-strikes-container" id="strikes-green">
+                            <span class="strike-dot" id="dot-green-1"></span>
+                            <span class="strike-dot" id="dot-green-2"></span>
+                            <span class="strike-dot" id="dot-green-3"></span>
+                            <span class="player-strikes-text" id="strike-txt-green">0/3</span>
+                        </div>
                     </div>
                 </div>
                 <div class="corner-dice" id="dice-green" onclick="handleCornerDiceClick('green')">🎲</div>
@@ -226,6 +241,12 @@
                     <div class="player-info">
                         <div class="player-name">Player 4</div>
                         <div class="player-status-tag blue-text">Blue</div>
+                        <div class="player-strikes-container" id="strikes-blue">
+                            <span class="strike-dot" id="dot-blue-1"></span>
+                            <span class="strike-dot" id="dot-blue-2"></span>
+                            <span class="strike-dot" id="dot-blue-3"></span>
+                            <span class="player-strikes-text" id="strike-txt-blue">0/3</span>
+                        </div>
                     </div>
                 </div>
                 <div class="corner-dice" id="dice-blue" onclick="handleCornerDiceClick('blue')">🎲</div>
@@ -236,6 +257,12 @@
                     <div class="player-info">
                         <div class="player-name">Player 3</div>
                         <div class="player-status-tag yellow-text">Yellow</div>
+                        <div class="player-strikes-container" id="strikes-yellow">
+                            <span class="strike-dot" id="dot-yellow-1"></span>
+                            <span class="strike-dot" id="dot-yellow-2"></span>
+                            <span class="strike-dot" id="dot-yellow-3"></span>
+                            <span class="player-strikes-text" id="strike-txt-yellow">0/3</span>
+                        </div>
                     </div>
                 </div>
                 <div class="corner-dice" id="dice-yellow" onclick="handleCornerDiceClick('yellow')">🎲</div>
@@ -280,26 +307,12 @@
         setInterval(updateSpinBadge, 1000);
         setTimeout(updateSpinBadge, 500);
         async function playInterstitialAd() {
-            const adId = (window.AdMobConfig && window.AdMobConfig.interstitialAdId) || 'ca-app-pub-3940256099942544/1033173712';
-            const isTesting = (window.AdMobConfig && typeof window.AdMobConfig.isTesting === 'boolean') ? window.AdMobConfig.isTesting : true;
-            if (window.Capacitor && Capacitor.Plugins.AdMob) {
-                const { AdMob } = Capacitor.Plugins;
-                try {
-                    if (window.socket && window.currentRoomId) {
-                        window.socket.emit('ad-playback-status', { roomId: window.currentRoomId, isShowing: true });
-                    }
-                    await AdMob.prepareInterstitial({
-                        adId: adId,
-                        isTesting: isTesting
-                    });
-                    await AdMob.showInterstitial();
-                } catch(e) {
-                    console.log("Interstitial failed", e);
-                } finally {
-                    if (window.socket && window.currentRoomId) {
-                        window.socket.emit('ad-playback-status', { roomId: window.currentRoomId, isShowing: false });
-                    }
-                }
+            if (!navigator.onLine) {
+                console.log("[AdMob] Offline: Skipping interstitial ad.");
+                return;
+            }
+            if (typeof window.showZingInterstitialAd === 'function') {
+                await window.showZingInterstitialAd();
             }
         }
     </script>
@@ -311,6 +324,7 @@
     </script>
     <script src="how-to-play.js"></script>
     <script src="game-features.js"></script>
+    <script src="ludo-music.js"></script>
     <script src="competition.js"></script>
 </body>
 </html>

@@ -110,18 +110,29 @@ function startBotMatchConfirmed(unlockOneToken = false) {
     if (botCount === 1) {
         activePlayers = ['red', 'yellow'];
         botColors = ['yellow'];
+        playersData['red'].name = "You";
+        playersData['yellow'].name = "AI Bot";
     } else if (botCount === 2) {
         activePlayers = ['red', 'green', 'yellow'];
         botColors = ['green', 'yellow'];
+        playersData['red'].name = "You";
+        playersData['green'].name = "AI Bot 1";
+        playersData['yellow'].name = "AI Bot 2";
     } else {
         activePlayers = ['red', 'green', 'yellow', 'blue'];
         botColors = ['green', 'yellow', 'blue'];
+        playersData['red'].name = "You";
+        playersData['green'].name = "AI Bot 1";
+        playersData['yellow'].name = "AI Bot 2";
+        playersData['blue'].name = "AI Bot 3";
     }
     winnersList = [];
     totalPlayersInGame = activePlayers.length;
     ['red', 'green', 'yellow', 'blue'].forEach(c => {
         let card = document.getElementById(`profile-${c}`);
         let dice = document.getElementById(`dice-${c}`);
+        let nameEl = document.getElementById(`name-${c}`);
+        if (nameEl && playersData[c]) nameEl.innerText = playersData[c].name;
         if (activePlayers.includes(c)) {
             card.style.opacity = "0.5";
             dice.classList.add("visible");
@@ -292,15 +303,9 @@ function moveToken(color, tokenIndex) {
         }
         token.step = currentStep;
         renderTokenPosition(token);
-        token.element.classList.remove("hopping");
-        void token.element.offsetWidth; 
-        token.element.classList.add("hopping");
         soundMove.currentTime = 0;
         soundMove.play().catch(e => {});
-        setTimeout(() => {
-            token.element.classList.remove("hopping");
-            doHop(currentStep + 1);
-        }, 200);
+        setTimeout(() => doHop(currentStep + 1), 200);
     }
     doHop(startStep + 1);
 }

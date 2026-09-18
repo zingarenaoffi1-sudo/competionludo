@@ -5,7 +5,7 @@ let currentDiceValue = 0;
 let isMoving = false;
 const allTokens = {};
 let countdownInterval = null;
-let timeLeft = 25;
+let timeLeft = 30;
 let currentUser = null;
 let myAssignedColor = "";
 window.currentRoomId = "";
@@ -14,6 +14,42 @@ const soundDice = new Audio('sounds/board game dice_2.mp3');
 const soundMove = new Audio('sounds/ui pop_2.mp3');
 const soundCut = new Audio('sounds/cartoon bonk.mp3');
 const soundWin = new Audio('sounds/success chime_2.mp3');
+
+function showToast(msg) {
+    let toast = document.getElementById("toast-msg");
+    if (!toast) {
+        toast = document.createElement("div");
+        toast.id = "toast-msg";
+        toast.className = "toast-message";
+        document.body.appendChild(toast);
+    }
+    toast.innerText = msg;
+    toast.style.display = 'block';
+    setTimeout(() => {
+        toast.style.display = 'none';
+    }, 3000);
+}
+
+function updateStrikesUI(missedTurns) {
+    if (!missedTurns) return;
+    ['red', 'green', 'yellow', 'blue'].forEach(color => {
+        const count = missedTurns[color] || 0;
+        const txtEl = document.getElementById(`strike-txt-${color}`);
+        if (txtEl) {
+            txtEl.innerText = `${Math.min(count, 3)}/3`;
+        }
+        for (let i = 1; i <= 3; i++) {
+            const dot = document.getElementById(`dot-${color}-${i}`);
+            if (dot) {
+                if (i <= count) {
+                    dot.classList.add('missed');
+                } else {
+                    dot.classList.remove('missed');
+                }
+            }
+        }
+    });
+}
 const playersData = {
     'red': { name: "Red", label: "Player 1", class: "red-text", startOffset: 0 },
     'green': { name: "Green", label: "Player 2", class: "green-text", startOffset: 13 },
@@ -38,9 +74,7 @@ const diceFaces = ['', '⚀', '⚁', '⚂', '⚃', '⚄', '⚅'];
 let socket = null;
 document.addEventListener("DOMContentLoaded", () => {
     createBoard();
-    const socketUrl = (window.location.protocol.startsWith('http') && !window.location.href.includes('capacitor'))
-        ? window.location.origin
-        : 'https://competionludo.onrender.com';
+    const socketUrl = (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()) ? 'https://competionludo.onrender.com' : window.location.origin;
     socket = io(socketUrl);
     window.socket = socket;
     setupSocketListeners();
@@ -95,7 +129,7 @@ async function realGoogleLogin() {
     setAuthError(null);
     setAuthInfo("Connecting to server...");
     try {
-        if (false) {
+        if (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform() && window.Capacitor.Plugins && window.Capacitor.Plugins.FirebaseAuthentication) {
             const result = await window.Capacitor.Plugins.FirebaseAuthentication.signInWithGoogle();
             const user = result.user;
             currentUser = {
@@ -124,7 +158,7 @@ async function guestLogin() {
     setAuthError(null);
     setAuthInfo("Connecting to server...");
     try {
-        if (false) {
+        if (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform() && window.Capacitor.Plugins && window.Capacitor.Plugins.FirebaseAuthentication) {
             const result = await window.Capacitor.Plugins.FirebaseAuthentication.signInAnonymously();
             const user = result.user;
             const guestName = "Guest " + (user.uid ? user.uid.substring(0, 5).toUpperCase() : Math.floor(1000 + Math.random() * 9000));
@@ -210,7 +244,7 @@ async function emailPasswordLogin() {
         return;
     }
     try {
-        if (false) {
+        if (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform() && window.Capacitor.Plugins && window.Capacitor.Plugins.FirebaseAuthentication) {
             const result = await window.Capacitor.Plugins.FirebaseAuthentication.signInWithEmailAndPassword({
                 email: email,
                 password: password
@@ -234,7 +268,7 @@ async function emailPasswordLogin() {
         if (errorMsg.includes("user-not-found")) {
             setAuthError("Account not found. Click 'Register here' below to create your account.");
             return;
-        } else if (errorMsg.includes("wrong-password") || errorMsg.includes("invalid-credential")) {
+        } else if (errorMsg.includes("wrong-password") || errorMsg.includes("invalid-credential") || errorMsg.includes("credential is incorrect") || errorMsg.includes("malformed")) {
             setAuthError("Incorrect password. Please try again or tap 'Forgot Password?'.");
             return;
         } else if (errorMsg.includes("invalid-email")) {
@@ -275,7 +309,7 @@ async function emailPasswordSignUp() {
         return;
     }
     try {
-        if (false) {
+        if (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform() && window.Capacitor.Plugins && window.Capacitor.Plugins.FirebaseAuthentication) {
             const result = await window.Capacitor.Plugins.FirebaseAuthentication.createUserWithEmailAndPassword({
                 email: email,
                 password: password
@@ -333,7 +367,7 @@ async function forgotPassword() {
         return;
     }
     try {
-        if (false) {
+        if (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform() && window.Capacitor.Plugins && window.Capacitor.Plugins.FirebaseAuthentication) {
             await window.Capacitor.Plugins.FirebaseAuthentication.sendPasswordResetEmail({
                 email: email
             });
@@ -371,7 +405,7 @@ function competitionLogout() {
     localStorage.removeItem("ludo_name");
     localStorage.removeItem("ludo_is_guest");
     currentUser = null;
-    if (false) {
+    if (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform() && window.Capacitor.Plugins && window.Capacitor.Plugins.FirebaseAuthentication) {
         try {
             window.Capacitor.Plugins.FirebaseAuthentication.signOut();
         } catch (e) {}
@@ -451,18 +485,57 @@ function setupSocketListeners() {
         currentPlayerIndex = activePlayers.indexOf(data.currentColor);
         gameState = "WAITING_FOR_ROLL";
         isMoving = false;
+        if (data.missedTurns) {
+            updateStrikesUI(data.missedTurns);
+        }
+        if (data.skippedColor) {
+            const pName = playersData[data.skippedColor]?.name || data.skippedColor.toUpperCase();
+            if (data.skippedColor === myAssignedColor) {
+                showToast(`⚠️ You missed your turn! (${data.skippedCount}/3 Skips)`);
+            } else {
+                showToast(`⏳ ${pName} missed their turn (${data.skippedCount}/3 Skips)`);
+            }
+        }
         startTurnTimer();
         updateTurnUIOnline();
     });
     socket.on("player-eliminated", (data) => {
         activePlayers = activePlayers.filter(c => c !== data.color);
-        let card = document.getElementById(`profile-${data.color}`);
-        if (card) {
-            card.style.opacity = "0.2";
-            card.classList.remove("active-turn");
+
+        // 1. Hide all tokens of this player from board completely
+        if (allTokens[data.color]) {
+            allTokens[data.color].forEach(t => {
+                if (t.element) {
+                    t.element.style.display = "none";
+                    t.element.classList.remove("highlight-move");
+                }
+            });
         }
-        let dice = document.getElementById(`dice-${data.color}`);
-        if (dice) dice.classList.remove("visible", "active-dice");
+
+        // 2. Mark player card with "LEFT"
+        const card = document.getElementById(`profile-${data.color}`);
+        if (card) {
+            card.classList.add("player-left");
+            card.classList.remove("active-turn");
+            const statusTag = card.querySelector(".player-status-tag");
+            if (statusTag) {
+                statusTag.innerHTML = `<span class="player-left-tag">LEFT</span>`;
+            }
+            const strikesContainer = document.getElementById(`strikes-${data.color}`);
+            if (strikesContainer) {
+                strikesContainer.innerHTML = `<span class="player-left-tag">LEFT</span>`;
+            }
+        }
+
+        // 3. Hide their corner dice
+        const dice = document.getElementById(`dice-${data.color}`);
+        if (dice) {
+            dice.classList.remove("visible", "active-dice", "rolling");
+            dice.style.display = "none";
+        }
+
+        const pName = playersData[data.color]?.name || data.color.toUpperCase();
+        showToast(`🚫 ${pName} was removed from match (Left / 3 Skips).`);
     });
     socket.on("game-over-broadcast", (data) => {
         clearTurnTimer();
@@ -472,7 +545,14 @@ function setupSocketListeners() {
         }
         let podiumDiv = document.getElementById("victory-podium");
         let winnerColor = data.winnerColor || activePlayers[0] || "red";
-        podiumDiv.innerHTML = `<div style="padding: 10px; font-weight: 900; color: #ffd700; font-size: 16px;">🏆 Winner: ${playersData[winnerColor].name}!</div>`;
+        let winnerName = data.winnerName || playersData[winnerColor]?.name || winnerColor.toUpperCase();
+        if (podiumDiv) {
+            if (data.reason === 'opponent_left') {
+                podiumDiv.innerHTML = `<div style="padding: 10px; font-weight: 900; color: #ffd700; font-size: 16px;">🏆 Winner: ${winnerName}!<div style="font-size: 12px; color: #cbd5e1; margin-top: 4px;">(Opponent Left / Disqualified)</div></div>`;
+            } else {
+                podiumDiv.innerHTML = `<div style="padding: 10px; font-weight: 900; color: #ffd700; font-size: 16px;">🏆 Winner: ${winnerName}!</div>`;
+            }
+        }
         document.getElementById("victory-modal").classList.remove("hidden");
     });
 }
@@ -590,13 +670,37 @@ function initGameSessionOnline() {
     ['red', 'green', 'yellow', 'blue'].forEach(c => {
         let card = document.getElementById(`profile-${c}`);
         let dice = document.getElementById(`dice-${c}`);
+        let strikesContainer = document.getElementById(`strikes-${c}`);
+
+        if (card) {
+            card.classList.remove("player-left", "active-turn");
+            let statusTag = card.querySelector(".player-status-tag");
+            if (statusTag) {
+                statusTag.innerText = playersData[c]?.name || c.toUpperCase();
+            }
+        }
+        if (dice) {
+            dice.style.display = "";
+            dice.classList.remove("active-dice", "rolling");
+        }
+        if (strikesContainer) {
+            strikesContainer.innerHTML = `
+                <span class="strike-dot" id="dot-${c}-1"></span>
+                <span class="strike-dot" id="dot-${c}-2"></span>
+                <span class="strike-dot" id="dot-${c}-3"></span>
+                <span class="player-strikes-text" id="strike-txt-${c}">0/3</span>
+            `;
+        }
+
         if (activePlayers.includes(c)) {
-            card.style.opacity = "0.5";
-            dice.classList.add("visible");
-            dice.innerText = "🎲";
+            if (card) card.style.opacity = "0.5";
+            if (dice) {
+                dice.classList.add("visible");
+                dice.innerText = "🎲";
+            }
         } else {
-            card.style.opacity = "0.15";
-            dice.classList.remove("visible");
+            if (card) card.style.opacity = "0.15";
+            if (dice) dice.classList.remove("visible");
         }
     });
     currentPlayerIndex = 0;
@@ -648,12 +752,14 @@ function updateTurnUIOnline() {
 }
 function startTurnTimer() {
     clearTurnTimer();
-    timeLeft = 25;
+    timeLeft = 30;
     updateTimerUI();
     countdownInterval = setInterval(() => {
         timeLeft--;
         updateTimerUI();
-        if (timeLeft <= 0) clearInterval(countdownInterval);
+        if (timeLeft <= 0) {
+            clearTurnTimer();
+        }
     }, 1000);
 }
 function clearTurnTimer() {
@@ -726,6 +832,10 @@ function moveTokenStepByStepRemote(color, tokenIndex, diceVal, cutDetails) {
     }, 180);
 }
 function spawnTokensOnline() {
+    const board = document.getElementById("ludo-board");
+    if (board) {
+        board.querySelectorAll('.token').forEach(el => el.remove());
+    }
     ['red', 'green', 'yellow', 'blue'].forEach(color => {
         allTokens[color] = [];
         for (let i = 0; i < 4; i++) {
@@ -736,11 +846,11 @@ function spawnTokensOnline() {
             });
             let tokenObj = { color, index: i, step: -1, element: tokenEl };
             allTokens[color].push(tokenObj);
-            const board = document.getElementById("ludo-board");
             if (board) {
                 board.appendChild(tokenEl);
-            } else {
-                document.body.appendChild(tokenEl);
+            }
+            if (!activePlayers.includes(color)) {
+                tokenEl.style.display = "none";
             }
             renderTokenPosition(tokenObj);
         }

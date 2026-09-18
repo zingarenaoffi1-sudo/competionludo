@@ -6,7 +6,7 @@
     <title>Ludo - Play vs Computer</title>
     <link rel="stylesheet" href="style.css">
 </head>
-<body>
+<body style="margin: 0; background: #080d1a;">
     <div id="test-banner" class="dummy-banner">
         <span>📢 AdMob Test Banner (320x50)</span>
         <button class="banner-close-btn" onclick="document.getElementById('test-banner').style.display='none'">✕</button>
@@ -17,9 +17,10 @@
                 <span class="logo-crown">👑</span>
                 <span class="logo-text" id="game-mode-title">VS COMPUTER (AI)</span>
             </div>
-            <div style="display: flex; gap: 6px;">
+            <div style="display: flex; gap: 6px; align-items: center;">
+                <button class="ludo-music-toggle-btn" onclick="LudoMusic.toggleMute()">🎵 Music ON</button>
                 <button class="menu-btn" onclick="HowToPlayGuide.openModal()" style="padding: 6px 10px;">📖 Rules</button>
-                <button class="menu-btn" onclick="window.location.href='index.html'">Main Menu</button>
+                <button class="menu-btn" onclick="window.location.href='index.html'">Lobby</button>
             </div>
         </div>
         <div class="turn-status-banner">
@@ -142,23 +143,17 @@
             }
         });
         async function playInterstitialAd() {
-            const adId = (window.AdMobConfig && window.AdMobConfig.interstitialAdId) || 'ca-app-pub-3940256099942544/1033173712';
-            const isTesting = (window.AdMobConfig && typeof window.AdMobConfig.isTesting === 'boolean') ? window.AdMobConfig.isTesting : true;
-            if (window.Capacitor && Capacitor.Plugins.AdMob) {
-                const { AdMob } = Capacitor.Plugins;
-                try {
-                    await AdMob.prepareInterstitial({
-                        adId: adId,
-                        isTesting: isTesting
-                    });
-                    await AdMob.showInterstitial();
-                } catch(e) {
-                    console.log("Interstitial ad error", e);
-                }
+            if (!navigator.onLine) {
+                console.log("[AdMob] Offline: Skipping interstitial ad in Computer match.");
+                return;
+            }
+            if (typeof window.showZingInterstitialAd === 'function') {
+                await window.showZingInterstitialAd();
             }
         }
     </script>
     <script src="how-to-play.js"></script>
+    <script src="ludo-music.js"></script>
     <script src="bot.js"></script>
 </body>
 </html>

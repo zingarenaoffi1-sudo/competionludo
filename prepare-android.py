@@ -4,9 +4,9 @@ import re
 def main():
     manifest_path = "android/app/src/main/AndroidManifest.xml"
     if os.path.exists(manifest_path):
-        app_id = os.environ.get("FINAL_ADMOB_ID", "ca-app-pub-3940256099942544~3347511713").strip()
+        app_id = os.environ.get("FINAL_ADMOB_ID", "ca-app-pub-6484628444475898~3321848589").strip()
         if "~" not in app_id or "/" in app_id:
-            app_id = "ca-app-pub-3940256099942544~3347511713"
+            app_id = "ca-app-pub-6484628444475898~3321848589"
 
         with open(manifest_path, "r", encoding="utf-8") as f:
             content = f.read()

@@ -307,26 +307,12 @@
         setInterval(updateSpinBadge, 1000);
         setTimeout(updateSpinBadge, 500);
         async function playInterstitialAd() {
-            const adId = (window.AdMobConfig && window.AdMobConfig.interstitialAdId) || 'ca-app-pub-3940256099942544/1033173712';
-            const isTesting = (window.AdMobConfig && typeof window.AdMobConfig.isTesting === 'boolean') ? window.AdMobConfig.isTesting : true;
-            if (window.Capacitor && Capacitor.Plugins.AdMob) {
-                const { AdMob } = Capacitor.Plugins;
-                try {
-                    if (window.socket && window.currentRoomId) {
-                        window.socket.emit('ad-playback-status', { roomId: window.currentRoomId, isShowing: true });
-                    }
-                    await AdMob.prepareInterstitial({
-                        adId: adId,
-                        isTesting: isTesting
-                    });
-                    await AdMob.showInterstitial();
-                } catch(e) {
-                    console.log("Interstitial failed", e);
-                } finally {
-                    if (window.socket && window.currentRoomId) {
-                        window.socket.emit('ad-playback-status', { roomId: window.currentRoomId, isShowing: false });
-                    }
-                }
+            if (!navigator.onLine) {
+                console.log("[AdMob] Offline: Skipping interstitial ad.");
+                return;
+            }
+            if (typeof window.showZingInterstitialAd === 'function') {
+                await window.showZingInterstitialAd();
             }
         }
     </script>

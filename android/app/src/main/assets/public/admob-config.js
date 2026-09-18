@@ -1,9 +1,9 @@
 const AdMobConfig = {
-    appId: 'ca-app-pub-3940256099942544~3347511713',
-    bannerAdId: 'ca-app-pub-3940256099942544/9214589741',
-    interstitialAdId: 'ca-app-pub-3940256099942544/1033173712',
-    rewardedAdId: 'ca-app-pub-3940256099942544/5224354917',
-    isTesting: true
+    appId: 'ca-app-pub-6484628444475898~3321848589',
+    bannerAdId: 'ca-app-pub-6484628444475898/3452701360',
+    interstitialAdId: 'ca-app-pub-6484628444475898/8321884669',
+    rewardedAdId: 'ca-app-pub-6484628444475898/8955862379',
+    isTesting: false
 };
 
 window.AdMobConfig = AdMobConfig;
@@ -43,12 +43,12 @@ function initZingBannerAd(options = {}) {
         try {
             if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.AdMob) {
                 const { AdMob } = window.Capacitor.Plugins;
-                const bannerId = (window.AdMobConfig && window.AdMobConfig.bannerAdId) || 'ca-app-pub-3940256099942544/9214589741';
-                const isTesting = (window.AdMobConfig && typeof window.AdMobConfig.isTesting === 'boolean') ? window.AdMobConfig.isTesting : true;
+                const bannerId = (window.AdMobConfig && window.AdMobConfig.bannerAdId) || 'ca-app-pub-6484628444475898/3452701360';
+                const isTesting = (window.AdMobConfig && typeof window.AdMobConfig.isTesting === 'boolean') ? window.AdMobConfig.isTesting : false;
 
-                if (!_zingBannerInitialized) {
+                if (!sessionStorage.getItem('_zingAdMobInit')) {
                     await AdMob.initialize({ initializeForTesting: isTesting });
-                    _zingBannerInitialized = true;
+                    sessionStorage.setItem('_zingAdMobInit', 'true');
                 }
 
                 await AdMob.showBanner({
@@ -101,9 +101,49 @@ async function hideZingBannerAd() {
 window.initZingBannerAd = initZingBannerAd;
 window.hideZingBannerAd = hideZingBannerAd;
 
+async function playInterstitialAd() {
+    if (!navigator.onLine) {
+        console.log('[AdMob] Offline: Skipping interstitial ad.');
+        return;
+    }
+
+    if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.AdMob) {
+        const { AdMob } = window.Capacitor.Plugins;
+        const interstitialId = (window.AdMobConfig && window.AdMobConfig.interstitialAdId) || 'ca-app-pub-6484628444475898/8321884669';
+        const isTesting = (window.AdMobConfig && typeof window.AdMobConfig.isTesting === 'boolean') ? window.AdMobConfig.isTesting : false;
+
+        try {
+            if (window.socket && (window.currentOnlineRoomId || window.currentRoomId)) {
+                const rId = window.currentOnlineRoomId || window.currentRoomId;
+                window.socket.emit('ad-playback-status', { roomId: rId, isShowing: true });
+            }
+
+            if (!sessionStorage.getItem('_zingAdMobInit')) {
+                await AdMob.initialize({ initializeForTesting: isTesting });
+                sessionStorage.setItem('_zingAdMobInit', 'true');
+            }
+
+            await AdMob.prepareInterstitial({
+                adId: interstitialId,
+                isTesting: isTesting
+            });
+            await AdMob.showInterstitial();
+        } catch (e) {
+            console.warn('[AdMob] Interstitial failed:', e);
+        } finally {
+            if (window.socket && (window.currentOnlineRoomId || window.currentRoomId)) {
+                const rId = window.currentOnlineRoomId || window.currentRoomId;
+                window.socket.emit('ad-playback-status', { roomId: rId, isShowing: false });
+            }
+        }
+    }
+}
+window.playInterstitialAd = playInterstitialAd;
+window.showZingInterstitialAd = playInterstitialAd;
+
 async function showZingRewardedAd({ onReward, onFail }) {
     if (!navigator.onLine) {
-        showAdToast('⚠️ No internet connection! Please connect to internet to watch video and unlock token.');
+        showAdToast('⚠️ No internet connection! Please connect to internet to watch video and earn tokens.');
         if (typeof onFail === 'function') {
             onFail({ reason: 'NO_INTERNET', message: 'No internet connection' });
         }
@@ -112,13 +152,18 @@ async function showZingRewardedAd({ onReward, onFail }) {
 
     if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.AdMob) {
         const { AdMob } = window.Capacitor.Plugins;
-        const rewardedId = (window.AdMobConfig && window.AdMobConfig.rewardedAdId) || 'ca-app-pub-3940256099942544/5224354917';
-        const isTesting = (window.AdMobConfig && typeof window.AdMobConfig.isTesting === 'boolean') ? window.AdMobConfig.isTesting : true;
+        const rewardedId = (window.AdMobConfig && window.AdMobConfig.rewardedAdId) || 'ca-app-pub-6484628444475898/8955862379';
+        const isTesting = (window.AdMobConfig && typeof window.AdMobConfig.isTesting === 'boolean') ? window.AdMobConfig.isTesting : false;
 
         let rewardGranted = false;
 
         try {
             showAdToast('⏳ Loading video ad, please wait...', true);
+
+            if (!sessionStorage.getItem('_zingAdMobInit')) {
+                await AdMob.initialize({ initializeForTesting: isTesting });
+                sessionStorage.setItem('_zingAdMobInit', 'true');
+            }
 
             await AdMob.prepareRewardVideoAd({
                 adId: rewardedId,
@@ -127,7 +172,7 @@ async function showZingRewardedAd({ onReward, onFail }) {
 
             const rewardHandle = await AdMob.addListener('onRewardedVideoAdReward', () => {
                 rewardGranted = true;
-                showAdToast('🎉 Video completed! 1 token unlocked successfully.', true);
+                showAdToast('🎉 Video completed! 100 Tokens credited to your account.', true);
                 if (typeof onReward === 'function') {
                     onReward();
                 }
@@ -138,7 +183,7 @@ async function showZingRewardedAd({ onReward, onFail }) {
                 if (dismissHandle && dismissHandle.remove) dismissHandle.remove();
 
                 if (!rewardGranted) {
-                    showAdToast('⚠️ Video was not completed! Token was not unlocked.');
+                    showAdToast('⚠️ Video was not completed! Tokens were not added.');
                     if (typeof onFail === 'function') {
                         onFail({ reason: 'DISMISSED_EARLY', message: 'Video was dismissed before completion' });
                     }
@@ -149,7 +194,7 @@ async function showZingRewardedAd({ onReward, onFail }) {
 
         } catch (err) {
             console.warn('[AdMob] Rewarded ad error:', err);
-            showAdToast('⚠️ Failed to load video ad. Please check your internet.');
+            showAdToast('⚠️ Failed to load video ad. Please check your internet connection.');
             if (typeof onFail === 'function') {
                 onFail({ reason: 'AD_FAILED', message: err.message || 'Ad load failed' });
             }
@@ -161,15 +206,14 @@ async function showZingRewardedAd({ onReward, onFail }) {
             return;
         }
 
-        const userAccepted = confirm('📺 Watch video ad to unlock 1 token?');
+        const userAccepted = confirm('📺 Watch video ad to earn 100 Tokens?');
         if (userAccepted) {
-            showAdToast('🎉 Video completed! 1 token unlocked.', true);
+            showAdToast('🎉 Video completed! 100 Tokens credited.', true);
             if (typeof onReward === 'function') onReward();
         } else {
-            showAdToast('⚠️ Video cancelled. Token was not unlocked.');
+            showAdToast('⚠️ Video cancelled. Tokens were not added.');
             if (typeof onFail === 'function') onFail({ reason: 'USER_CANCELLED' });
         }
     }
 }
 window.showZingRewardedAd = showZingRewardedAd;
-
