@@ -25,6 +25,14 @@ jobs:
           node-version: 20
           cache: 'npm'
 
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Install Pillow for Icon Processing
+        run: pip install pillow || true
+
       - name: Accept Android SDK Licenses
         run: |
           yes | sdkmanager --licenses || true
@@ -77,25 +85,7 @@ jobs:
 
       - name: Generate High-Res Android App Icons
         run: |
-          if [ -f icon.png ]; then
-            densities="mdpi:48:108:78 hdpi:72:162:116 xhdpi:96:216:155 xxhdpi:144:324:233 xxxhdpi:192:432:311"
-            for item in $densities; do
-              dir=$(echo $item | cut -d: -f1)
-              size=$(echo $item | cut -d: -f2)
-              fg_size=$(echo $item | cut -d: -f3)
-              pad_size=$(echo $item | cut -d: -f4)
-              target_dir="android/app/src/main/res/mipmap-$dir"
-              mkdir -p "$target_dir"
-              convert icon.png -resize "${size}x${size}" "$target_dir/ic_launcher.png"
-              convert icon.png -resize "${size}x${size}" "$target_dir/ic_launcher_round.png"
-              convert icon.png -resize "${pad_size}x${pad_size}" -gravity center -background none -extent "${fg_size}x${fg_size}" "$target_dir/ic_launcher_foreground.png"
-            done
-            mkdir -p android/app/src/main/res/values
-            echo '<?xml version="1.0" encoding="utf-8"?><resources><color name="ic_launcher_background">#0b0f19</color></resources>' > android/app/src/main/res/values/ic_launcher_background.xml
-            mkdir -p android/app/src/main/res/mipmap-anydpi-v26
-            echo '<?xml version="1.0" encoding="utf-8"?><adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android"><background android:drawable="@color/ic_launcher_background"/><foreground android:drawable="@mipmap/ic_launcher_foreground"/></adaptive-icon>' > android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
-            echo '<?xml version="1.0" encoding="utf-8"?><adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android"><background android:drawable="@color/ic_launcher_background"/><foreground android:drawable="@mipmap/ic_launcher_foreground"/></adaptive-icon>' > android/app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml
-          fi
+          python3 generate_icons.py
 
       - name: Sync Capacitor Android
         env:
