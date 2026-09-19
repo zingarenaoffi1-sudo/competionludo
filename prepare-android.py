@@ -84,3 +84,49 @@ public class MainActivity extends BridgeActivity {
 
 if __name__ == "__main__":
     main()
+    configure_gradle_release()
+
+def configure_gradle_release():
+    # 1. Update android/build.gradle
+    root_gradle = "android/build.gradle"
+    if os.path.exists(root_gradle):
+        with open(root_gradle, "r", encoding="utf-8") as f:
+            root = f.read()
+        if "com.google.gms:google-services" not in root:
+            root = root.replace("dependencies {", "dependencies {\n        classpath \"com.google.gms:google-services:4.4.2\"")
+        with open(root_gradle, "w", encoding="utf-8") as f:
+            f.write(root)
+
+    # 2. Update android/app/build.gradle
+    app_gradle = "android/app/build.gradle"
+    if os.path.exists(app_gradle):
+        with open(app_gradle, "r", encoding="utf-8") as f:
+            app = f.read()
+        if "com.google.gms.google-services" not in app:
+            app += '\napply plugin: "com.google.gms.google-services"\n'
+        if "signingConfigs.release" not in app:
+            signing_cfg = """
+android {
+    signingConfigs {
+        release {
+            storeFile file("debug.keystore")
+            storePassword "android"
+            keyAlias "androiddebugkey"
+            keyPassword "android"
+        }
+    }
+    buildTypes {
+        release {
+            signingConfig signingConfigs.release
+            minifyEnabled false
+            shrinkResources false
+        }
+    }
+}
+"""
+            app += signing_cfg
+        with open(app_gradle, "w", encoding="utf-8") as f:
+            f.write(app)
+    print("Gradle and release signing configured successfully via prepare-android.py")
+
+# Call configure_gradle_release inside main() if called

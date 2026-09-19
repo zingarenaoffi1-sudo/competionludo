@@ -38,10 +38,8 @@ jobs:
         run: |
           mkdir -p ~/.android
           if [ -n "$KEYSTORE_BASE64" ]; then
-            echo "Using keystore from GitHub Secrets..."
             echo "$KEYSTORE_BASE64" | base64 -d > ~/.android/debug.keystore
           else
-            echo "Generating signing keystore..."
             keytool -genkey -v -keystore ~/.android/debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Ludo,O=Ludo,C=IN"
           fi
           cp ~/.android/debug.keystore ./debug.keystore
@@ -50,7 +48,6 @@ jobs:
         run: |
           rm -rf www
           node build.js
-          echo "Web directory prepared successfully."
 
       - name: Install Capacitor & Mobile Dependencies
         run: |
@@ -65,7 +62,6 @@ jobs:
           npx cap add android
           if [ -f google-services.json ]; then
             cp google-services.json android/app/google-services.json
-            echo "google-services.json placed in android/app/"
           fi
           CONFIG_APP_ID=$(grep -o "appId: *['\"][^'\"]*['\"]" admob-config.js | sed -E "s/appId: *['\"]([^'\"]*)['\"]/\1/" || echo "")
           FINAL_ADMOB_ID="${SECRET_ADMOB_APP_ID:-$CONFIG_APP_ID}"
@@ -89,7 +85,6 @@ jobs:
             mkdir -p android/app/src/main/res/mipmap-anydpi-v26
             echo '<?xml version="1.0" encoding="utf-8"?><adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android"><background android:drawable="@color/ic_launcher_background"/><foreground android:drawable="@mipmap/ic_launcher_foreground"/></adaptive-icon>' > android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
             echo '<?xml version="1.0" encoding="utf-8"?><adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android"><background android:drawable="@color/ic_launcher_background"/><foreground android:drawable="@mipmap/ic_launcher_foreground"/></adaptive-icon>' > android/app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml
-            echo "App icons copied successfully."
           fi
 
       - name: Sync Capacitor Android
@@ -105,7 +100,7 @@ jobs:
           npx cap sync android
           python3 prepare-android.py
 
-      - name: Configure Gradle and Signing
+      - name: Configure Gradle Environment
         env:
           GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
         run: |
@@ -120,40 +115,6 @@ jobs:
           echo "org.gradle.parallel=false" >> android/gradle.properties
           echo "org.gradle.caching=false" >> android/gradle.properties
           chmod +x android/gradlew
-
-          # 1. Add google-services plugin to build.gradle
-          if ! grep -q "com.google.gms:google-services" android/build.gradle; then
-            sed -i 's/dependencies {/dependencies {\n        classpath "com.google.gms:google-services:4.4.2"/' android/build.gradle
-          fi
-
-          # 2. Apply plugin to app/build.gradle
-          if ! grep -q "com.google.gms.google-services" android/app/build.gradle; then
-            echo 'apply plugin: "com.google.gms.google-services"' >> android/app/build.gradle
-          fi
-
-          # 3. Add release signing config to app/build.gradle using bash append
-          cat << 'GROOVY_EOF' >> android/app/build.gradle
-
-android {
-    signingConfigs {
-        release {
-            storeFile file("debug.keystore")
-            storePassword "android"
-            keyAlias "androiddebugkey"
-            keyPassword "android"
-        }
-    }
-    buildTypes {
-        release {
-            signingConfig signingConfigs.release
-            minifyEnabled false
-            shrinkResources false
-        }
-    }
-}
-GROOVY_EOF
-
-          echo "Gradle configuration done."
 
       - name: Build Release APK with Gradle
         run: |
