@@ -19,25 +19,31 @@ def configure_gradle_release():
             app = f.read()
         if "com.google.gms.google-services" not in app:
             app += '\napply plugin: "com.google.gms.google-services"\n'
+        
+        # Read environment variables for signing if set, else defaults
+        k_pass = os.environ.get("KEYSTORE_PASSWORD", "android")
+        k_alias = os.environ.get("KEY_ALIAS", "androiddebugkey")
+        k_keypass = os.environ.get("KEY_PASSWORD", "android")
+
         if "signingConfigs.release" not in app:
-            signing_cfg = """
-android {
-    signingConfigs {
-        release {
+            signing_cfg = f"""
+android {{
+    signingConfigs {{
+        release {{
             storeFile file("debug.keystore")
-            storePassword "android"
-            keyAlias "androiddebugkey"
-            keyPassword "android"
-        }
-    }
-    buildTypes {
-        release {
+            storePassword "{k_pass}"
+            keyAlias "{k_alias}"
+            keyPassword "{k_keypass}"
+        }}
+    }}
+    buildTypes {{
+        release {{
             signingConfig signingConfigs.release
             minifyEnabled false
             shrinkResources false
-        }
-    }
-}
+        }}
+    }}
+}}
 """
             app += signing_cfg
         with open(app_gradle, "w", encoding="utf-8") as f:
@@ -112,7 +118,7 @@ public class MainActivity extends BridgeActivity {
             with open(vars_path, "w", encoding="utf-8") as f:
                 f.write(vars_content)
 
-    # Now configure gradle and signing
+    # Configure release signing & gradle plugins
     configure_gradle_release()
 
 if __name__ == "__main__":

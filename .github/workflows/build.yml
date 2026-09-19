@@ -34,15 +34,25 @@ jobs:
 
       - name: Configure Keystore
         env:
-          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_BASE64: ${{ secrets.DEBUG_KEYSTORE_BASE64 || secrets.ANDROID_KEYSTORE_BASE64 || secrets.RELEASE_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD || secrets.KEY_PASSWORD || 'android' }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS || 'androiddebugkey' }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD || 'android' }}
         run: |
           mkdir -p ~/.android
           if [ -n "$KEYSTORE_BASE64" ]; then
+            echo "Using keystore from GitHub Secrets..."
             echo "$KEYSTORE_BASE64" | base64 -d > ~/.android/debug.keystore
           else
+            echo "No keystore in secrets. Generating signing keystore..."
             keytool -genkey -v -keystore ~/.android/debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Ludo,O=Ludo,C=IN"
           fi
           cp ~/.android/debug.keystore ./debug.keystore
+
+          # Save signing credentials for Gradle
+          echo "KEYSTORE_PASSWORD=${KEYSTORE_PASSWORD}" >> $GITHUB_ENV
+          echo "KEY_ALIAS=${KEY_ALIAS}" >> $GITHUB_ENV
+          echo "KEY_PASSWORD=${KEY_PASSWORD}" >> $GITHUB_ENV
 
       - name: Prepare Web Assets for Capacitor
         run: |
