@@ -1,0 +1,140 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Accept Android SDK Licenses
+        run: |
+          yes | sdkmanager --licenses || true
+
+      - name: Install Project Dependencies
+        run: npm ci || npm install
+
+      - name: Configure Keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 || secrets.DEBUG_KEYSTORE_BASE64 || secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD || secrets.KEY_PASSWORD || 'zingarena123' }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS || 'zingarena_release' }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD || 'zingarena123' }}
+        run: |
+          mkdir -p ~/.android
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            echo "Using Permanent Keystore from GitHub Secrets..."
+            echo "$KEYSTORE_BASE64" | base64 -d > ~/.android/release.keystore
+          else
+            echo "No custom keystore found in secrets. Generating standard release keystore..."
+            keytool -genkeypair -alias zingarena_release -keyalg RSA -keysize 2048 -validity 10000 \
+              -keystore ~/.android/release.keystore -storepass zingarena123 -keypass zingarena123 \
+              -dname "CN=ZingArena, OU=MobileGames, O=ZingArena, C=IN"
+          fi
+          cp ~/.android/release.keystore ./release.keystore
+
+          echo "KEYSTORE_PASSWORD=${KEYSTORE_PASSWORD}" >> $GITHUB_ENV
+          echo "KEY_ALIAS=${KEY_ALIAS}" >> $GITHUB_ENV
+          echo "KEY_PASSWORD=${KEY_PASSWORD}" >> $GITHUB_ENV
+
+      - name: Prepare Web Assets for Capacitor
+        run: |
+          rm -rf www
+          node build.js
+
+      - name: Install Capacitor & Mobile Dependencies
+        run: |
+          npm install --save-dev @capacitor/cli@^6.0.0
+          npm install --save @capacitor/core@^6.0.0 @capacitor/android@^6.0.0 @capacitor-community/admob@^6.0.0 @capacitor-firebase/authentication@^6.0.0
+
+      - name: Initialize Capacitor Android Project
+        env:
+          SECRET_ADMOB_APP_ID: ${{ secrets.ADMOB_APP_ID }}
+        run: |
+          rm -rf android
+          npx cap add android
+          if [ -f google-services.json ]; then
+            cp google-services.json android/app/google-services.json
+          fi
+          CONFIG_APP_ID=$(grep -o "appId: *['\"][^'\"]*['\"]" admob-config.js | sed -E "s/appId: *['\"]([^'\"]*)['\"]/\1/" || echo "")
+          FINAL_ADMOB_ID="${SECRET_ADMOB_APP_ID:-$CONFIG_APP_ID}"
+          if [ -z "$FINAL_ADMOB_ID" ]; then
+            FINAL_ADMOB_ID="ca-app-pub-3940256099942544~3347511713"
+          fi
+          export FINAL_ADMOB_ID
+          python3 prepare-android.py
+
+      - name: Generate App Icons
+        run: |
+          if [ -f icon.png ]; then
+            for dir in mdpi hdpi xhdpi xxhdpi xxxhdpi; do
+              mkdir -p "android/app/src/main/res/mipmap-$dir"
+              cp icon.png "android/app/src/main/res/mipmap-$dir/ic_launcher.png"
+              cp icon.png "android/app/src/main/res/mipmap-$dir/ic_launcher_round.png"
+              cp icon.png "android/app/src/main/res/mipmap-$dir/ic_launcher_foreground.png"
+            done
+            mkdir -p android/app/src/main/res/values
+            echo '<?xml version="1.0" encoding="utf-8"?><resources><color name="ic_launcher_background">#0b0f19</color></resources>' > android/app/src/main/res/values/ic_launcher_background.xml
+            mkdir -p android/app/src/main/res/mipmap-anydpi-v26
+            echo '<?xml version="1.0" encoding="utf-8"?><adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android"><background android:drawable="@color/ic_launcher_background"/><foreground android:drawable="@mipmap/ic_launcher_foreground"/></adaptive-icon>' > android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
+            echo '<?xml version="1.0" encoding="utf-8"?><adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android"><background android:drawable="@color/ic_launcher_background"/><foreground android:drawable="@mipmap/ic_launcher_foreground"/></adaptive-icon>' > android/app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml
+          fi
+
+      - name: Sync Capacitor Android
+        env:
+          SECRET_ADMOB_APP_ID: ${{ secrets.ADMOB_APP_ID }}
+        run: |
+          CONFIG_APP_ID=$(grep -o "appId: *['\"][^'\"]*['\"]" admob-config.js | sed -E "s/appId: *['\"]([^'\"]*)['\"]/\1/" || echo "")
+          FINAL_ADMOB_ID="${SECRET_ADMOB_APP_ID:-$CONFIG_APP_ID}"
+          if [ -z "$FINAL_ADMOB_ID" ]; then
+            FINAL_ADMOB_ID="ca-app-pub-3940256099942544~3347511713"
+          fi
+          export FINAL_ADMOB_ID
+          npx cap sync android
+          python3 prepare-android.py
+
+      - name: Configure Gradle Environment
+        env:
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        run: |
+          cp ~/.android/release.keystore android/app/release.keystore
+          if [ -n "$GOOGLE_SERVICES_JSON" ]; then
+            echo "$GOOGLE_SERVICES_JSON" > android/app/google-services.json
+          elif [ -f google-services.json ]; then
+            cp google-services.json android/app/google-services.json
+          fi
+          echo "org.gradle.jvmargs=-Xmx3g -XX:MaxMetaspaceSize=768m" >> android/gradle.properties
+          echo "org.gradle.daemon=false" >> android/gradle.properties
+          echo "org.gradle.parallel=false" >> android/gradle.properties
+          echo "org.gradle.caching=false" >> android/gradle.properties
+          chmod +x android/gradlew
+
+      - name: Build Release APK with Gradle
+        run: |
+          cd android
+          ./gradlew assembleRelease --no-daemon --max-workers=2
+
+      - name: Upload Ludo Release APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Ludo-Release-APK
+          path: android/app/build/outputs/apk/release/app-release.apk
+          retention-days: 14
