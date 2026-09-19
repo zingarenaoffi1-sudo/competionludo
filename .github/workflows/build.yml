@@ -25,14 +25,6 @@ jobs:
           node-version: 20
           cache: 'npm'
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.x'
-
-      - name: Install Pillow for Icon Processing
-        run: pip install pillow || true
-
       - name: Accept Android SDK Licenses
         run: |
           yes | sdkmanager --licenses || true
@@ -83,9 +75,22 @@ jobs:
           export FINAL_ADMOB_ID
           python3 prepare-android.py
 
-      - name: Generate High-Res Android App Icons
+      - name: Generate App Icons
         run: |
-          python3 generate_icons.py
+          if [ -f icon.png ]; then
+            for dir in mdpi hdpi xhdpi xxhdpi xxxhdpi; do
+              mkdir -p "android/app/src/main/res/mipmap-$dir"
+              cp icon.png "android/app/src/main/res/mipmap-$dir/ic_launcher.png"
+              cp icon.png "android/app/src/main/res/mipmap-$dir/ic_launcher_round.png"
+              cp icon.png "android/app/src/main/res/mipmap-$dir/ic_launcher_foreground.png"
+            done
+            mkdir -p android/app/src/main/res/values
+            echo '<?xml version="1.0" encoding="utf-8"?><resources><color name="ic_launcher_background">#0b0f19</color></resources>' > android/app/src/main/res/values/ic_launcher_background.xml
+            mkdir -p android/app/src/main/res/mipmap-anydpi-v26
+            echo '<?xml version="1.0" encoding="utf-8"?><adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android"><background android:drawable="@color/ic_launcher_background"/><foreground android:drawable="@mipmap/ic_launcher_foreground"/></adaptive-icon>' > android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
+            echo '<?xml version="1.0" encoding="utf-8"?><adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android"><background android:drawable="@color/ic_launcher_background"/><foreground android:drawable="@mipmap/ic_launcher_foreground"/></adaptive-icon>' > android/app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml
+            echo "App icons copied successfully."
+          fi
 
       - name: Sync Capacitor Android
         env:
@@ -115,7 +120,47 @@ jobs:
           echo "org.gradle.parallel=false" >> android/gradle.properties
           echo "org.gradle.caching=false" >> android/gradle.properties
           chmod +x android/gradlew
-          cd android && python3 ../configure_android_release.py
+          
+          # Inject Google Services into build.gradle if not already present
+          python3 -c '
+          with open("android/build.gradle", "r") as f:
+              root = f.read()
+          if "com.google.gms:google-services" not in root:
+              root = root.replace("dependencies {", "dependencies {\n        classpath \"com.google.gms:google-services:4.4.2\"")
+          with open("android/build.gradle", "w") as f:
+              f.write(root)
+
+          with open("android/app/build.gradle", "r") as f:
+              app = f.read()
+          if "com.google.gms.google-services" not in app:
+              app += "\napply plugin: \"com.google.gms.google-services\"\n"
+          
+          # Ensure release signing config is set
+          if "signingConfigs.release" not in app:
+              cfg = """
+android {
+    signingConfigs {
+        release {
+            storeFile file("debug.keystore")
+            storePassword "android"
+            keyAlias "androiddebugkey"
+            keyPassword "android"
+        }
+    }
+    buildTypes {
+        release {
+            signingConfig signingConfigs.release
+            minifyEnabled false
+            shrinkResources false
+        }
+    }
+}
+"""
+              app += cfg
+          with open("android/app/build.gradle", "w") as f:
+              f.write(app)
+          print("Gradle build configured successfully.")
+          '
 
       - name: Build Release APK with Gradle
         run: |
