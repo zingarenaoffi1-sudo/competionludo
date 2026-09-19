@@ -40,6 +40,13 @@ jobs:
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD || 'zingarena123' }}
         run: |
           mkdir -p ~/.android
+
+          # 1. Ensure standard Android debug keystore exists with default credentials for internal AGP checks
+          keytool -genkeypair -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 10000 \
+            -keystore ~/.android/debug.keystore -storepass android -keypass android \
+            -dname "CN=Android Debug,O=Android,C=US"
+
+          # 2. Extract or generate 50-year production release keystore
           if [ -n "$KEYSTORE_BASE64" ]; then
             echo "Using Permanent Keystore from GitHub Secrets..."
             echo "$KEYSTORE_BASE64" | base64 -d > ~/.android/release.keystore
@@ -49,9 +56,6 @@ jobs:
               -keystore ~/.android/release.keystore -storepass zingarena123 -keypass zingarena123 \
               -dname "CN=ZingArena, OU=MobileGames, O=ZingArena, C=IN"
           fi
-          
-          # Copy to multiple locations to ensure standard Android paths are satisfied
-          cp ~/.android/release.keystore ~/.android/debug.keystore
           cp ~/.android/release.keystore ./release.keystore
 
           echo "KEYSTORE_PASSWORD=${KEYSTORE_PASSWORD}" >> $GITHUB_ENV
@@ -124,8 +128,11 @@ jobs:
         env:
           GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
         run: |
+          # Copy 50-year release key specifically for release
           cp ~/.android/release.keystore android/app/release.keystore
-          cp ~/.android/release.keystore android/app/debug.keystore
+          # Remove any local debug.keystore inside app folder so AGP falls back cleanly to ~/.android/debug.keystore
+          rm -f android/app/debug.keystore
+
           if [ -n "$GOOGLE_SERVICES_JSON" ]; then
             echo "$GOOGLE_SERVICES_JSON" > android/app/google-services.json
           elif [ -f google-services.json ]; then
@@ -138,17 +145,9 @@ jobs:
           chmod +x android/gradlew
 
       - name: Build Release APK with Gradle
-        env:
-          KEYSTORE_PASSWORD: ${{ env.KEYSTORE_PASSWORD }}
-          KEY_ALIAS: ${{ env.KEY_ALIAS }}
-          KEY_PASSWORD: ${{ env.KEY_PASSWORD }}
         run: |
           cd android
-          ./gradlew assembleRelease --no-daemon --max-workers=2 \
-            -Pandroid.injected.signing.store.file="$(pwd)/app/release.keystore" \
-            -Pandroid.injected.signing.store.password="${KEYSTORE_PASSWORD}" \
-            -Pandroid.injected.signing.key.alias="${KEY_ALIAS}" \
-            -Pandroid.injected.signing.key.password="${KEY_PASSWORD}"
+          ./gradlew assembleRelease --no-daemon --max-workers=2
 
       - name: Upload Ludo Release APK Artifact
         uses: actions/upload-artifact@v4

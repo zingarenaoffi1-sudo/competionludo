@@ -1,4 +1,4 @@
-apply plugin: 'com.android.application'
+content = """apply plugin: 'com.android.application'
 
 android {
     namespace "com.zingarena.app"
@@ -59,3 +59,8 @@ try {
 } catch(Exception e) {
     logger.info("google-services.json not found, google-services plugin not applied. Push Notifications won't work")
 }
+"""
+with open("android/app/build.gradle", "w") as f:
+    f.write(content)
+
+print("Exact clean android/app/build.gradle written!")

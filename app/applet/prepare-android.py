@@ -12,7 +12,7 @@ def configure_gradle_release():
         with open(root_gradle, "w", encoding="utf-8") as f:
             f.write(root)
 
-    # 2. Rewrite android/app/build.gradle with permanent release signing
+    # 2. Write clean android/app/build.gradle with 50-year release signing
     app_gradle = "android/app/build.gradle"
     if os.path.exists(app_gradle):
         k_pass = os.environ.get("KEYSTORE_PASSWORD", "zingarena123")
@@ -42,21 +42,12 @@ android {{
             keyAlias "{k_alias}"
             keyPassword "{k_keypass}"
         }}
-        debug {{
-            storeFile file("release.keystore")
-            storePassword "{k_pass}"
-            keyAlias "{k_alias}"
-            keyPassword "{k_keypass}"
-        }}
     }}
     buildTypes {{
         release {{
             signingConfig signingConfigs.release
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
-        }}
-        debug {{
-            signingConfig signingConfigs.debug
         }}
     }}
 }}
@@ -92,7 +83,7 @@ try {{
 """
         with open(app_gradle, "w", encoding="utf-8") as f:
             f.write(clean_app_gradle)
-        print("android/app/build.gradle configured with 50-year release key!")
+        print("android/app/build.gradle configured cleanly with 50-year release key!")
 
 def main():
     manifest_path = "android/app/src/main/AndroidManifest.xml"
