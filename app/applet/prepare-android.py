@@ -12,78 +12,19 @@ def configure_gradle_release():
         with open(root_gradle, "w", encoding="utf-8") as f:
             f.write(root)
 
-    # 2. Write clean android/app/build.gradle with 50-year release signing
+    # 2. Configure android/app/build.gradle
     app_gradle = "android/app/build.gradle"
     if os.path.exists(app_gradle):
-        k_pass = os.environ.get("KEYSTORE_PASSWORD", "zingarena123")
-        k_alias = os.environ.get("KEY_ALIAS", "zingarena_release")
-        k_keypass = os.environ.get("KEY_PASSWORD", "zingarena123")
-
-        clean_app_gradle = f"""apply plugin: 'com.android.application'
-
-android {{
-    namespace "com.zingarena.app"
-    compileSdk rootProject.ext.compileSdkVersion
-    defaultConfig {{
-        applicationId "com.zingarena.app"
-        minSdkVersion rootProject.ext.minSdkVersion
-        targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
-        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
-        aaptOptions {{
-             ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
-        }}
-    }}
-    signingConfigs {{
-        release {{
-            storeFile file("release.keystore")
-            storePassword "{k_pass}"
-            keyAlias "{k_alias}"
-            keyPassword "{k_keypass}"
-        }}
-    }}
-    buildTypes {{
-        release {{
-            signingConfig signingConfigs.release
-            minifyEnabled false
-            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
-        }}
-    }}
-}}
-
-repositories {{
-    flatDir{{
-        dirs '../capacitor-cordova-android-plugins/src/main/libs', 'libs'
-    }}
-}}
-
-dependencies {{
-    implementation fileTree(include: ['*.jar'], dir: 'libs')
-    implementation "androidx.appcompat:appcompat:$androidxAppCompatVersion"
-    implementation "androidx.coordinatorlayout:coordinatorlayout:$androidxCoordinatorLayoutVersion"
-    implementation "androidx.core:core-splashscreen:$coreSplashScreenVersion"
-    implementation project(':capacitor-android')
-    testImplementation "junit:junit:$junitVersion"
-    androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
-    androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
-    implementation project(':capacitor-cordova-android-plugins')
-}}
-
-apply from: 'capacitor.build.gradle'
-
-try {{
-    def servicesJSON = file('google-services.json')
-    if (servicesJSON.text) {{
-        apply plugin: 'com.google.gms.google-services'
-    }}
-}} catch(Exception e) {{
-    logger.info("google-services.json not found, google-services plugin not applied. Push Notifications won't work")
-}}
-"""
-        with open(app_gradle, "w", encoding="utf-8") as f:
-            f.write(clean_app_gradle)
-        print("android/app/build.gradle configured cleanly with 50-year release key!")
+        with open(app_gradle, "r", encoding="utf-8") as f:
+            app_content = f.read()
+        
+        # Ensure release buildType signs with signingConfig
+        if "signingConfig signingConfigs.release" not in app_content and "signingConfig signingConfigs.debug" not in app_content:
+            app_content = app_content.replace("buildTypes {", "signingConfigs {\n        release {\n            storeFile file('debug.keystore')\n            storePassword 'android'\n            keyAlias 'androiddebugkey'\n            keyPassword 'android'\n        }\n    }\n    buildTypes {")
+            app_content = re.sub(r'buildTypes\s*\{\s*release\s*\{', 'buildTypes {\n        release {\n            signingConfig signingConfigs.release', app_content)
+            with open(app_gradle, "w", encoding="utf-8") as f:
+                f.write(app_content)
+    print("Gradle configuration verified!")
 
 def main():
     manifest_path = "android/app/src/main/AndroidManifest.xml"
@@ -153,7 +94,6 @@ public class MainActivity extends BridgeActivity {
             with open(vars_path, "w", encoding="utf-8") as f:
                 f.write(vars_content)
 
-    # Configure release signing & gradle plugins
     configure_gradle_release()
 
 if __name__ == "__main__":

@@ -34,33 +34,22 @@ jobs:
 
       - name: Configure Keystore
         env:
-          KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 || secrets.DEBUG_KEYSTORE_BASE64 || secrets.ANDROID_KEYSTORE_BASE64 }}
-          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD || secrets.KEY_PASSWORD || 'zingarena123' }}
-          KEY_ALIAS: ${{ secrets.KEY_ALIAS || 'zingarena_release' }}
-          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD || 'zingarena123' }}
+          KEYSTORE_BASE64: ${{ secrets.DEBUG_KEYSTORE_BASE64 || secrets.RELEASE_KEYSTORE_BASE64 || secrets.ANDROID_KEYSTORE_BASE64 }}
         run: |
           mkdir -p ~/.android
 
-          # 1. Ensure standard Android debug keystore exists with default credentials for internal AGP checks
-          keytool -genkeypair -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 10000 \
-            -keystore ~/.android/debug.keystore -storepass android -keypass android \
-            -dname "CN=Android Debug,O=Android,C=US"
-
-          # 2. Extract or generate 50-year production release keystore
           if [ -n "$KEYSTORE_BASE64" ]; then
-            echo "Using Permanent Keystore from GitHub Secrets..."
-            echo "$KEYSTORE_BASE64" | base64 -d > ~/.android/release.keystore
+            echo "Using 50-Year Keystore from GitHub Secrets..."
+            echo "$KEYSTORE_BASE64" | base64 -d > ~/.android/debug.keystore
           else
-            echo "No custom keystore found in secrets. Generating standard 50-year release keystore..."
-            keytool -genkeypair -alias zingarena_release -keyalg RSA -keysize 2048 -validity 18250 \
-              -keystore ~/.android/release.keystore -storepass zingarena123 -keypass zingarena123 \
-              -dname "CN=ZingArena, OU=MobileGames, O=ZingArena, C=IN"
+            echo "Generating 50-year release keystore..."
+            keytool -genkeypair -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 18250 \
+              -keystore ~/.android/debug.keystore -storepass android -keypass android \
+              -dname "CN=ZingArena, OU=MobileGames, O=ZingArena, L=NewDelhi, C=IN"
           fi
-          cp ~/.android/release.keystore ./release.keystore
-
-          echo "KEYSTORE_PASSWORD=${KEYSTORE_PASSWORD}" >> $GITHUB_ENV
-          echo "KEY_ALIAS=${KEY_ALIAS}" >> $GITHUB_ENV
-          echo "KEY_PASSWORD=${KEY_PASSWORD}" >> $GITHUB_ENV
+          
+          # Mirror to current dir
+          cp ~/.android/debug.keystore ./debug.keystore
 
       - name: Prepare Web Assets for Capacitor
         run: |
@@ -75,9 +64,6 @@ jobs:
       - name: Initialize Capacitor Android Project
         env:
           SECRET_ADMOB_APP_ID: ${{ secrets.ADMOB_APP_ID }}
-          KEYSTORE_PASSWORD: ${{ env.KEYSTORE_PASSWORD }}
-          KEY_ALIAS: ${{ env.KEY_ALIAS }}
-          KEY_PASSWORD: ${{ env.KEY_PASSWORD }}
         run: |
           rm -rf android
           npx cap add android
@@ -111,9 +97,6 @@ jobs:
       - name: Sync Capacitor Android
         env:
           SECRET_ADMOB_APP_ID: ${{ secrets.ADMOB_APP_ID }}
-          KEYSTORE_PASSWORD: ${{ env.KEYSTORE_PASSWORD }}
-          KEY_ALIAS: ${{ env.KEY_ALIAS }}
-          KEY_PASSWORD: ${{ env.KEY_PASSWORD }}
         run: |
           CONFIG_APP_ID=$(grep -o "appId: *['\"][^'\"]*['\"]" admob-config.js | sed -E "s/appId: *['\"]([^'\"]*)['\"]/\1/" || echo "")
           FINAL_ADMOB_ID="${SECRET_ADMOB_APP_ID:-$CONFIG_APP_ID}"
@@ -128,10 +111,9 @@ jobs:
         env:
           GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
         run: |
-          # Copy 50-year release key specifically for release
-          cp ~/.android/release.keystore android/app/release.keystore
-          # Remove any local debug.keystore inside app folder so AGP falls back cleanly to ~/.android/debug.keystore
-          rm -f android/app/debug.keystore
+          # Copy our 50-year key to both locations
+          cp ~/.android/debug.keystore android/app/debug.keystore
+          cp ~/.android/debug.keystore android/app/release.keystore
 
           if [ -n "$GOOGLE_SERVICES_JSON" ]; then
             echo "$GOOGLE_SERVICES_JSON" > android/app/google-services.json
