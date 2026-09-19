@@ -105,7 +105,7 @@ jobs:
           npx cap sync android
           python3 prepare-android.py
 
-      - name: Configure Gradle & Firebase
+      - name: Configure Gradle and Signing
         env:
           GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
         run: |
@@ -120,24 +120,20 @@ jobs:
           echo "org.gradle.parallel=false" >> android/gradle.properties
           echo "org.gradle.caching=false" >> android/gradle.properties
           chmod +x android/gradlew
-          
-          # Inject Google Services into build.gradle if not already present
-          python3 -c '
-          with open("android/build.gradle", "r") as f:
-              root = f.read()
-          if "com.google.gms:google-services" not in root:
-              root = root.replace("dependencies {", "dependencies {\n        classpath \"com.google.gms:google-services:4.4.2\"")
-          with open("android/build.gradle", "w") as f:
-              f.write(root)
 
-          with open("android/app/build.gradle", "r") as f:
-              app = f.read()
-          if "com.google.gms.google-services" not in app:
-              app += "\napply plugin: \"com.google.gms.google-services\"\n"
-          
-          # Ensure release signing config is set
-          if "signingConfigs.release" not in app:
-              cfg = """
+          # 1. Add google-services plugin to build.gradle
+          if ! grep -q "com.google.gms:google-services" android/build.gradle; then
+            sed -i 's/dependencies {/dependencies {\n        classpath "com.google.gms:google-services:4.4.2"/' android/build.gradle
+          fi
+
+          # 2. Apply plugin to app/build.gradle
+          if ! grep -q "com.google.gms.google-services" android/app/build.gradle; then
+            echo 'apply plugin: "com.google.gms.google-services"' >> android/app/build.gradle
+          fi
+
+          # 3. Add release signing config to app/build.gradle using bash append
+          cat << 'GROOVY_EOF' >> android/app/build.gradle
+
 android {
     signingConfigs {
         release {
@@ -155,12 +151,9 @@ android {
         }
     }
 }
-"""
-              app += cfg
-          with open("android/app/build.gradle", "w") as f:
-              f.write(app)
-          print("Gradle build configured successfully.")
-          '
+GROOVY_EOF
+
+          echo "Gradle configuration done."
 
       - name: Build Release APK with Gradle
         run: |
