@@ -44,13 +44,13 @@ jobs:
             echo "Using Permanent Keystore from GitHub Secrets..."
             echo "$KEYSTORE_BASE64" | base64 -d > ~/.android/release.keystore
           else
-            echo "No custom keystore found in secrets. Generating standard release keystore..."
+            echo "No custom keystore found in secrets. Generating standard 50-year release keystore..."
             keytool -genkeypair -alias zingarena_release -keyalg RSA -keysize 2048 -validity 18250 \
               -keystore ~/.android/release.keystore -storepass zingarena123 -keypass zingarena123 \
               -dname "CN=ZingArena, OU=MobileGames, O=ZingArena, C=IN"
           fi
           
-          # Copy to multiple locations to satisfy both release and fallback debug tasks
+          # Copy to multiple locations to ensure standard Android paths are satisfied
           cp ~/.android/release.keystore ~/.android/debug.keystore
           cp ~/.android/release.keystore ./release.keystore
 
@@ -71,6 +71,9 @@ jobs:
       - name: Initialize Capacitor Android Project
         env:
           SECRET_ADMOB_APP_ID: ${{ secrets.ADMOB_APP_ID }}
+          KEYSTORE_PASSWORD: ${{ env.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ env.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ env.KEY_PASSWORD }}
         run: |
           rm -rf android
           npx cap add android
@@ -104,6 +107,9 @@ jobs:
       - name: Sync Capacitor Android
         env:
           SECRET_ADMOB_APP_ID: ${{ secrets.ADMOB_APP_ID }}
+          KEYSTORE_PASSWORD: ${{ env.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ env.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ env.KEY_PASSWORD }}
         run: |
           CONFIG_APP_ID=$(grep -o "appId: *['\"][^'\"]*['\"]" admob-config.js | sed -E "s/appId: *['\"]([^'\"]*)['\"]/\1/" || echo "")
           FINAL_ADMOB_ID="${SECRET_ADMOB_APP_ID:-$CONFIG_APP_ID}"
@@ -132,9 +138,17 @@ jobs:
           chmod +x android/gradlew
 
       - name: Build Release APK with Gradle
+        env:
+          KEYSTORE_PASSWORD: ${{ env.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ env.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ env.KEY_PASSWORD }}
         run: |
           cd android
-          ./gradlew assembleRelease --no-daemon --max-workers=2
+          ./gradlew assembleRelease --no-daemon --max-workers=2 \
+            -Pandroid.injected.signing.store.file="$(pwd)/app/release.keystore" \
+            -Pandroid.injected.signing.store.password="${KEYSTORE_PASSWORD}" \
+            -Pandroid.injected.signing.key.alias="${KEY_ALIAS}" \
+            -Pandroid.injected.signing.key.password="${KEY_PASSWORD}"
 
       - name: Upload Ludo Release APK Artifact
         uses: actions/upload-artifact@v4

@@ -12,21 +12,29 @@ def configure_gradle_release():
         with open(root_gradle, "w", encoding="utf-8") as f:
             f.write(root)
 
-    # 2. Update android/app/build.gradle
+    # 2. Rewrite android/app/build.gradle with permanent release signing
     app_gradle = "android/app/build.gradle"
     if os.path.exists(app_gradle):
-        with open(app_gradle, "r", encoding="utf-8") as f:
-            app = f.read()
-        if "com.google.gms.google-services" not in app:
-            app += '\napply plugin: "com.google.gms.google-services"\n'
-        
-        # Read environment variables for signing
         k_pass = os.environ.get("KEYSTORE_PASSWORD", "zingarena123")
         k_alias = os.environ.get("KEY_ALIAS", "zingarena_release")
         k_keypass = os.environ.get("KEY_PASSWORD", "zingarena123")
 
-        # Replace or inject signingConfigs
-        signing_block = f"""
+        clean_app_gradle = f"""apply plugin: 'com.android.application'
+
+android {{
+    namespace "com.zingarena.app"
+    compileSdk rootProject.ext.compileSdkVersion
+    defaultConfig {{
+        applicationId "com.zingarena.app"
+        minSdkVersion rootProject.ext.minSdkVersion
+        targetSdkVersion rootProject.ext.targetSdkVersion
+        versionCode 1
+        versionName "1.0"
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        aaptOptions {{
+             ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
+        }}
+    }}
     signingConfigs {{
         release {{
             storeFile file("release.keystore")
@@ -41,23 +49,50 @@ def configure_gradle_release():
             keyPassword "{k_keypass}"
         }}
     }}
-"""
-        # If android { exists, inject signingConfigs right after it
-        if "signingConfigs {" in app:
-            # Replace existing signingConfigs
-            app = re.sub(r'signingConfigs\s*\{[^}]*\}', '', app)
-        
-        if "android {" in app:
-            app = app.replace("android {", "android {" + signing_block, 1)
+    buildTypes {{
+        release {{
+            signingConfig signingConfigs.release
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }}
+        debug {{
+            signingConfig signingConfigs.debug
+        }}
+    }}
+}}
 
-        # Update buildTypes.release to use signingConfigs.release
-        if "buildTypes {" in app:
-            app = re.sub(r'buildTypes\s*\{\s*release\s*\{([^}]*)\}', 
-                         r'buildTypes {\n        release {\1\n            signingConfig signingConfigs.release\n        }', app)
-        
+repositories {{
+    flatDir{{
+        dirs '../capacitor-cordova-android-plugins/src/main/libs', 'libs'
+    }}
+}}
+
+dependencies {{
+    implementation fileTree(include: ['*.jar'], dir: 'libs')
+    implementation "androidx.appcompat:appcompat:$androidxAppCompatVersion"
+    implementation "androidx.coordinatorlayout:coordinatorlayout:$androidxCoordinatorLayoutVersion"
+    implementation "androidx.core:core-splashscreen:$coreSplashScreenVersion"
+    implementation project(':capacitor-android')
+    testImplementation "junit:junit:$junitVersion"
+    androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
+    androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
+    implementation project(':capacitor-cordova-android-plugins')
+}}
+
+apply from: 'capacitor.build.gradle'
+
+try {{
+    def servicesJSON = file('google-services.json')
+    if (servicesJSON.text) {{
+        apply plugin: 'com.google.gms.google-services'
+    }}
+}} catch(Exception e) {{
+    logger.info("google-services.json not found, google-services plugin not applied. Push Notifications won't work")
+}}
+"""
         with open(app_gradle, "w", encoding="utf-8") as f:
-            f.write(app)
-    print("Gradle and release signing configured successfully via prepare-android.py")
+            f.write(clean_app_gradle)
+        print("android/app/build.gradle configured with 50-year release key!")
 
 def main():
     manifest_path = "android/app/src/main/AndroidManifest.xml"
