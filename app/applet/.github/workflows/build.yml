@@ -45,10 +45,13 @@ jobs:
             echo "$KEYSTORE_BASE64" | base64 -d > ~/.android/release.keystore
           else
             echo "No custom keystore found in secrets. Generating standard release keystore..."
-            keytool -genkeypair -alias zingarena_release -keyalg RSA -keysize 2048 -validity 10000 \
+            keytool -genkeypair -alias zingarena_release -keyalg RSA -keysize 2048 -validity 18250 \
               -keystore ~/.android/release.keystore -storepass zingarena123 -keypass zingarena123 \
               -dname "CN=ZingArena, OU=MobileGames, O=ZingArena, C=IN"
           fi
+          
+          # Copy to multiple locations to satisfy both release and fallback debug tasks
+          cp ~/.android/release.keystore ~/.android/debug.keystore
           cp ~/.android/release.keystore ./release.keystore
 
           echo "KEYSTORE_PASSWORD=${KEYSTORE_PASSWORD}" >> $GITHUB_ENV
@@ -116,6 +119,7 @@ jobs:
           GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
         run: |
           cp ~/.android/release.keystore android/app/release.keystore
+          cp ~/.android/release.keystore android/app/debug.keystore
           if [ -n "$GOOGLE_SERVICES_JSON" ]; then
             echo "$GOOGLE_SERVICES_JSON" > android/app/google-services.json
           elif [ -f google-services.json ]; then

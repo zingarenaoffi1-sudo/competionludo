@@ -25,9 +25,8 @@ def configure_gradle_release():
         k_alias = os.environ.get("KEY_ALIAS", "zingarena_release")
         k_keypass = os.environ.get("KEY_PASSWORD", "zingarena123")
 
-        if "signingConfigs.release" not in app:
-            signing_cfg = f"""
-android {{
+        # Replace or inject signingConfigs
+        signing_block = f"""
     signingConfigs {{
         release {{
             storeFile file("release.keystore")
@@ -35,17 +34,27 @@ android {{
             keyAlias "{k_alias}"
             keyPassword "{k_keypass}"
         }}
-    }}
-    buildTypes {{
-        release {{
-            signingConfig signingConfigs.release
-            minifyEnabled false
-            shrinkResources false
+        debug {{
+            storeFile file("release.keystore")
+            storePassword "{k_pass}"
+            keyAlias "{k_alias}"
+            keyPassword "{k_keypass}"
         }}
     }}
-}}
 """
-            app += signing_cfg
+        # If android { exists, inject signingConfigs right after it
+        if "signingConfigs {" in app:
+            # Replace existing signingConfigs
+            app = re.sub(r'signingConfigs\s*\{[^}]*\}', '', app)
+        
+        if "android {" in app:
+            app = app.replace("android {", "android {" + signing_block, 1)
+
+        # Update buildTypes.release to use signingConfigs.release
+        if "buildTypes {" in app:
+            app = re.sub(r'buildTypes\s*\{\s*release\s*\{([^}]*)\}', 
+                         r'buildTypes {\n        release {\1\n            signingConfig signingConfigs.release\n        }', app)
+        
         with open(app_gradle, "w", encoding="utf-8") as f:
             f.write(app)
     print("Gradle and release signing configured successfully via prepare-android.py")
