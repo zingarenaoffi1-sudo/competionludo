@@ -22,7 +22,7 @@
                 <button class="ludo-music-toggle-btn" onclick="LudoMusic.toggleMute()">🎵 Music ON</button>
                 <button class="menu-btn" onclick="HowToPlayGuide.openModal()" style="padding: 6px 10px;">📖 Rules</button>
                 <button class="menu-btn" onclick="ZingFeatures.showMatchHistoryModal()" style="padding: 6px 10px;">📜 History</button>
-                <button class="menu-btn" onclick="window.location.href='index.html'">Lobby</button>
+                <button class="menu-btn" onclick="LudoBackHandler.handleBackPress()">Lobby</button>
             </div>
         </div>
         <div id="my-identity-badge" class="hidden" style="text-align: center; background: linear-gradient(90deg, #ffd700, #f59e0b); color: #0f172a; font-weight: 900; padding: 5px; margin-bottom: 6px; border-radius: 8px; font-size: 12px; letter-spacing: 0.5px;"></div>
@@ -243,6 +243,12 @@
     <script src="how-to-play.js"></script>
     <script src="game-features.js"></script>
     <script src="ludo-music.js"></script>
+    <script src="ludo-back-handler.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            LudoBackHandler.init({ mode: 'match' });
+        });
+    </script>
     <script src="script.js"></script>
 </body>
 </html>
