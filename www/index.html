@@ -237,10 +237,11 @@
     <script src="how-to-play.js"></script>
     <script src="ludo-music.js"></script>
     <script src="ludo-splash.js"></script>
+    <script src="ludo-back-handler.js"></script>
     <script>
         document.addEventListener("DOMContentLoaded", () => {
-            // Only loads and displays banner when Internet is ON.
-            // Delay 2500ms ensures app renders smoothly with zero UI freeze / zero ANR on cold boot.
+            LudoBackHandler.init({ mode: 'dashboard' });
+
             if (window.initZingBannerAd) {
                 window.initZingBannerAd({ delay: 2500 });
             }

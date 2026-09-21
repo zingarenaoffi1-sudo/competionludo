@@ -154,7 +154,63 @@ function handleCornerDiceClick(color) {
     if (color !== currentColor || botColors.includes(color)) return;
     rollDice();
 }
+let consecutiveSixes = 0;
+let botWatchdog = null;
+
+function clearBotWatchdog() {
+    if (botWatchdog) {
+        clearTimeout(botWatchdog);
+        botWatchdog = null;
+    }
+}
+
+function armBotWatchdog() {
+    clearBotWatchdog();
+    botWatchdog = setTimeout(() => {
+        let currentColor = activePlayers[currentPlayerIndex];
+        if (botColors.includes(currentColor)) {
+            console.warn("Watchdog recovering stuck bot turn:", currentColor);
+            isMoving = false;
+            switchTurn(false);
+        }
+    }, 4500);
+}
+
+function generateFairDiceRoll(color) {
+    const tokens = allTokens[color];
+    const allInBase = tokens && tokens.every(t => t.step === -1);
+    let roll;
+
+    // Rule: Maximum 2 consecutive sixes
+    if (consecutiveSixes >= 2) {
+        roll = Math.floor(Math.random() * 5) + 1; // 1 to 5
+        consecutiveSixes = 0;
+        return roll;
+    }
+
+    // Opening boost: If player or bot has all tokens locked in base, give 32% chance for 6
+    if (allInBase) {
+        if (Math.random() < 0.32) {
+            roll = 6;
+        } else {
+            roll = Math.floor(Math.random() * 5) + 1;
+        }
+    } else {
+        roll = Math.floor(Math.random() * 6) + 1;
+    }
+
+    if (roll === 6) {
+        consecutiveSixes++;
+    } else {
+        consecutiveSixes = 0;
+    }
+    return roll;
+}
+
 function updateTurnUI() {
+    clearBotWatchdog();
+    if (activePlayers.length === 0) return;
+    currentPlayerIndex = currentPlayerIndex % activePlayers.length;
     let currentColor = activePlayers[currentPlayerIndex];
     let pData = playersData[currentColor];
     let isBot = botColors.includes(currentColor);
@@ -175,6 +231,7 @@ function updateTurnUI() {
         }
     });
     if (isBot && gameState === 'WAITING_FOR_ROLL') {
+        armBotWatchdog();
         setTimeout(() => {
             if (gameState === 'WAITING_FOR_ROLL' && botColors.includes(activePlayers[currentPlayerIndex])) {
                 rollDice();
@@ -202,7 +259,7 @@ function rollDice() {
     soundDice.currentTime = 0;
     soundDice.play().catch(e => {});
     setTimeout(() => {
-        currentDiceValue = Math.floor(Math.random() * 6) + 1;
+        currentDiceValue = generateFairDiceRoll(currentColor);
         cube.style.transition = 'none';
         cube.style.transform = 'rotateX(0deg) rotateY(0deg)';
         faces[0].innerText = diceFaces[currentDiceValue];
@@ -220,8 +277,10 @@ function checkAvailableMoves() {
         else if (token.step !== -1 && token.step + currentDiceValue <= 56) movableTokens.push(index);
     });
     if (movableTokens.length === 0) {
+        clearBotWatchdog();
         setTimeout(() => switchTurn(false), 800);
     } else if (botColors.includes(currentColor)) {
+        armBotWatchdog();
         setTimeout(() => {
             let bestIndex = selectSmartBotMove(currentColor, movableTokens);
             moveToken(currentColor, bestIndex);
@@ -269,13 +328,24 @@ function selectSmartBotMove(color, movableIndices) {
     return movableIndices[0];
 }
 function moveToken(color, tokenIndex) {
+    clearBotWatchdog();
     if (gameState !== 'WAITING_FOR_MOVE' || isMoving) return;
     let currentColor = activePlayers[currentPlayerIndex];
     if (color !== currentColor) return;
     allTokens[color].forEach(t => t.element.classList.remove("highlight-move"));
     let token = allTokens[color][tokenIndex];
-    if (token.step === -1 && currentDiceValue !== 6) return;
-    if (token.step !== -1 && token.step + currentDiceValue > 56) return;
+    if (!token) {
+        switchTurn(false);
+        return;
+    }
+    if (token.step === -1 && currentDiceValue !== 6) {
+        switchTurn(false);
+        return;
+    }
+    if (token.step !== -1 && token.step + currentDiceValue > 56) {
+        switchTurn(false);
+        return;
+    }
     isMoving = true;
     if (token.step === -1 && currentDiceValue === 6) {
         token.step = 0;
@@ -342,17 +412,23 @@ function checkPlayerWon(color) {
     return allTokens[color].every(t => t.step === 56);
 }
 function handlePlayerWin(playerColor) {
+    clearBotWatchdog();
     if (!winnersList.includes(playerColor)) {
         winnersList.push(playerColor);
+        let winIdx = activePlayers.indexOf(playerColor);
         activePlayers = activePlayers.filter(c => c !== playerColor);
         if (winnersList.length >= totalPlayersInGame - 1 || activePlayers.length <= 1) {
             endMatchWithPodium();
         } else {
+            if (winIdx <= currentPlayerIndex && currentPlayerIndex > 0) {
+                currentPlayerIndex--;
+            }
             switchTurn(false);
         }
     }
 }
 function endMatchWithPodium() {
+    clearBotWatchdog();
     soundWin.play().catch(e => {});
     if (typeof playInterstitialAd === 'function') {
         playInterstitialAd();
@@ -369,8 +445,13 @@ function endMatchWithPodium() {
     document.getElementById("victory-modal").classList.remove("hidden");
 }
 function switchTurn(extraTurn) {
+    clearBotWatchdog();
+    if (activePlayers.length === 0) return;
     if (!extraTurn) {
         currentPlayerIndex = (currentPlayerIndex + 1) % activePlayers.length;
+        consecutiveSixes = 0;
+    } else {
+        currentPlayerIndex = currentPlayerIndex % activePlayers.length;
     }
     gameState = 'WAITING_FOR_ROLL';
     isMoving = false;

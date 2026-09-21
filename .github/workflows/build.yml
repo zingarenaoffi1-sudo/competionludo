@@ -84,11 +84,21 @@ jobs:
       - name: Generate App Icons
         run: |
           if [ -f icon.png ]; then
+            # Ensure imagemagick is available
+            sudo apt-get update -y && sudo apt-get install -y imagemagick || true
+            declare -A SIZES=( ["mdpi"]=48 ["hdpi"]=72 ["xhdpi"]=96 ["xxhdpi"]=144 ["xxxhdpi"]=192 )
             for dir in mdpi hdpi xhdpi xxhdpi xxxhdpi; do
               mkdir -p "android/app/src/main/res/mipmap-$dir"
-              cp icon.png "android/app/src/main/res/mipmap-$dir/ic_launcher.png"
-              cp icon.png "android/app/src/main/res/mipmap-$dir/ic_launcher_round.png"
-              cp icon.png "android/app/src/main/res/mipmap-$dir/ic_launcher_foreground.png"
+              SZ=${SIZES[$dir]}
+              if command -v convert >/dev/null 2>&1; then
+                convert icon.png -resize "${SZ}x${SZ}!" PNG32:"android/app/src/main/res/mipmap-$dir/ic_launcher.png"
+                convert icon.png -resize "${SZ}x${SZ}!" PNG32:"android/app/src/main/res/mipmap-$dir/ic_launcher_round.png"
+                convert icon.png -resize "${SZ}x${SZ}!" PNG32:"android/app/src/main/res/mipmap-$dir/ic_launcher_foreground.png"
+              else
+                cp icon.png "android/app/src/main/res/mipmap-$dir/ic_launcher.png"
+                cp icon.png "android/app/src/main/res/mipmap-$dir/ic_launcher_round.png"
+                cp icon.png "android/app/src/main/res/mipmap-$dir/ic_launcher_foreground.png"
+              fi
             done
             mkdir -p android/app/src/main/res/values
             echo '<?xml version="1.0" encoding="utf-8"?><resources><color name="ic_launcher_background">#0b0f19</color></resources>' > android/app/src/main/res/values/ic_launcher_background.xml
