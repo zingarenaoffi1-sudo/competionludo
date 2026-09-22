@@ -1,51 +1,54 @@
-name: Build Android APK
+name: Build & Release Android APK
 
 on:
   push:
-    branches: [ "main", "master" ]
+    branches: [ "main" ]
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Set up Java 17
+      - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
-          distribution: 'temurin'
           java-version: '17'
+          distribution: 'temurin'
 
-      - name: Set up Node.js
+      - name: Set up Node.js 20
         uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: 'npm'
 
-      - name: Accept Android SDK Licenses
-        run: |
-          yes | sdkmanager --licenses || true
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
 
-      - name: Install Project Dependencies
-        run: npm ci || npm install
-
-      - name: Configure Keystore
+      - name: Configure Keystore Credentials
         env:
-          KEYSTORE_BASE64: ${{ secrets.DEBUG_KEYSTORE_BASE64 || secrets.ANDROID_KEYSTORE_BASE64 || secrets.RELEASE_KEYSTORE_BASE64 }}
-          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD || secrets.KEY_PASSWORD || 'android' }}
-          KEY_ALIAS: ${{ secrets.KEY_ALIAS || 'androiddebugkey' }}
-          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD || 'android' }}
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
           mkdir -p ~/.android
           if [ -n "$KEYSTORE_BASE64" ]; then
-            echo "Using keystore from GitHub Secrets..."
             echo "$KEYSTORE_BASE64" | base64 -d > ~/.android/debug.keystore
           else
-            echo "No keystore in secrets. Generating signing keystore..."
-            keytool -genkey -v -keystore ~/.android/debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Ludo,O=Ludo,C=IN"
+            keytool -genkey -v -keystore ~/.android/debug.keystore \
+              -alias "${KEY_ALIAS:-androiddebugkey}" \
+              -keyalg RSA -keysize 2048 -validity 10000 \
+              -storepass "${KEYSTORE_PASSWORD:-android}" \
+              -keypass "${KEY_PASSWORD:-android}" \
+              -dname "CN=Ludo Zing, OU=ZingArena, O=ZingArena, L=City, S=State, C=US"
           fi
           cp ~/.android/debug.keystore ./debug.keystore
 
@@ -62,23 +65,15 @@ jobs:
       - name: Install Capacitor & Mobile Dependencies
         run: |
           npm install --save-dev @capacitor/cli@^6.0.0
-          npm install --save @capacitor/core@^6.0.0 @capacitor/android@^6.0.0 @capacitor/app@^6.0.0 @capacitor-community/admob@^6.0.0 @capacitor-firebase/authentication@^6.0.0
+          npm install --save @capacitor/core@^6.0.0 @capacitor/android@^6.0.0 @capacitor/app@^6.0.0 @capacitor-firebase/authentication@^6.0.0
 
       - name: Initialize Capacitor Android Project
-        env:
-          SECRET_ADMOB_APP_ID: ${{ secrets.ADMOB_APP_ID }}
         run: |
           rm -rf android
           npx cap add android
           if [ -f google-services.json ]; then
             cp google-services.json android/app/google-services.json
           fi
-          CONFIG_APP_ID=$(grep -o "appId: *['\"][^'\"]*['\"]" admob-config.js | sed -E "s/appId: *['\"]([^'\"]*)['\"]/\1/" || echo "")
-          FINAL_ADMOB_ID="${SECRET_ADMOB_APP_ID:-$CONFIG_APP_ID}"
-          if [ -z "$FINAL_ADMOB_ID" ]; then
-            FINAL_ADMOB_ID="ca-app-pub-3940256099942544~3347511713"
-          fi
-          export FINAL_ADMOB_ID
           python3 prepare-android.py
 
       - name: Generate App Icons
@@ -108,15 +103,7 @@ jobs:
           fi
 
       - name: Sync Capacitor Android
-        env:
-          SECRET_ADMOB_APP_ID: ${{ secrets.ADMOB_APP_ID }}
         run: |
-          CONFIG_APP_ID=$(grep -o "appId: *['\"][^'\"]*['\"]" admob-config.js | sed -E "s/appId: *['\"]([^'\"]*)['\"]/\1/" || echo "")
-          FINAL_ADMOB_ID="${SECRET_ADMOB_APP_ID:-$CONFIG_APP_ID}"
-          if [ -z "$FINAL_ADMOB_ID" ]; then
-            FINAL_ADMOB_ID="ca-app-pub-3940256099942544~3347511713"
-          fi
-          export FINAL_ADMOB_ID
           npx cap sync android
           python3 prepare-android.py
 
@@ -139,11 +126,22 @@ jobs:
       - name: Build Release APK with Gradle
         run: |
           cd android
-          ./gradlew assembleRelease --no-daemon --max-workers=2
+          ./gradlew clean assembleRelease --no-daemon --stacktrace
 
-      - name: Upload Ludo Release APK Artifact
+      - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Ludo-Release-APK
-          path: android/app/build/outputs/apk/release/app-release.apk
-          retention-days: 14
+          name: app-release
+          path: android/app/build/outputs/apk/release/*.apk
+
+      - name: Create GitHub Release
+        if: github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ github.run_number }}
+          name: Ludo Zing Release v${{ github.run_number }}
+          draft: false
+          prerelease: false
+          files: android/app/build/outputs/apk/release/*.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

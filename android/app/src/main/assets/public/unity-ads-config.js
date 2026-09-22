@@ -1,3 +1,4 @@
+// Unity Ads Configuration
 const UnityAdsConfig = {
     gameId: '800378570',
     bannerPlacement: 'BP_Banner_Android',
@@ -7,7 +8,6 @@ const UnityAdsConfig = {
 };
 
 window.UnityAdsConfig = UnityAdsConfig;
-// Keep AdMobConfig alias for backwards compatibility
 window.AdMobConfig = {
     appId: UnityAdsConfig.gameId,
     bannerAdId: UnityAdsConfig.bannerPlacement,

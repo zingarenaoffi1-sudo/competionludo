@@ -9,7 +9,6 @@
     "build": "node build.js"
   },
   "dependencies": {
-    "@capacitor-community/admob": "^6.0.0",
     "@capacitor-firebase/authentication": "^6.0.0",
     "@capacitor/android": "^6.0.0",
     "@capacitor/app": "^6.0.0",

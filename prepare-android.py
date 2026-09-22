@@ -1,5 +1,6 @@
 import os
 import re
+import shutil
 
 def configure_gradle_release():
     # 1. Update android/build.gradle
@@ -17,6 +18,12 @@ def configure_gradle_release():
     if os.path.exists(app_gradle):
         with open(app_gradle, "r", encoding="utf-8") as f:
             app = f.read()
+        
+        # Add Unity Ads SDK dependency
+        if "com.unity3d.ads:unity-ads" not in app:
+            unity_dep = '\n    implementation "com.unity3d.ads:unity-ads:4.12.5"\n'
+            app = app.replace("dependencies {", "dependencies {" + unity_dep)
+
         if "com.google.gms.google-services" not in app:
             app += '\napply plugin: "com.google.gms.google-services"\n'
         
@@ -48,19 +55,18 @@ android {{
             app += signing_cfg
         with open(app_gradle, "w", encoding="utf-8") as f:
             f.write(app)
-    print("Gradle and release signing configured successfully via prepare-android.py")
+    print("Gradle, Unity Ads SDK, and release signing configured successfully via prepare-android.py")
 
 def main():
     manifest_path = "android/app/src/main/AndroidManifest.xml"
     if os.path.exists(manifest_path):
-        app_id = os.environ.get("FINAL_ADMOB_ID", "ca-app-pub-6484628444475898~3321848589").strip()
-        if "~" not in app_id or "/" in app_id:
-            app_id = "ca-app-pub-6484628444475898~3321848589"
         with open(manifest_path, "r", encoding="utf-8") as f:
             content = f.read()
-        admob_meta = f'\n        <meta-data android:name="com.google.android.gms.ads.APPLICATION_ID" android:value="{app_id}"/>\n        <meta-data android:name="com.google.android.gms.ads.DELAY_APP_MEASUREMENT_INIT" android:value="true"/>\n    </application>'
-        if "com.google.android.gms.ads.APPLICATION_ID" not in content:
-            content = content.replace("</application>", admob_meta)
+        
+        # Strip any old AdMob metadata if present
+        content = re.sub(r'<meta-data\s+android:name="com\.google\.android\.gms\.ads\.APPLICATION_ID"[^>]*/>', '', content)
+        content = re.sub(r'<meta-data\s+android:name="com\.google\.android\.gms\.ads\.DELAY_APP_MEASUREMENT_INIT"[^>]*/>', '', content)
+
         perms = (
             '\n    <uses-permission android:name="android.permission.INTERNET"/>'
             '\n    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>'
@@ -94,18 +100,29 @@ def main():
         with open(strings_path, "w", encoding="utf-8") as f:
             f.write(strings_xml)
 
+    # Copy UnityAdsPlugin.java to MainActivity package directory
+    plugin_dest = "android/app/src/main/java/com/zingarena/app/UnityAdsPlugin.java"
+    plugin_src = "android-src-unity/UnityAdsPlugin.java"
+    if os.path.exists(plugin_src) and os.path.exists("android/app/src/main/java/com/zingarena/app"):
+        shutil.copyfile(plugin_src, plugin_dest)
+        print("UnityAdsPlugin.java copied to android source directory")
+
+    # Update MainActivity.java to register UnityAdsPlugin
     main_act_path = "android/app/src/main/java/com/zingarena/app/MainActivity.java"
     if os.path.exists(main_act_path):
         main_act_content = """package com.zingarena.app;
+
 import android.os.Bundle;
 import com.getcapacitor.BridgeActivity;
 
 public class MainActivity extends BridgeActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
+        registerPlugin(UnityAdsPlugin.class);
         super.onCreate(savedInstanceState);
     }
-}"""
+}
+"""
         with open(main_act_path, "w", encoding="utf-8") as f:
             f.write(main_act_content)
 
