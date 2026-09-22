@@ -24,6 +24,10 @@ def configure_gradle_release():
             unity_dep = '\n    implementation "com.unity3d.ads:unity-ads:4.12.5"\n'
             app = app.replace("dependencies {", "dependencies {" + unity_dep)
 
+        # Ensure repositories have mavenCentral()
+        if "mavenCentral()" not in app:
+            app = app.replace("repositories {", "repositories {\n    mavenCentral()\n    google()")
+
         if "com.google.gms.google-services" not in app:
             app += '\napply plugin: "com.google.gms.google-services"\n'
         
@@ -32,7 +36,14 @@ def configure_gradle_release():
         k_alias = os.environ.get("KEY_ALIAS", "androiddebugkey")
         k_keypass = os.environ.get("KEY_PASSWORD", "android")
 
-        if "signingConfigs.release" not in app:
+        # Update signing config cleanly
+        if "signingConfigs {" in app:
+            # Replace existing release signingConfig values with current build credentials
+            app = re.sub(r'storeFile file\([^)]+\)', 'storeFile file("debug.keystore")', app)
+            app = re.sub(r'storePassword "[^"]+"', f'storePassword "{k_pass}"', app)
+            app = re.sub(r'keyAlias "[^"]+"', f'keyAlias "{k_alias}"', app)
+            app = re.sub(r'keyPassword "[^"]+"', f'keyPassword "{k_keypass}"', app)
+        else:
             signing_cfg = f"""
 android {{
     signingConfigs {{
@@ -100,17 +111,19 @@ def main():
         with open(strings_path, "w", encoding="utf-8") as f:
             f.write(strings_xml)
 
-    # Copy UnityAdsPlugin.java to MainActivity package directory
-    plugin_dest = "android/app/src/main/java/com/zingarena/app/UnityAdsPlugin.java"
+    # Ensure target directory exists for UnityAdsPlugin
+    pkg_dir = "android/app/src/main/java/com/zingarena/app"
+    os.makedirs(pkg_dir, exist_ok=True)
+
+    plugin_dest = os.path.join(pkg_dir, "UnityAdsPlugin.java")
     plugin_src = "android-src-unity/UnityAdsPlugin.java"
-    if os.path.exists(plugin_src) and os.path.exists("android/app/src/main/java/com/zingarena/app"):
+    if os.path.exists(plugin_src):
         shutil.copyfile(plugin_src, plugin_dest)
-        print("UnityAdsPlugin.java copied to android source directory")
+        print("UnityAdsPlugin.java verified and copied to android package directory")
 
     # Update MainActivity.java to register UnityAdsPlugin
-    main_act_path = "android/app/src/main/java/com/zingarena/app/MainActivity.java"
-    if os.path.exists(main_act_path):
-        main_act_content = """package com.zingarena.app;
+    main_act_path = os.path.join(pkg_dir, "MainActivity.java")
+    main_act_content = """package com.zingarena.app;
 
 import android.os.Bundle;
 import com.getcapacitor.BridgeActivity;
@@ -123,8 +136,8 @@ public class MainActivity extends BridgeActivity {
     }
 }
 """
-        with open(main_act_path, "w", encoding="utf-8") as f:
-            f.write(main_act_content)
+    with open(main_act_path, "w", encoding="utf-8") as f:
+        f.write(main_act_content)
 
     vars_path = "android/variables.gradle"
     if os.path.exists(vars_path):
