@@ -18,10 +18,6 @@ import com.unity3d.ads.IUnityAdsInitializationListener;
 import com.unity3d.ads.IUnityAdsLoadListener;
 import com.unity3d.ads.IUnityAdsShowListener;
 import com.unity3d.ads.UnityAds;
-import com.unity3d.ads.UnityAdsInitializationError;
-import com.unity3d.ads.UnityAdsLoadError;
-import com.unity3d.ads.UnityAdsShowCompletionState;
-import com.unity3d.ads.UnityAdsShowError;
 import com.unity3d.ads.UnityAdsShowOptions;
 import com.unity3d.services.banners.BannerErrorInfo;
 import com.unity3d.services.banners.BannerView;
@@ -56,7 +52,7 @@ public class UnityAdsPlugin extends Plugin {
             }
 
             @Override
-            public void onInitializationFailed(UnityAdsInitializationError error, String message) {
+            public void onInitializationFailed(UnityAds.UnityAdsInitializationError error, String message) {
                 Log.e(TAG, "Unity Ads initialization failed: " + error + " - " + message);
             }
         });
@@ -164,7 +160,7 @@ public class UnityAdsPlugin extends Plugin {
                 activity.runOnUiThread(() -> {
                     UnityAds.show(activity, placementId, new UnityAdsShowOptions(), new IUnityAdsShowListener() {
                         @Override
-                        public void onUnityAdsShowFailure(String placementId, UnityAdsShowError error, String message) {
+                        public void onUnityAdsShowFailure(String placementId, UnityAds.UnityAdsShowError error, String message) {
                             Log.w(TAG, "Interstitial show failed: " + message);
                             call.resolve(new JSObject().put("shown", false));
                         }
@@ -180,7 +176,7 @@ public class UnityAdsPlugin extends Plugin {
                         }
 
                         @Override
-                        public void onUnityAdsShowComplete(String placementId, UnityAdsShowCompletionState state) {
+                        public void onUnityAdsShowComplete(String placementId, UnityAds.UnityAdsShowCompletionState state) {
                             Log.d(TAG, "Interstitial completed");
                             call.resolve(new JSObject().put("shown", true));
                         }
@@ -189,7 +185,7 @@ public class UnityAdsPlugin extends Plugin {
             }
 
             @Override
-            public void onUnityAdsFailedToLoad(String s, UnityAdsLoadError error, String message) {
+            public void onUnityAdsFailedToLoad(String s, UnityAds.UnityAdsLoadError error, String message) {
                 Log.w(TAG, "Interstitial load failed: " + message);
                 call.resolve(new JSObject().put("shown", false));
             }
@@ -213,7 +209,7 @@ public class UnityAdsPlugin extends Plugin {
                 activity.runOnUiThread(() -> {
                     UnityAds.show(activity, placementId, new UnityAdsShowOptions(), new IUnityAdsShowListener() {
                         @Override
-                        public void onUnityAdsShowFailure(String placementId, UnityAdsShowError error, String message) {
+                        public void onUnityAdsShowFailure(String placementId, UnityAds.UnityAdsShowError error, String message) {
                             Log.w(TAG, "Rewarded show failed: " + message);
                             call.resolve(new JSObject().put("rewarded", false));
                         }
@@ -229,8 +225,8 @@ public class UnityAdsPlugin extends Plugin {
                         }
 
                         @Override
-                        public void onUnityAdsShowComplete(String placementId, UnityAdsShowCompletionState state) {
-                            if (state == UnityAdsShowCompletionState.COMPLETED) {
+                        public void onUnityAdsShowComplete(String placementId, UnityAds.UnityAdsShowCompletionState state) {
+                            if (state == UnityAds.UnityAdsShowCompletionState.COMPLETED) {
                                 Log.d(TAG, "Rewarded ad completed successfully! Granting reward.");
                                 call.resolve(new JSObject().put("rewarded", true));
                             } else {
@@ -243,7 +239,7 @@ public class UnityAdsPlugin extends Plugin {
             }
 
             @Override
-            public void onUnityAdsFailedToLoad(String s, UnityAdsLoadError error, String message) {
+            public void onUnityAdsFailedToLoad(String s, UnityAds.UnityAdsLoadError error, String message) {
                 Log.w(TAG, "Rewarded load failed: " + message);
                 call.reject("Load failed: " + message);
             }
