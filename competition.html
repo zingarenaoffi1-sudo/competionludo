@@ -7,10 +7,6 @@
     <link rel="stylesheet" href="competition-style.css">
 </head>
 <body style="margin: 0; background: #080d1a;">
-    <div id="test-banner" class="dummy-banner">
-        <span>📢 AdMob Test Banner (320x50)</span>
-        <button class="banner-close-btn" onclick="document.getElementById('test-banner').style.display='none'">✕</button>
-    </div>
     <div class="header">
         <div class="logo">👑 LUDO PRO ARENA</div>
     </div>
@@ -280,7 +276,7 @@
             <button class="ultra-roll-btn" onclick="window.location.reload()" style="width: 100%; margin-bottom: 10px;">Return to Dashboard</button>
         </div>
     </div>
-    <script src="admob-config.js"></script>
+    <script src="unity-ads-config.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             if (window.initZingBannerAd) {
@@ -311,7 +307,6 @@
         setTimeout(updateSpinBadge, 500);
         async function playInterstitialAd() {
             if (!navigator.onLine) {
-                console.log("[AdMob] Offline: Skipping interstitial ad.");
                 return;
             }
             if (typeof window.showZingInterstitialAd === 'function') {

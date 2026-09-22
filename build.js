@@ -20,7 +20,7 @@ function copyToDestination(targetDir) {
         
         const stat = fs.statSync(srcPath);
         if (stat.isDirectory()) {
-            if (file === 'assets' || file === 'sounds' || file === 'screenshots') {
+            if (file === 'assets' || file === 'sounds') {
                 fs.cpSync(srcPath, destPath, { recursive: true });
             }
         } else {
@@ -40,6 +40,7 @@ try {
         copyToDestination(androidPublicDir);
     }
     console.log("Build completed successfully. Files synced to www/ and android assets.");
+    process.exit(0);
 } catch(e) {
     console.error("Build failed:", e);
     process.exit(1);

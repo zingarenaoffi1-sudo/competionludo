@@ -7,10 +7,6 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body style="margin: 0; background: #080d1a;">
-    <div id="test-banner" class="dummy-banner">
-        <span>📢 AdMob Test Banner (320x50)</span>
-        <button class="banner-close-btn" onclick="document.getElementById('test-banner').style.display='none'">✕</button>
-    </div>
     <div id="toast-msg" class="toast-message"></div>
     <div id="game-wrapper">
         <div class="game-header">
@@ -206,7 +202,7 @@
             </div>
         </div>
     </div>
-    <script src="admob-config.js"></script>
+    <script src="unity-ads-config.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             if (window.initZingBannerAd) {
@@ -215,7 +211,6 @@
         });
         async function playInterstitialAd() {
             if (!navigator.onLine) {
-                console.log("[AdMob] Offline: Skipping interstitial ad.");
                 return;
             }
             if (typeof window.showZingInterstitialAd === 'function') {
