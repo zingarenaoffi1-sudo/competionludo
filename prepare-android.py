@@ -27,9 +27,6 @@ def configure_gradle_release():
         # Ensure repositories have mavenCentral()
         if "mavenCentral()" not in app:
             app = app.replace("repositories {", "repositories {\n    mavenCentral()\n    google()")
-
-        if "com.google.gms.google-services" not in app:
-            app += '\napply plugin: "com.google.gms.google-services"\n'
         
         # Read environment variables for signing if set, else defaults
         k_pass = os.environ.get("KEYSTORE_PASSWORD", "android")
