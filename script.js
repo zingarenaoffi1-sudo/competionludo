@@ -324,6 +324,8 @@ function getColorHex(color) {
     }
 }
 
+let onlineTurnChanceCount = 0;
+
 function setupSocketListeners() {
     socket.on('room-created', (data) => {
         isRoomHost = true;
@@ -369,6 +371,7 @@ function setupSocketListeners() {
     });
 
     socket.on('start-online-game', (data) => {
+        onlineTurnChanceCount = 0;
         const modal = document.getElementById('online-modal');
         if (modal) modal.classList.add('hidden');
 
@@ -431,6 +434,16 @@ function setupSocketListeners() {
         }
         startTurnTimer();
         updateTurnUIOnline();
+
+        if (data.currentColor === myAssignedColor && navigator.onLine) {
+            onlineTurnChanceCount++;
+            // 1st chance: ad, 2nd chance: no ad, 3rd chance: ad, 4th chance: no ad...
+            if (onlineTurnChanceCount % 2 !== 0) {
+                if (typeof playInterstitialAd === 'function') {
+                    playInterstitialAd();
+                }
+            }
+        }
     });
 
     socket.on('player-eliminated', (data) => {

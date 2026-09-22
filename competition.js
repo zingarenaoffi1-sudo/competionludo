@@ -448,7 +448,10 @@ function setupSocketListeners() {
         document.getElementById("matchmaking-section").classList.add("hidden");
         document.getElementById("dashboard-section").classList.remove("hidden");
     });
+let compTurnChanceCount = 0;
+
     socket.on("start-competition-game", (data) => {
+        compTurnChanceCount = 0;
         document.getElementById("matchmaking-section").classList.add("hidden");
         document.getElementById("ludo-wrapper").classList.remove("hidden");
         compMatchCount++;
@@ -498,6 +501,16 @@ function setupSocketListeners() {
         }
         startTurnTimer();
         updateTurnUIOnline();
+
+        if (data.currentColor === myAssignedColor && navigator.onLine) {
+            compTurnChanceCount++;
+            // 1st chance: ad, 2nd chance: no ad, 3rd chance: ad, 4th chance: no ad...
+            if (compTurnChanceCount % 2 !== 0) {
+                if (typeof playInterstitialAd === "function") {
+                    playInterstitialAd();
+                }
+            }
+        }
     });
     socket.on("player-eliminated", (data) => {
         activePlayers = activePlayers.filter(c => c !== data.color);
