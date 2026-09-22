@@ -1,6 +1,7 @@
 package com.zingarena.app;
 
 import android.app.Activity;
+import android.graphics.Color;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
@@ -26,16 +27,20 @@ import com.unity3d.services.banners.BannerView;
 import com.unity3d.services.banners.UnityBannerSize;
 
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 @CapacitorPlugin(name = "UnityAdsBridge")
 public class UnityAdsPlugin extends Plugin {
     private static final String TAG = "UnityAdsBridge";
     private static final String DEFAULT_GAME_ID = "800378570";
+    private static final String TEST_FALLBACK_GAME_ID = "1486550";
     private static boolean testMode = true;
 
     private static boolean isInitializing = false;
-    private static final List<Runnable> pendingActions = new ArrayList<>();
+    private static final List<Runnable> pendingSuccessActions = new ArrayList<>();
+    private static final List<Runnable> pendingFailedActions = new ArrayList<>();
 
     private BannerView bannerView = null;
     private FrameLayout bannerLayout = null;
@@ -43,7 +48,10 @@ public class UnityAdsPlugin extends Plugin {
     @Override
     public void load() {
         super.load();
-        initSdk(getActivity(), DEFAULT_GAME_ID, testMode, null, null);
+        Activity activity = getActivity();
+        if (activity != null) {
+            initSdk(activity, DEFAULT_GAME_ID, testMode, null, null);
+        }
     }
 
     private synchronized void initSdk(Activity activity, String gameId, boolean testing, Runnable onComplete, Runnable onFailed) {
@@ -55,8 +63,13 @@ public class UnityAdsPlugin extends Plugin {
         }
 
         if (onComplete != null) {
-            synchronized (pendingActions) {
-                pendingActions.add(onComplete);
+            synchronized (pendingSuccessActions) {
+                pendingSuccessActions.add(onComplete);
+            }
+        }
+        if (onFailed != null) {
+            synchronized (pendingFailedActions) {
+                pendingFailedActions.add(onFailed);
             }
         }
 
@@ -65,51 +78,87 @@ public class UnityAdsPlugin extends Plugin {
         }
 
         if (activity == null) {
-            if (onFailed != null) {
-                new Handler(Looper.getMainLooper()).post(onFailed);
-            }
+            dispatchInitFailure("Activity is null during Unity Ads init");
             return;
         }
 
         isInitializing = true;
-        Log.d(TAG, "Initializing Unity Ads SDK with Game ID: " + gameId + ", testMode: " + testing);
+        final String targetGameId = (gameId != null && !gameId.trim().isEmpty()) ? gameId.trim() : DEFAULT_GAME_ID;
+        Log.d(TAG, "Initializing Unity Ads with Game ID: " + targetGameId + ", testMode=" + testing);
 
-        UnityAds.initialize(activity.getApplicationContext(), gameId, testing, new IUnityAdsInitializationListener() {
+        UnityAds.initialize(activity.getApplicationContext(), targetGameId, testing, new IUnityAdsInitializationListener() {
             @Override
             public void onInitializationComplete() {
                 isInitializing = false;
-                Log.d(TAG, "Unity Ads SDK initialized successfully!");
-
+                Log.d(TAG, "Unity Ads initialized successfully with Game ID: " + targetGameId);
                 preloadDefaultAds();
-
-                synchronized (pendingActions) {
-                    for (Runnable action : pendingActions) {
-                        new Handler(Looper.getMainLooper()).post(action);
-                    }
-                    pendingActions.clear();
-                }
+                dispatchInitSuccess();
             }
 
             @Override
             public void onInitializationFailed(UnityAds.UnityAdsInitializationError error, String message) {
-                isInitializing = false;
-                Log.e(TAG, "Unity Ads initialization failed: " + error + " - " + message);
+                Log.w(TAG, "Unity Ads init failed for " + targetGameId + ": " + error + " (" + message + ")");
+                
+                // If custom Game ID failed in test mode, fall back to official Unity test Game ID
+                if (testing && !TEST_FALLBACK_GAME_ID.equals(targetGameId)) {
+                    Log.i(TAG, "Attempting fallback init with Unity Test Game ID: " + TEST_FALLBACK_GAME_ID);
+                    UnityAds.initialize(activity.getApplicationContext(), TEST_FALLBACK_GAME_ID, true, new IUnityAdsInitializationListener() {
+                        @Override
+                        public void onInitializationComplete() {
+                            isInitializing = false;
+                            Log.d(TAG, "Unity Ads initialized successfully via fallback Game ID: " + TEST_FALLBACK_GAME_ID);
+                            preloadDefaultAds();
+                            dispatchInitSuccess();
+                        }
 
-                synchronized (pendingActions) {
-                    pendingActions.clear();
-                }
-
-                if (onFailed != null) {
-                    new Handler(Looper.getMainLooper()).post(onFailed);
+                        @Override
+                        public void onInitializationFailed(UnityAds.UnityAdsInitializationError err2, String msg2) {
+                            isInitializing = false;
+                            Log.e(TAG, "Fallback Unity Ads init also failed: " + err2 + " (" + msg2 + ")");
+                            dispatchInitFailure("Init failed: " + msg2);
+                        }
+                    });
+                } else {
+                    isInitializing = false;
+                    dispatchInitFailure("Init failed: " + message);
                 }
             }
         });
     }
 
+    private void dispatchInitSuccess() {
+        synchronized (pendingSuccessActions) {
+            for (Runnable action : pendingSuccessActions) {
+                new Handler(Looper.getMainLooper()).post(action);
+            }
+            pendingSuccessActions.clear();
+        }
+        synchronized (pendingFailedActions) {
+            pendingFailedActions.clear();
+        }
+    }
+
+    private void dispatchInitFailure(String reason) {
+        Log.e(TAG, "dispatchInitFailure: " + reason);
+        synchronized (pendingFailedActions) {
+            for (Runnable action : pendingFailedActions) {
+                new Handler(Looper.getMainLooper()).post(action);
+            }
+            pendingFailedActions.clear();
+        }
+        synchronized (pendingSuccessActions) {
+            pendingSuccessActions.clear();
+        }
+    }
+
     private void preloadDefaultAds() {
         try {
+            UnityAds.load("BP_Rewarded_Android", null);
             UnityAds.load("Rewarded_Android", null);
+            UnityAds.load("rewardedVideo", null);
+            UnityAds.load("BP_Interstitial_Android", null);
             UnityAds.load("Interstitial_Android", null);
+            UnityAds.load("video", null);
         } catch (Exception e) {
             Log.w(TAG, "Preload notice: " + e.getMessage());
         }
@@ -127,7 +176,8 @@ public class UnityAdsPlugin extends Plugin {
 
     @PluginMethod
     public void showBanner(PluginCall call) {
-        final String placementId = call.getString("placementId", "Banner_Android");
+        final String gameId = call.getString("gameId", DEFAULT_GAME_ID);
+        final String requestedPlacement = call.getString("placementId", "BP_Banner_Android");
         final boolean testing = call.getBoolean("isTesting", true);
         testMode = testing;
         final String position = call.getString("position", "bottom");
@@ -138,11 +188,12 @@ public class UnityAdsPlugin extends Plugin {
             return;
         }
 
-        initSdk(activity, DEFAULT_GAME_ID, testMode, () -> {
+        initSdk(activity, gameId, testMode, () -> {
             new Handler(Looper.getMainLooper()).post(() -> {
                 try {
                     if (bannerLayout == null) {
                         bannerLayout = new FrameLayout(activity);
+                        bannerLayout.setBackgroundColor(Color.TRANSPARENT);
                         int gravity = "top".equalsIgnoreCase(position) ? (Gravity.TOP | Gravity.CENTER_HORIZONTAL) : (Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
                         FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(
                                 ViewGroup.LayoutParams.MATCH_PARENT,
@@ -158,7 +209,8 @@ public class UnityAdsPlugin extends Plugin {
                         bannerLayout.setElevation(9999f);
                     }
 
-                    loadBannerInternal(activity, placementId, call, true);
+                    List<String> candidates = buildCandidateList(requestedPlacement, new String[]{"BP_Banner_Android", "Banner_Android", "banner", "bannerAndroid"});
+                    tryLoadBannerCandidates(activity, candidates, 0, position, call);
                 } catch (Exception e) {
                     Log.e(TAG, "Banner show exception: " + e.getMessage());
                     call.reject(e.getMessage());
@@ -167,26 +219,46 @@ public class UnityAdsPlugin extends Plugin {
         }, () -> call.reject("Unity Ads initialization failed before banner load"));
     }
 
-    private void loadBannerInternal(Activity activity, String placementId, PluginCall call, boolean allowFallback) {
+    private void tryLoadBannerCandidates(Activity activity, List<String> candidates, int index, String position, PluginCall call) {
+        if (index >= candidates.size()) {
+            Log.w(TAG, "All banner placement candidates failed to load.");
+            if (call != null && !call.isKeptAlive()) {
+                call.resolve(new JSObject().put("loaded", false).put("error", "No fill across candidate placements"));
+            }
+            return;
+        }
+
+        final String placement = candidates.get(index);
+        Log.d(TAG, "Attempting banner load with placement: " + placement + " (" + (index + 1) + "/" + candidates.size() + ")");
+
         if (bannerView != null) {
-            bannerLayout.removeAllViews();
+            if (bannerLayout != null) bannerLayout.removeAllViews();
             bannerView.destroy();
             bannerView = null;
         }
 
-        bannerView = new BannerView(activity, placementId, new UnityBannerSize(320, 50));
+        bannerView = new BannerView(activity, placement, new UnityBannerSize(320, 50));
         bannerView.setListener(new BannerView.Listener() {
             @Override
             public void onBannerLoaded(BannerView bannerAdView) {
-                Log.d(TAG, "Banner loaded successfully for placement: " + placementId);
+                Log.d(TAG, "Banner loaded successfully: " + placement);
                 activity.runOnUiThread(() -> {
                     if (bannerLayout != null) {
+                        bannerLayout.removeAllViews();
+                        int gravity = "top".equalsIgnoreCase(position) ? (Gravity.TOP | Gravity.CENTER_HORIZONTAL) : (Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
+                        FrameLayout.LayoutParams childParams = new FrameLayout.LayoutParams(
+                                ViewGroup.LayoutParams.WRAP_CONTENT,
+                                ViewGroup.LayoutParams.WRAP_CONTENT,
+                                gravity
+                        );
+                        bannerLayout.addView(bannerAdView, childParams);
                         bannerLayout.setVisibility(View.VISIBLE);
                         bannerLayout.bringToFront();
+                        bannerLayout.requestLayout();
                     }
                 });
                 if (call != null && !call.isKeptAlive()) {
-                    call.resolve(new JSObject().put("loaded", true));
+                    call.resolve(new JSObject().put("loaded", true).put("placementId", placement));
                 }
             }
 
@@ -198,13 +270,8 @@ public class UnityAdsPlugin extends Plugin {
             @Override
             public void onBannerFailedToLoad(BannerView bannerAdView, BannerErrorInfo errorInfo) {
                 String errorMsg = errorInfo != null ? errorInfo.errorMessage : "Unknown";
-                Log.w(TAG, "Banner failed to load for " + placementId + ": " + errorMsg);
-
-                if (allowFallback && !"Banner_Android".equals(placementId)) {
-                    activity.runOnUiThread(() -> loadBannerInternal(activity, "Banner_Android", call, false));
-                } else if (call != null && !call.isKeptAlive()) {
-                    call.resolve(new JSObject().put("loaded", false).put("error", errorMsg));
-                }
+                Log.w(TAG, "Banner placement " + placement + " failed: " + errorMsg);
+                activity.runOnUiThread(() -> tryLoadBannerCandidates(activity, candidates, index + 1, position, call));
             }
 
             @Override
@@ -213,7 +280,6 @@ public class UnityAdsPlugin extends Plugin {
             }
         });
 
-        bannerLayout.addView(bannerView);
         bannerView.load();
     }
 
@@ -242,7 +308,8 @@ public class UnityAdsPlugin extends Plugin {
 
     @PluginMethod
     public void showInterstitial(PluginCall call) {
-        final String placementId = call.getString("placementId", "Interstitial_Android");
+        final String gameId = call.getString("gameId", DEFAULT_GAME_ID);
+        final String requestedPlacement = call.getString("placementId", "BP_Interstitial_Android");
         final boolean testing = call.getBoolean("isTesting", true);
         testMode = testing;
 
@@ -252,23 +319,33 @@ public class UnityAdsPlugin extends Plugin {
             return;
         }
 
-        initSdk(activity, DEFAULT_GAME_ID, testMode, () -> {
-            loadAndShowInterstitialInternal(activity, placementId, call, true);
+        initSdk(activity, gameId, testMode, () -> {
+            List<String> candidates = buildCandidateList(requestedPlacement, new String[]{"BP_Interstitial_Android", "Interstitial_Android", "video", "interstitial"});
+            tryLoadAndShowInterstitialCandidates(activity, candidates, 0, call);
         }, () -> {
             call.resolve(new JSObject().put("shown", false).put("error", "Not initialized"));
         });
     }
 
-    private void loadAndShowInterstitialInternal(Activity activity, String placementId, PluginCall call, boolean allowFallback) {
-        UnityAds.load(placementId, new IUnityAdsLoadListener() {
+    private void tryLoadAndShowInterstitialCandidates(Activity activity, List<String> candidates, int index, PluginCall call) {
+        if (index >= candidates.size()) {
+            Log.w(TAG, "All interstitial placement candidates failed to load");
+            call.resolve(new JSObject().put("shown", false).put("error", "No fill across candidate placements"));
+            return;
+        }
+
+        final String placement = candidates.get(index);
+        Log.d(TAG, "Loading interstitial: " + placement + " (" + (index + 1) + "/" + candidates.size() + ")");
+
+        UnityAds.load(placement, new IUnityAdsLoadListener() {
             @Override
             public void onUnityAdsAdLoaded(String s) {
                 activity.runOnUiThread(() -> {
-                    UnityAds.show(activity, placementId, new UnityAdsShowOptions(), new IUnityAdsShowListener() {
+                    UnityAds.show(activity, placement, new UnityAdsShowOptions(), new IUnityAdsShowListener() {
                         @Override
                         public void onUnityAdsShowFailure(String pId, UnityAds.UnityAdsShowError error, String message) {
                             Log.w(TAG, "Interstitial show failed: " + message);
-                            call.resolve(new JSObject().put("shown", false));
+                            call.resolve(new JSObject().put("shown", false).put("error", message));
                         }
 
                         @Override
@@ -292,19 +369,16 @@ public class UnityAdsPlugin extends Plugin {
 
             @Override
             public void onUnityAdsFailedToLoad(String s, UnityAds.UnityAdsLoadError error, String message) {
-                Log.w(TAG, "Interstitial load failed for " + placementId + ": " + message);
-                if (allowFallback && !"Interstitial_Android".equals(placementId)) {
-                    loadAndShowInterstitialInternal(activity, "Interstitial_Android", call, false);
-                } else {
-                    call.resolve(new JSObject().put("shown", false).put("error", message));
-                }
+                Log.w(TAG, "Interstitial placement " + placement + " failed: " + message);
+                activity.runOnUiThread(() -> tryLoadAndShowInterstitialCandidates(activity, candidates, index + 1, call));
             }
         });
     }
 
     @PluginMethod
     public void showRewarded(PluginCall call) {
-        final String placementId = call.getString("placementId", "Rewarded_Android");
+        final String gameId = call.getString("gameId", DEFAULT_GAME_ID);
+        final String requestedPlacement = call.getString("placementId", "BP_Rewarded_Android");
         final boolean testing = call.getBoolean("isTesting", true);
         testMode = testing;
 
@@ -314,19 +388,29 @@ public class UnityAdsPlugin extends Plugin {
             return;
         }
 
-        initSdk(activity, DEFAULT_GAME_ID, testMode, () -> {
-            loadAndShowRewardedInternal(activity, placementId, call, true);
+        initSdk(activity, gameId, testMode, () -> {
+            List<String> candidates = buildCandidateList(requestedPlacement, new String[]{"BP_Rewarded_Android", "Rewarded_Android", "rewardedVideo", "rewarded"});
+            tryLoadAndShowRewardedCandidates(activity, candidates, 0, call);
         }, () -> {
             call.reject("Unity Ads failed to initialize");
         });
     }
 
-    private void loadAndShowRewardedInternal(Activity activity, String placementId, PluginCall call, boolean allowFallback) {
-        UnityAds.load(placementId, new IUnityAdsLoadListener() {
+    private void tryLoadAndShowRewardedCandidates(Activity activity, List<String> candidates, int index, PluginCall call) {
+        if (index >= candidates.size()) {
+            Log.w(TAG, "All rewarded placement candidates failed to load");
+            call.reject("Load failed: No ad inventory available for rewarded placements");
+            return;
+        }
+
+        final String placement = candidates.get(index);
+        Log.d(TAG, "Loading rewarded ad: " + placement + " (" + (index + 1) + "/" + candidates.size() + ")");
+
+        UnityAds.load(placement, new IUnityAdsLoadListener() {
             @Override
             public void onUnityAdsAdLoaded(String s) {
                 activity.runOnUiThread(() -> {
-                    UnityAds.show(activity, placementId, new UnityAdsShowOptions(), new IUnityAdsShowListener() {
+                    UnityAds.show(activity, placement, new UnityAdsShowOptions(), new IUnityAdsShowListener() {
                         @Override
                         public void onUnityAdsShowFailure(String pId, UnityAds.UnityAdsShowError error, String message) {
                             Log.w(TAG, "Rewarded show failed: " + message);
@@ -350,7 +434,7 @@ public class UnityAdsPlugin extends Plugin {
                                 call.resolve(new JSObject().put("rewarded", true));
                             } else {
                                 Log.d(TAG, "Rewarded ad skipped or unfinished: " + state);
-                                call.resolve(new JSObject().put("rewarded", false));
+                                call.resolve(new JSObject().put("rewarded", false).put("reason", "SKIPPED"));
                             }
                         }
                     });
@@ -359,13 +443,22 @@ public class UnityAdsPlugin extends Plugin {
 
             @Override
             public void onUnityAdsFailedToLoad(String s, UnityAds.UnityAdsLoadError error, String message) {
-                Log.w(TAG, "Rewarded load failed for " + placementId + ": " + message);
-                if (allowFallback && !"Rewarded_Android".equals(placementId)) {
-                    loadAndShowRewardedInternal(activity, "Rewarded_Android", call, false);
-                } else {
-                    call.reject("Load failed: " + message);
-                }
+                Log.w(TAG, "Rewarded placement " + placement + " failed: " + message);
+                activity.runOnUiThread(() -> tryLoadAndShowRewardedCandidates(activity, candidates, index + 1, call));
             }
         });
+    }
+
+    private List<String> buildCandidateList(String primary, String[] fallbacks) {
+        Set<String> set = new LinkedHashSet<>();
+        if (primary != null && !primary.trim().isEmpty()) {
+            set.add(primary.trim());
+        }
+        for (String fb : fallbacks) {
+            if (fb != null && !fb.trim().isEmpty()) {
+                set.add(fb.trim());
+            }
+        }
+        return new ArrayList<>(set);
     }
 }

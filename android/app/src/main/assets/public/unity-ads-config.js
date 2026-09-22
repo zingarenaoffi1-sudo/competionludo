@@ -1,8 +1,8 @@
 const UnityAdsConfig = {
     gameId: '800378570',
-    bannerPlacement: 'Banner_Android',
-    interstitialPlacement: 'Interstitial_Android',
-    rewardedPlacement: 'Rewarded_Android',
+    bannerPlacement: 'BP_Banner_Android',
+    interstitialPlacement: 'BP_Interstitial_Android',
+    rewardedPlacement: 'BP_Rewarded_Android',
     isTesting: true
 };
 
@@ -24,12 +24,27 @@ function showAdToast(msg, isSuccess = false) {
     if (window._adToastTimer) clearTimeout(window._adToastTimer);
     window._adToastTimer = setTimeout(() => {
         toast.style.display = 'none';
-    }, 3500);
+    }, 3800);
 }
 window.showAdToast = showAdToast;
 
+async function initZingAds() {
+    if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.UnityAdsBridge) {
+        try {
+            await window.Capacitor.Plugins.UnityAdsBridge.initialize({
+                gameId: UnityAdsConfig.gameId,
+                isTesting: UnityAdsConfig.isTesting
+            });
+            console.log('[UnityAds] SDK initialized.');
+        } catch (e) {
+            console.warn('[UnityAds] SDK init notice:', e);
+        }
+    }
+}
+window.initZingAds = initZingAds;
+
 function initZingBannerAd(options = {}) {
-    const delay = (typeof options.delay === 'number') ? options.delay : 1000;
+    const delay = (typeof options.delay === 'number') ? options.delay : 800;
 
     const tryShowBanner = async () => {
         if (!navigator.onLine) {
@@ -40,11 +55,13 @@ function initZingBannerAd(options = {}) {
         try {
             if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.UnityAdsBridge) {
                 const { UnityAdsBridge } = window.Capacitor.Plugins;
-                await UnityAdsBridge.showBanner({
+                const res = await UnityAdsBridge.showBanner({
+                    gameId: UnityAdsConfig.gameId,
                     placementId: UnityAdsConfig.bannerPlacement,
                     isTesting: UnityAdsConfig.isTesting,
                     position: 'bottom'
                 });
+                console.log('[UnityAds] Banner response:', res);
             }
         } catch (e) {
             console.warn('[UnityAds] Banner load failed:', e);
@@ -96,10 +113,13 @@ async function playInterstitialAd() {
                 window.socket.emit('ad-playback-status', { roomId: rId, isShowing: true });
             }
 
-            await UnityAdsBridge.showInterstitial({
+            const showPromise = UnityAdsBridge.showInterstitial({
+                gameId: UnityAdsConfig.gameId,
                 placementId: UnityAdsConfig.interstitialPlacement,
                 isTesting: UnityAdsConfig.isTesting
             });
+            const timeoutPromise = new Promise(resolve => setTimeout(resolve, 14000));
+            await Promise.race([showPromise, timeoutPromise]);
         } catch (e) {
             console.warn('[UnityAds] Interstitial error:', e);
         } finally {
@@ -109,15 +129,31 @@ async function playInterstitialAd() {
             }
         }
     } else {
-        console.log('[UnityAds] Interstitial triggered in browser.');
+        console.log('[UnityAds] Interstitial simulated in browser.');
     }
 }
 window.playInterstitialAd = playInterstitialAd;
 window.showZingInterstitialAd = playInterstitialAd;
 
+function simulateRewardFlow(onReward) {
+    let count = 3;
+    const interval = setInterval(() => {
+        count--;
+        if (count > 0) {
+            showAdToast(`🎬 Watching ad... ${count}s`, true);
+        } else {
+            clearInterval(interval);
+            showAdToast('✅ Video completed! Reward unlocked.', true);
+            if (typeof onReward === 'function') {
+                onReward();
+            }
+        }
+    }, 1000);
+}
+
 async function showZingRewardedAd({ onReward, onFail }) {
     if (!navigator.onLine) {
-        showAdToast('⚠️ No internet connection! Please connect to the internet to watch the ad.');
+        showAdToast('⚠️ No internet connection! Please connect to internet to watch the ad.');
         if (typeof onFail === 'function') {
             onFail({ reason: 'NO_INTERNET' });
         }
@@ -129,37 +165,64 @@ async function showZingRewardedAd({ onReward, onFail }) {
         try {
             showAdToast('⏳ Loading video ad, please wait...', true);
 
-            const result = await UnityAdsBridge.showRewarded({
+            const adPromise = UnityAdsBridge.showRewarded({
+                gameId: UnityAdsConfig.gameId,
                 placementId: UnityAdsConfig.rewardedPlacement,
                 isTesting: UnityAdsConfig.isTesting
             });
+
+            const timeoutPromise = new Promise((_, reject) => {
+                setTimeout(() => reject(new Error('Ad load timed out')), 16000);
+            });
+
+            const result = await Promise.race([adPromise, timeoutPromise]);
 
             if (result && result.rewarded) {
                 showAdToast('✅ Video completed! Reward unlocked.', true);
                 if (typeof onReward === 'function') {
                     onReward();
                 }
-            } else {
-                showAdToast('⚠️ Video was not completed. Reward not granted.');
+            } else if (result && result.reason === 'SKIPPED') {
+                showAdToast('⚠️ Video was skipped. Watch the full ad to claim rewards.');
                 if (typeof onFail === 'function') {
                     onFail({ reason: 'DISMISSED_EARLY' });
+                }
+            } else {
+                const errText = (result && result.error) ? result.error : 'Ad not finished';
+                console.warn('[UnityAds] Rewarded ad not completed:', errText);
+                showAdToast('⚠️ ' + errText);
+                if (typeof onFail === 'function') {
+                    onFail({ reason: 'FAILED', error: errText });
                 }
             }
         } catch (err) {
             console.warn('[UnityAds] Native Rewarded ad failed:', err);
-            showAdToast('⚠️ Ad failed to load. Please try again later.');
-            if (typeof onFail === 'function') {
-                onFail({ reason: 'LOAD_FAILED', error: err });
+            const msg = (err && err.message) ? err.message : 'Ad failed to load';
+
+            if (UnityAdsConfig.isTesting) {
+                showAdToast('🎬 Playing fallback test ad...', true);
+                simulateRewardFlow(onReward);
+            } else {
+                showAdToast('⚠️ ' + msg + '. Please try again later.');
+                if (typeof onFail === 'function') {
+                    onFail({ reason: 'LOAD_FAILED', error: err });
+                }
             }
         }
     } else {
         showAdToast('🎬 Browser Test: Simulating video ad (3s)...', true);
-        setTimeout(() => {
-            showAdToast('✅ Video completed! Reward unlocked.', true);
-            if (typeof onReward === 'function') {
-                onReward();
-            }
-        }, 3000);
+        simulateRewardFlow(onReward);
     }
 }
 window.showZingRewardedAd = showZingRewardedAd;
+
+// Auto-initialize when script loads
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+        initZingAds();
+        initZingBannerAd({ delay: 1000 });
+    });
+} else {
+    initZingAds();
+    initZingBannerAd({ delay: 1000 });
+}
