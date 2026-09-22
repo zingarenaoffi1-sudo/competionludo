@@ -29,9 +29,9 @@ def configure_gradle_release():
             app = app.replace("repositories {", "repositories {\n    mavenCentral()\n    google()")
         
         # Read environment variables for signing if set, else defaults
-        k_pass = os.environ.get("KEYSTORE_PASSWORD", "android")
-        k_alias = os.environ.get("KEY_ALIAS", "androiddebugkey")
-        k_keypass = os.environ.get("KEY_PASSWORD", "android")
+        k_pass = (os.environ.get("KEYSTORE_PASSWORD") or "").strip() or "android"
+        k_alias = (os.environ.get("KEY_ALIAS") or "").strip() or "androiddebugkey"
+        k_keypass = (os.environ.get("KEY_PASSWORD") or "").strip() or "android"
 
         # Update signing config cleanly
         if "signingConfigs {" in app:
