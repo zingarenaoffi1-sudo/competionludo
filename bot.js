@@ -99,9 +99,18 @@ function botUnlockTokenViaAd() {
         setTimeout(() => startBotMatchConfirmed(true), 50);
     }
 }
-function botStartNormally() {
+async function botStartNormally() {
     const modal = document.getElementById("bot-fast-track-modal");
     if (modal) modal.classList.add("hidden");
+    if (typeof playInterstitialAd === 'function') {
+        try {
+            await playInterstitialAd();
+        } catch (e) {}
+    } else if (typeof window.showZingInterstitialAd === 'function') {
+        try {
+            await window.showZingInterstitialAd();
+        } catch (e) {}
+    }
     setTimeout(() => startBotMatchConfirmed(false), 50);
 }
 function startBotMatchConfirmed(unlockOneToken = false) {
@@ -264,6 +273,23 @@ function rollDice() {
         cube.style.transform = 'rotateX(0deg) rotateY(0deg)';
         faces[0].innerText = diceFaces[currentDiceValue];
         faces[0].style.color = currentDiceValue === 6 ? "#ff3333" : "#111";
+
+        if (currentDiceValue === 6) {
+            botConsecutiveSixes = (botConsecutiveSixes || 0) + 1;
+        } else {
+            botConsecutiveSixes = 0;
+        }
+
+        if (botConsecutiveSixes >= 3) {
+            botConsecutiveSixes = 0;
+            if (typeof showToast === 'function') {
+                showToast("⚠️ 3 Consecutive Sixes! Turn passed.");
+            }
+            clearBotWatchdog();
+            setTimeout(() => switchTurn(false), 800);
+            return;
+        }
+
         gameState = 'WAITING_FOR_MOVE';
         checkAvailableMoves();
     }, 650);
@@ -449,6 +475,7 @@ function switchTurn(extraTurn) {
     if (activePlayers.length === 0) return;
     if (!extraTurn) {
         currentPlayerIndex = (currentPlayerIndex + 1) % activePlayers.length;
+        botConsecutiveSixes = 0;
         consecutiveSixes = 0;
     } else {
         currentPlayerIndex = currentPlayerIndex % activePlayers.length;

@@ -119,28 +119,59 @@ function showJoinRoomInput() {
     document.getElementById('custom-room-lobby').classList.add('hidden');
 }
 
+let isMatchmakingActive = false;
+let isCreatingRoom = false;
+
 function backToOnlineMain() {
+    isMatchmakingActive = false;
+    isCreatingRoom = false;
     document.getElementById('online-main-options').classList.remove('hidden');
     document.getElementById('quick-match-sub').classList.add('hidden');
     document.getElementById('create-room-sub').classList.add('hidden');
     document.getElementById('join-room-sub').classList.add('hidden');
     document.getElementById('matchmaking-sub').classList.add('hidden');
     document.getElementById('custom-room-lobby').classList.add('hidden');
+    const dispEl = document.getElementById('room-created-display');
+    if (dispEl) dispEl.innerText = '';
+    const qmDisp = document.getElementById('quick-match-display');
+    if (qmDisp) qmDisp.innerText = '';
 }
 
 async function findOnlineMatch(playersCount) {
-    // Alternate ad schedule: 1st click shows ad, 2nd skipped, 3rd shows ad, 4th skipped, etc.
-    const shouldShowAd = (quickMatchAdCounter % 2 === 0);
-    quickMatchAdCounter++;
-    localStorage.setItem('quickMatchAdCounter', String(quickMatchAdCounter));
+    if (isMatchmakingActive) return;
+    isMatchmakingActive = true;
 
-    const statusEl = document.getElementById('quick-match-display');
-    if (statusEl) statusEl.innerText = shouldShowAd ? "Loading ad..." : "Connecting...";
+    const qmDisplay = document.getElementById('quick-match-display');
+    if (qmDisplay) qmDisplay.innerText = "⏳ Loading sponsored ad...";
 
-    if (shouldShowAd && typeof playInterstitialAd === 'function') {
-        await playInterstitialAd();
+    const qmSub = document.getElementById('quick-match-sub');
+    if (qmSub) {
+        qmSub.querySelectorAll('button').forEach(b => { b.disabled = true; b.style.opacity = '0.6'; });
     }
 
+    // 1. Play interstitial ad FIRST as requested
+    if (typeof playInterstitialAd === 'function') {
+        try {
+            await playInterstitialAd();
+        } catch (e) {
+            console.warn('[Ad] Interstitial error:', e);
+        }
+    } else if (typeof window.showZingInterstitialAd === 'function') {
+        try {
+            await window.showZingInterstitialAd();
+        } catch (e) {
+            console.warn('[Ad] Interstitial error:', e);
+        }
+    }
+
+    if (qmSub) {
+        qmSub.querySelectorAll('button').forEach(b => { b.disabled = false; b.style.opacity = '1'; });
+    }
+
+    // Check if user navigated away while ad was playing
+    if (!isMatchmakingActive) return;
+
+    // 2. ONLY AFTER ad completes or closes, switch UI to searching screen
     document.getElementById('quick-match-sub').classList.add('hidden');
     document.getElementById('matchmaking-sub').classList.remove('hidden');
 
@@ -149,15 +180,32 @@ async function findOnlineMatch(playersCount) {
         matchText.innerText = `Searching for ${playersCount} Players (${currentOnlineGameMode.toUpperCase()})...`;
     }
 
+    // 3. Connect to server & emit find-match
     const s = ensureSocket();
-    s.emit('find-match', {
-        playersRequired: playersCount,
-        gameMode: currentOnlineGameMode,
-        playerName: getMyPlayerName()
-    });
+    const sendFind = () => {
+        if (!isMatchmakingActive) return;
+        s.emit('find-match', {
+            playersRequired: playersCount,
+            gameMode: currentOnlineGameMode,
+            playerName: getMyPlayerName()
+        });
+    };
+
+    if (s.connected) {
+        sendFind();
+    } else {
+        if (matchText) matchText.innerText = "Connecting to server...";
+        s.once('connect', () => {
+            if (isMatchmakingActive) {
+                if (matchText) matchText.innerText = `Searching for ${playersCount} Players (${currentOnlineGameMode.toUpperCase()})...`;
+                sendFind();
+            }
+        });
+    }
 }
 
 function cancelOnlineMatchmaking() {
+    isMatchmakingActive = false;
     if (socket) {
         socket.emit('cancel-match');
     }
@@ -165,19 +213,63 @@ function cancelOnlineMatchmaking() {
 }
 
 async function createPrivateRoom(playersCount) {
-    const statusEl = document.getElementById('room-created-display');
-    if (statusEl) statusEl.innerText = "Creating private room...";
+    if (isCreatingRoom) return;
+    isCreatingRoom = true;
 
-    if (typeof playInterstitialAd === 'function') {
-        await playInterstitialAd();
+    const statusEl = document.getElementById('room-created-display');
+    if (statusEl) statusEl.innerText = "⏳ Loading sponsored ad...";
+
+    const crSub = document.getElementById('create-room-sub');
+    if (crSub) {
+        crSub.querySelectorAll('button').forEach(b => { b.disabled = true; b.style.opacity = '0.6'; });
     }
 
+    // 1. Play interstitial ad FIRST as requested
+    if (typeof playInterstitialAd === 'function') {
+        try {
+            await playInterstitialAd();
+        } catch (e) {
+            console.warn('[Ad] Interstitial error:', e);
+        }
+    } else if (typeof window.showZingInterstitialAd === 'function') {
+        try {
+            await window.showZingInterstitialAd();
+        } catch (e) {
+            console.warn('[Ad] Interstitial error:', e);
+        }
+    }
+
+    if (crSub) {
+        crSub.querySelectorAll('button').forEach(b => { b.disabled = false; b.style.opacity = '1'; });
+    }
+
+    if (!isCreatingRoom) return;
+
+    // 2. ONLY AFTER ad completes or closes, request room creation from server
+    if (statusEl) statusEl.innerText = "⚡ Generating Room ID...";
+
     const s = ensureSocket();
-    s.emit('create-room', {
-        maxPlayers: playersCount,
-        gameMode: currentOnlineGameMode,
-        playerName: getMyPlayerName()
-    });
+    const sendCreate = () => {
+        if (statusEl) statusEl.innerText = "⚡ Generating Room ID...";
+        s.emit('create-room', {
+            maxPlayers: playersCount,
+            gameMode: currentOnlineGameMode,
+            playerName: getMyPlayerName()
+        });
+    };
+
+    if (s.connected) {
+        sendCreate();
+    } else {
+        if (statusEl) statusEl.innerText = "Connecting to server, please wait...";
+        s.once('connect', sendCreate);
+        setTimeout(() => {
+            if (isCreatingRoom && !currentOnlineRoomId && statusEl && statusEl.innerText.includes("Connecting")) {
+                statusEl.innerText = "⚠️ Server connection timeout. Tap to retry.";
+                isCreatingRoom = false;
+            }
+        }, 8000);
+    }
 }
 
 function joinPrivateRoom() {
@@ -188,10 +280,20 @@ function joinPrivateRoom() {
         return;
     }
     const s = ensureSocket();
-    s.emit('join-room', {
-        roomId: roomId,
-        playerName: getMyPlayerName()
-    });
+    if (s.connected) {
+        s.emit('join-room', {
+            roomId: roomId,
+            playerName: getMyPlayerName()
+        });
+    } else {
+        showToast("Connecting to server, please wait...");
+        s.once('connect', () => {
+            s.emit('join-room', {
+                roomId: roomId,
+                playerName: getMyPlayerName()
+            });
+        });
+    }
 }
 
 function copyCustomRoomId() {
@@ -221,6 +323,10 @@ function leaveCustomRoom() {
     window.currentOnlineRoomId = "";
     backToOnlineMain();
 }
+
+window.cancelOnlineMatchmaking = cancelOnlineMatchmaking;
+window.leaveCustomRoom = leaveCustomRoom;
+window.backToOnlineMain = backToOnlineMain;
 
 function renderCustomRoomLobby(data) {
     currentRoomData = data;
@@ -327,7 +433,26 @@ function getColorHex(color) {
 let onlineTurnChanceCount = 0;
 
 function setupSocketListeners() {
+    socket.on('connect', () => {
+        console.log('[Socket] Connected to server! Socket ID:', socket.id);
+        const turnText = document.getElementById('turn-text');
+        if (turnText && turnText.innerText === 'WAITING TO CONNECT...') {
+            turnText.innerText = 'ONLINE - READY TO PLAY';
+        }
+    });
+
+    socket.on('disconnect', (reason) => {
+        console.log('[Socket] Disconnected from server:', reason);
+        isMatchmakingActive = false;
+        isCreatingRoom = false;
+    });
+
+    socket.on('connect_error', (err) => {
+        console.warn('[Socket] Connection error:', err.message);
+    });
+
     socket.on('room-created', (data) => {
+        isCreatingRoom = false;
         isRoomHost = true;
         myAssignedColor = data.color;
         window.myColor = myAssignedColor;
@@ -335,6 +460,7 @@ function setupSocketListeners() {
     });
 
     socket.on('joined-success', (data) => {
+        isCreatingRoom = false;
         isRoomHost = false;
         myAssignedColor = data.color;
         window.myColor = myAssignedColor;
@@ -350,6 +476,7 @@ function setupSocketListeners() {
     });
 
     socket.on('room-closed', (data) => {
+        isCreatingRoom = false;
         showToast(data.message || 'Room was closed.');
         currentOnlineRoomId = "";
         window.currentOnlineRoomId = "";
@@ -357,6 +484,10 @@ function setupSocketListeners() {
     });
 
     socket.on('room-error', (data) => {
+        isCreatingRoom = false;
+        isMatchmakingActive = false;
+        const statusEl = document.getElementById('room-created-display');
+        if (statusEl) statusEl.innerText = "";
         const modal = document.getElementById('room-error-modal');
         const text = document.getElementById('room-error-text');
         if (text) text.innerText = data.message || 'Room error occurred.';
@@ -364,16 +495,39 @@ function setupSocketListeners() {
     });
 
     socket.on('match-found', (data) => {
+        isMatchmakingActive = false;
         currentOnlineRoomId = data.roomId;
         window.currentOnlineRoomId = data.roomId;
         myAssignedColor = data.color;
         window.myColor = myAssignedColor;
     });
 
+    socket.on('match-cancelled', () => {
+        isMatchmakingActive = false;
+    });
+
     socket.on('start-online-game', (data) => {
+        isMatchmakingActive = false;
+        isCreatingRoom = false;
         onlineTurnChanceCount = 0;
+
         const modal = document.getElementById('online-modal');
-        if (modal) modal.classList.add('hidden');
+        if (modal) {
+            modal.classList.add('hidden');
+            modal.style.display = 'none';
+        }
+
+        // Reset all online sub panels
+        const mainOpts = document.getElementById('online-main-options');
+        if (mainOpts) mainOpts.classList.remove('hidden');
+        ['quick-match-sub', 'create-room-sub', 'join-room-sub', 'matchmaking-sub', 'custom-room-lobby'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.classList.add('hidden');
+        });
+        const dispEl = document.getElementById('room-created-display');
+        if (dispEl) dispEl.innerText = '';
+        const qmDisp = document.getElementById('quick-match-display');
+        if (qmDisp) qmDisp.innerText = '';
 
         const hud = document.getElementById('online-hud-bar');
         if (hud) hud.style.display = 'flex';
@@ -406,6 +560,13 @@ function setupSocketListeners() {
         }
         soundDice.currentTime = 0;
         soundDice.play().catch(() => {});
+
+        if (data.penaltyThreeSixes) {
+            showToast("⚠️ 3 Consecutive Sixes! Turn passed.");
+            gameState = 'WAITING_FOR_ROLL';
+            return;
+        }
+
         gameState = 'WAITING_FOR_MOVE';
         startTurnTimer();
         if (color === myAssignedColor) {

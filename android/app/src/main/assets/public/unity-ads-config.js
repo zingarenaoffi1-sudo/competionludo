@@ -1,21 +1,12 @@
-// Unity Ads Configuration & Bridge Controller
 const UnityAdsConfig = {
     gameId: '800378570',
-    bannerPlacement: 'BP_Banner_Android',
-    interstitialPlacement: 'BP_Interstitial_Android',
-    rewardedPlacement: 'BP_Rewarded_Android',
-    isTesting: true // Enabled so Unity Ads reliably delivers ads in test & live APK builds
+    bannerPlacement: 'Banner_Android',
+    interstitialPlacement: 'Interstitial_Android',
+    rewardedPlacement: 'Rewarded_Android',
+    isTesting: true
 };
 
 window.UnityAdsConfig = UnityAdsConfig;
-// Keep AdMobConfig alias for backwards compatibility
-window.AdMobConfig = {
-    appId: UnityAdsConfig.gameId,
-    bannerAdId: UnityAdsConfig.bannerPlacement,
-    interstitialAdId: UnityAdsConfig.interstitialPlacement,
-    rewardedAdId: UnityAdsConfig.rewardedPlacement,
-    isTesting: UnityAdsConfig.isTesting
-};
 
 function showAdToast(msg, isSuccess = false) {
     let toast = document.getElementById('ad-toast-msg');
@@ -49,22 +40,14 @@ function initZingBannerAd(options = {}) {
         try {
             if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.UnityAdsBridge) {
                 const { UnityAdsBridge } = window.Capacitor.Plugins;
-                const res = await UnityAdsBridge.showBanner({
+                await UnityAdsBridge.showBanner({
                     placementId: UnityAdsConfig.bannerPlacement,
-                    isTesting: UnityAdsConfig.isTesting
+                    isTesting: UnityAdsConfig.isTesting,
+                    position: 'bottom'
                 });
-                if (res && res.loaded === false) {
-                    const el = document.getElementById('test-banner');
-                    if (el && navigator.onLine) el.style.display = 'flex';
-                }
-            } else {
-                const el = document.getElementById('test-banner');
-                if (el && navigator.onLine) el.style.display = 'flex';
             }
         } catch (e) {
-            console.warn('[UnityAds] Banner skipped, showing fallback:', e);
-            const el = document.getElementById('test-banner');
-            if (el && navigator.onLine) el.style.display = 'flex';
+            console.warn('[UnityAds] Banner load failed:', e);
         }
     };
 
@@ -95,8 +78,6 @@ async function hideZingBannerAd() {
             await UnityAdsBridge.hideBanner();
         }
     } catch (e) {}
-    const el = document.getElementById('test-banner');
-    if (el) el.style.display = 'none';
 }
 
 window.initZingBannerAd = initZingBannerAd;
@@ -104,7 +85,6 @@ window.hideZingBannerAd = hideZingBannerAd;
 
 async function playInterstitialAd() {
     if (!navigator.onLine) {
-        console.log('[UnityAds] Offline: Skipping interstitial ad.');
         return;
     }
 
@@ -121,7 +101,7 @@ async function playInterstitialAd() {
                 isTesting: UnityAdsConfig.isTesting
             });
         } catch (e) {
-            console.warn('[UnityAds] Interstitial failed:', e);
+            console.warn('[UnityAds] Interstitial error:', e);
         } finally {
             if (window.socket && (window.currentOnlineRoomId || window.currentRoomId)) {
                 const rId = window.currentOnlineRoomId || window.currentRoomId;
@@ -129,7 +109,7 @@ async function playInterstitialAd() {
             }
         }
     } else {
-        console.log('[UnityAds Browser] Interstitial ad triggered.');
+        console.log('[UnityAds] Interstitial triggered in browser.');
     }
 }
 window.playInterstitialAd = playInterstitialAd;
@@ -137,9 +117,9 @@ window.showZingInterstitialAd = playInterstitialAd;
 
 async function showZingRewardedAd({ onReward, onFail }) {
     if (!navigator.onLine) {
-        showAdToast('⚠️ No internet connection! Please turn on internet to watch video.');
+        showAdToast('⚠️ No internet connection! Please connect to the internet to watch the ad.');
         if (typeof onFail === 'function') {
-            onFail({ reason: 'NO_INTERNET', message: 'No internet connection' });
+            onFail({ reason: 'NO_INTERNET' });
         }
         return;
     }
@@ -155,31 +135,27 @@ async function showZingRewardedAd({ onReward, onFail }) {
             });
 
             if (result && result.rewarded) {
-                showAdToast('🎉 Video completed! 100 Tokens credited to your account.', true);
+                showAdToast('✅ Video completed! Reward unlocked.', true);
                 if (typeof onReward === 'function') {
                     onReward();
                 }
             } else {
-                showAdToast('⚠️ Video was not completed! Tokens were not added.');
+                showAdToast('⚠️ Video was not completed. Reward not granted.');
                 if (typeof onFail === 'function') {
-                    onFail({ reason: 'DISMISSED_EARLY', message: 'Video dismissed early' });
+                    onFail({ reason: 'DISMISSED_EARLY' });
                 }
             }
         } catch (err) {
-            console.warn('[UnityAds] Native Rewarded load issue, playing fallback stream:', err);
-            // If native ad network had temporary load timeout, play smooth fallback 4s video so user always gets token!
-            showAdToast('🎬 Video playing... Please wait 4s', true);
-            setTimeout(() => {
-                showAdToast('🎉 Video completed! 100 Tokens credited to your account.', true);
-                if (typeof onReward === 'function') {
-                    onReward();
-                }
-            }, 4000);
+            console.warn('[UnityAds] Native Rewarded ad failed:', err);
+            showAdToast('⚠️ Ad failed to load. Please try again later.');
+            if (typeof onFail === 'function') {
+                onFail({ reason: 'LOAD_FAILED', error: err });
+            }
         }
     } else {
-        showAdToast('🎬 Video playing... Please wait 3s', true);
+        showAdToast('🎬 Browser Test: Simulating video ad (3s)...', true);
         setTimeout(() => {
-            showAdToast('🎉 Video completed! 100 Tokens credited.', true);
+            showAdToast('✅ Video completed! Reward unlocked.', true);
             if (typeof onReward === 'function') {
                 onReward();
             }

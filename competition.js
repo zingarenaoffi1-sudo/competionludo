@@ -656,10 +656,35 @@ function renderLeaderboard(list) {
         `;
     });
 }
-function joinMatch(stake, playerCount) {
+async function joinMatch(stake, playerCount) {
     if (!currentUser || currentUser.tokens < stake) {
+        showToast("⚠️ Insufficient tokens! Watch video ads to earn tokens.");
         return;
     }
+
+    const matchmakingSection = document.getElementById("matchmaking-section");
+    if (matchmakingSection) matchmakingSection.classList.remove("hidden");
+    const statusText = document.getElementById("matchmaking-status-text");
+    if (statusText) statusText.innerText = "⏳ Loading sponsored ad...";
+
+    // 1. Play interstitial ad FIRST
+    if (typeof playInterstitialAd === 'function') {
+        try {
+            await playInterstitialAd();
+        } catch (e) {
+            console.warn('[Ad] Interstitial error:', e);
+        }
+    } else if (typeof window.showZingInterstitialAd === 'function') {
+        try {
+            await window.showZingInterstitialAd();
+        } catch (e) {
+            console.warn('[Ad] Interstitial error:', e);
+        }
+    }
+
+    if (statusText) statusText.innerText = `Searching for ${playerCount} Players (Stake: ${stake})...`;
+
+    // 2. ONLY AFTER ad completes or closes, request matchmaking
     socket.emit("request-matchmaking", {
         userId: currentUser.uid,
         name: currentUser.displayName,

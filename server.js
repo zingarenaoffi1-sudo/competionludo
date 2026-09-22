@@ -304,7 +304,10 @@ function switchTurn(roomId, gotExtraTurn) {
     let room = rooms[roomId];
     if (!room || !room.gameState) return;
     let gs = room.gameState;
-    if (!gotExtraTurn) gs.turnIndex = (gs.turnIndex + 1) % gs.activePlayers.length;
+    if (!gotExtraTurn) {
+        gs.turnIndex = (gs.turnIndex + 1) % gs.activePlayers.length;
+        gs.consecutiveSixes = 0;
+    }
     gs.state = 'WAITING_FOR_ROLL';
     io.to(roomId).emit('turn-updated', { 
         currentColor: gs.activePlayers[gs.turnIndex], 
@@ -636,10 +639,14 @@ io.on('connection', (socket) => {
         socket.emit('match-cancelled');
     });
     socket.on('create-room', (data) => {
-        const max = parseInt(data.maxPlayers, 10);
+        data = data || {};
+        const max = parseInt(data.maxPlayers, 10) || 2;
         const gameMode = data.gameMode || 'classic';
         const playerName = (data && data.playerName) ? String(data.playerName).trim().slice(0, 15) : 'Host';
-        if (!VALID_COUNTS.includes(max)) return;
+        if (!VALID_COUNTS.includes(max)) {
+            socket.emit('room-error', { message: 'Please select 2, 3, or 4 players.' });
+            return;
+        }
         const roomId = 'ROOM_' + crypto.randomInt(1000, 9999);
         socket.join(roomId);
         rooms[roomId] = {
@@ -650,6 +657,7 @@ io.on('connection', (socket) => {
             players: [{ id: socket.id, color: 'red', name: playerName, isHost: true }],
             active: false
         };
+        console.log(`[Room] Created private room: ${roomId} by ${playerName} (${socket.id}) for ${max} players`);
         socket.emit('room-created', {
             roomId: roomId,
             color: 'red',
@@ -739,6 +747,25 @@ io.on('connection', (socket) => {
         if (!playerObj || playerObj.color !== currentColor) return;
         if (gs.state !== 'WAITING_FOR_ROLL') return;
         gs.diceValue = secureDiceRoll();
+        if (gs.diceValue === 6) {
+            gs.consecutiveSixes = (gs.consecutiveSixes || 0) + 1;
+        } else {
+            gs.consecutiveSixes = 0;
+        }
+
+        if (gs.consecutiveSixes >= 3) {
+            gs.consecutiveSixes = 0;
+            gs.state = 'WAITING_FOR_ROLL';
+            io.to(data.roomId).emit('remote-dice-rolled', {
+                diceValue: 6,
+                playerIndex: gs.turnIndex,
+                color: currentColor,
+                penaltyThreeSixes: true
+            });
+            setTimeout(() => switchTurn(data.roomId, false), 1200);
+            return;
+        }
+
         gs.state = 'WAITING_FOR_MOVE';
         io.to(data.roomId).emit('remote-dice-rolled', {
             diceValue: gs.diceValue,

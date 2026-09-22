@@ -30,48 +30,6 @@ body {
     min-height: 100vh; 
     overflow-x: hidden; 
 }
-.dummy-banner {
-    position: fixed;
-    top: 0; 
-    left: 50%; 
-    transform: translateX(-50%);
-    width: 320px; 
-    height: 48px;
-    background: linear-gradient(90deg, #ffd700, #ff9900); 
-    color: #111;
-    display: none; 
-    align-items: center; 
-    justify-content: space-between;
-    padding: 0 12px;
-    font-weight: 900; 
-    font-size: 12px;
-    letter-spacing: 0.5px;
-    z-index: 2000; 
-    border: 2px solid #222; 
-    border-top: none;
-    border-bottom-left-radius: 10px; 
-    border-bottom-right-radius: 10px;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.6);
-}
-.banner-close-btn {
-    background: rgba(0, 0, 0, 0.2);
-    border: none;
-    color: #111;
-    font-size: 13px;
-    font-weight: 900;
-    width: 22px;
-    height: 22px;
-    border-radius: 50%;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: background 0.2s;
-}
-.banner-close-btn:hover {
-    background: rgba(0, 0, 0, 0.4);
-    color: #fff;
-}
 #game-wrapper { 
     width: 100%; 
     max-width: 440px; 

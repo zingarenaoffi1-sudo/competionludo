@@ -7,10 +7,6 @@
     <link rel="stylesheet" href="competition-style.css">
 </head>
 <body style="margin: 0; background: #080d1a;">
-    <div id="test-banner" class="dummy-banner">
-        <span>📢 AdMob Test Banner (320x50)</span>
-        <button class="banner-close-btn" onclick="document.getElementById('test-banner').style.display='none'">✕</button>
-    </div>
     <div class="header">
         <div class="logo">👑 LUDO PRO ARENA</div>
     </div>
@@ -64,7 +60,7 @@
                 <a href="terms.html" style="color: #38bdf8; text-decoration: underline;">Terms</a> and 
                 <a href="privacy.html" style="color: #38bdf8; text-decoration: underline;">Privacy Policy</a>.
             </p>
-            <button class="menu-btn" onclick="LudoSplash.navigate('index.html', 'MAIN LOBBY')" style="width: 100%;">Back to Main Menu</button>
+            <button class="menu-btn" onclick="window.location.href='index.html'" style="width: 100%;">Back to Main Menu</button>
             <div style="display: flex; justify-content: center; align-items: center; gap: 12px; margin-top: 24px; font-size: 11px; flex-wrap: wrap;">
                 <a href="privacy.html" style="color: #94a3b8; text-decoration: none;">Privacy Policy</a>
                 <span style="color: #475569;">&bull;</span>
@@ -280,7 +276,7 @@
             <button class="ultra-roll-btn" onclick="window.location.reload()" style="width: 100%; margin-bottom: 10px;">Return to Dashboard</button>
         </div>
     </div>
-    <script src="admob-config.js"></script>
+    <script src="unity-ads-config.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             if (window.initZingBannerAd) {
@@ -311,7 +307,6 @@
         setTimeout(updateSpinBadge, 500);
         async function playInterstitialAd() {
             if (!navigator.onLine) {
-                console.log("[AdMob] Offline: Skipping interstitial ad.");
                 return;
             }
             if (typeof window.showZingInterstitialAd === 'function') {
@@ -327,6 +322,7 @@
     </script>
     <script src="how-to-play.js"></script>
     <script src="game-features.js"></script>
+    <script src="ludo-splash.js"></script>
     <script src="ludo-music.js"></script>
     <script src="ludo-back-handler.js"></script>
     <script>

@@ -96,10 +96,12 @@ async function playInterstitialAd() {
                 window.socket.emit('ad-playback-status', { roomId: rId, isShowing: true });
             }
 
-            await UnityAdsBridge.showInterstitial({
+            const showPromise = UnityAdsBridge.showInterstitial({
                 placementId: UnityAdsConfig.interstitialPlacement,
                 isTesting: UnityAdsConfig.isTesting
             });
+            const timeoutPromise = new Promise(resolve => setTimeout(resolve, 14000));
+            await Promise.race([showPromise, timeoutPromise]);
         } catch (e) {
             console.warn('[UnityAds] Interstitial error:', e);
         } finally {

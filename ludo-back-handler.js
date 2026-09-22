@@ -64,7 +64,81 @@ const LudoBackHandler = (function () {
             return;
         }
 
-        // Priority 3: Competition specific view transitions
+        // Priority 3: Victory Modal - back directly returns to Lobby
+        const victoryModal = document.getElementById('victory-modal');
+        if (victoryModal && !victoryModal.classList.contains('hidden') && victoryModal.style.display !== 'none') {
+            window.location.href = 'index.html';
+            return;
+        }
+
+        // Priority 4: Online Multiplayer Lobby Back Navigation
+        const onlineModal = document.getElementById('online-modal');
+        if (onlineModal && !onlineModal.classList.contains('hidden') && onlineModal.style.display !== 'none') {
+            const matchmakingSub = document.getElementById('matchmaking-sub');
+            if (matchmakingSub && !matchmakingSub.classList.contains('hidden')) {
+                if (typeof window.cancelOnlineMatchmaking === 'function') {
+                    window.cancelOnlineMatchmaking();
+                } else if (typeof window.backToOnlineMain === 'function') {
+                    window.backToOnlineMain();
+                }
+                return;
+            }
+
+            const customRoomLobby = document.getElementById('custom-room-lobby');
+            if (customRoomLobby && !customRoomLobby.classList.contains('hidden')) {
+                if (typeof window.leaveCustomRoom === 'function') {
+                    window.leaveCustomRoom();
+                } else if (typeof window.backToOnlineMain === 'function') {
+                    window.backToOnlineMain();
+                }
+                return;
+            }
+
+            const quickMatchSub = document.getElementById('quick-match-sub');
+            if (quickMatchSub && !quickMatchSub.classList.contains('hidden')) {
+                if (typeof window.backToOnlineMain === 'function') {
+                    window.backToOnlineMain();
+                }
+                return;
+            }
+
+            const createRoomSub = document.getElementById('create-room-sub');
+            if (createRoomSub && !createRoomSub.classList.contains('hidden')) {
+                if (typeof window.backToOnlineMain === 'function') {
+                    window.backToOnlineMain();
+                }
+                return;
+            }
+
+            const joinRoomSub = document.getElementById('join-room-sub');
+            if (joinRoomSub && !joinRoomSub.classList.contains('hidden')) {
+                if (typeof window.backToOnlineMain === 'function') {
+                    window.backToOnlineMain();
+                }
+                return;
+            }
+
+            // In main online menu -> go back to index.html
+            window.location.href = 'index.html';
+            return;
+        }
+
+        // Priority 5: Local & Bot Offline Pre-Game Modals
+        const fastTrackModal = document.getElementById('fast-track-modal') || document.getElementById('bot-fast-track-modal');
+        if (fastTrackModal && !fastTrackModal.classList.contains('hidden') && fastTrackModal.style.display !== 'none') {
+            fastTrackModal.classList.add('hidden');
+            const startupModal = document.getElementById('startup-modal');
+            if (startupModal) startupModal.classList.remove('hidden');
+            return;
+        }
+
+        const startupModal = document.getElementById('startup-modal');
+        if (startupModal && !startupModal.classList.contains('hidden') && startupModal.style.display !== 'none') {
+            window.location.href = 'index.html';
+            return;
+        }
+
+        // Priority 6: Competition specific view transitions
         if (currentMode === 'competition') {
             const leaderboard = document.getElementById('leaderboard-view');
             if (leaderboard && !leaderboard.classList.contains('hidden') && leaderboard.style.display !== 'none') {
@@ -136,7 +210,7 @@ const LudoBackHandler = (function () {
             primaryBg: "linear-gradient(135deg, #ef4444, #b91c1c)",
             primaryBorder: "#f87171",
             secondaryText: "Continue Playing",
-            onPrimary: function () {
+            onPrimary: async function () {
                 try {
                     if (window.ZingFeatures && window.ZingFeatures.leaveVoiceRoom) {
                         window.ZingFeatures.leaveVoiceRoom();
@@ -145,6 +219,18 @@ const LudoBackHandler = (function () {
                         window.socket.emit('leave-room', { roomId: window.currentOnlineRoomId });
                     }
                 } catch (e) {}
+
+                // Mid-game exit: Play Interstitial Ad
+                if (typeof playInterstitialAd === 'function') {
+                    try {
+                        await playInterstitialAd();
+                    } catch (err) {}
+                } else if (typeof window.showZingInterstitialAd === 'function') {
+                    try {
+                        await window.showZingInterstitialAd();
+                    } catch (err) {}
+                }
+
                 window.location.href = 'index.html';
             },
             onSecondary: closeModal
