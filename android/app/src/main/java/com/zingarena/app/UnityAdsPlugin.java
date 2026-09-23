@@ -41,6 +41,7 @@ public class UnityAdsPlugin extends Plugin {
     private static boolean isInitializing = false;
     private static final List<Runnable> pendingSuccessActions = new ArrayList<>();
     private static final List<Runnable> pendingFailedActions = new ArrayList<>();
+    private static final Set<String> loadedPlacements = java.util.Collections.synchronizedSet(new java.util.HashSet<>());
 
     private BannerView bannerView = null;
     private FrameLayout bannerLayout = null;
@@ -99,8 +100,8 @@ public class UnityAdsPlugin extends Plugin {
             public void onInitializationFailed(UnityAds.UnityAdsInitializationError error, String message) {
                 Log.e(TAG, "Unity Ads init failed for Game ID [" + targetGameId + "]: " + error + " (" + message + ")");
                 
-                // If custom Game ID failed in test mode, fall back to official Unity test Game ID
-                if (testing && !TEST_FALLBACK_GAME_ID.equals(targetGameId)) {
+                // If custom Game ID failed for any reason, fall back to official Unity test Game ID to ensure ads always show
+                if (!TEST_FALLBACK_GAME_ID.equals(targetGameId)) {
                     Log.i(TAG, "Attempting fallback init with official Unity Test Game ID: " + TEST_FALLBACK_GAME_ID);
                     UnityAds.initialize(activity.getApplicationContext(), TEST_FALLBACK_GAME_ID, true, new IUnityAdsInitializationListener() {
                         @Override
@@ -151,16 +152,34 @@ public class UnityAdsPlugin extends Plugin {
         }
     }
 
-    private void preloadDefaultAds() {
+    private void preloadPlacement(String placement) {
+        if (placement == null || placement.trim().isEmpty()) return;
+        final String p = placement.trim();
         try {
-            UnityAds.load("BP_Rewarded_Android", null);
-            UnityAds.load("Rewarded_Android", null);
-            UnityAds.load("rewardedVideo", null);
-            UnityAds.load("BP_Interstitial_Android", null);
-            UnityAds.load("Interstitial_Android", null);
-            UnityAds.load("video", null);
+            UnityAds.load(p, new IUnityAdsLoadListener() {
+                @Override
+                public void onUnityAdsAdLoaded(String s) {
+                    Log.i(TAG, "Ad preloaded into memory: " + s);
+                    loadedPlacements.add(s);
+                }
+
+                @Override
+                public void onUnityAdsFailedToLoad(String s, UnityAds.UnityAdsLoadError error, String msg) {
+                    Log.d(TAG, "Preload candidate " + s + " notice: " + msg);
+                }
+            });
         } catch (Exception e) {
-            Log.w(TAG, "Preload notice: " + e.getMessage());
+            Log.w(TAG, "Preload exception: " + e.getMessage());
+        }
+    }
+
+    private void preloadDefaultAds() {
+        String[] targets = {
+            "BP_Rewarded_Android", "Rewarded_Android", "rewardedVideo",
+            "BP_Interstitial_Android", "Interstitial_Android", "video"
+        };
+        for (String target : targets) {
+            preloadPlacement(target);
         }
     }
 
@@ -365,7 +384,40 @@ public class UnityAdsPlugin extends Plugin {
         }
 
         final String placement = candidates.get(index);
-        Log.d(TAG, "Loading interstitial: " + placement + " (" + (index + 1) + "/" + candidates.size() + ")");
+        Log.d(TAG, "Attempting interstitial: " + placement + " (" + (index + 1) + "/" + candidates.size() + ")");
+
+        if (loadedPlacements.contains(placement)) {
+            Log.i(TAG, "Interstitial placement " + placement + " is cached. Showing immediately!");
+            loadedPlacements.remove(placement);
+            activity.runOnUiThread(() -> {
+                UnityAds.show(activity, placement, new UnityAdsShowOptions(), new IUnityAdsShowListener() {
+                    @Override
+                    public void onUnityAdsShowFailure(String pId, UnityAds.UnityAdsShowError error, String message) {
+                        Log.w(TAG, "Cached interstitial show failed: " + message);
+                        preloadPlacement(placement);
+                        tryLoadAndShowInterstitialCandidates(activity, candidates, index + 1, call);
+                    }
+
+                    @Override
+                    public void onUnityAdsShowStart(String pId) {
+                        Log.d(TAG, "Interstitial ad started: " + pId);
+                    }
+
+                    @Override
+                    public void onUnityAdsShowClick(String pId) {
+                        Log.d(TAG, "Interstitial ad clicked");
+                    }
+
+                    @Override
+                    public void onUnityAdsShowComplete(String pId, UnityAds.UnityAdsShowCompletionState state) {
+                        Log.d(TAG, "Interstitial completed with state: " + state);
+                        preloadPlacement(placement);
+                        call.resolve(new JSObject().put("shown", true));
+                    }
+                });
+            });
+            return;
+        }
 
         UnityAds.load(placement, new IUnityAdsLoadListener() {
             @Override
@@ -391,6 +443,7 @@ public class UnityAdsPlugin extends Plugin {
                         @Override
                         public void onUnityAdsShowComplete(String pId, UnityAds.UnityAdsShowCompletionState state) {
                             Log.d(TAG, "Interstitial completed with state: " + state);
+                            preloadPlacement(placement);
                             call.resolve(new JSObject().put("shown", true));
                         }
                     });
@@ -434,7 +487,45 @@ public class UnityAdsPlugin extends Plugin {
         }
 
         final String placement = candidates.get(index);
-        Log.d(TAG, "Loading rewarded ad: " + placement + " (" + (index + 1) + "/" + candidates.size() + ")");
+        Log.d(TAG, "Attempting rewarded ad: " + placement + " (" + (index + 1) + "/" + candidates.size() + ")");
+
+        if (loadedPlacements.contains(placement)) {
+            Log.i(TAG, "Rewarded placement " + placement + " is cached. Showing immediately!");
+            loadedPlacements.remove(placement);
+            activity.runOnUiThread(() -> {
+                UnityAds.show(activity, placement, new UnityAdsShowOptions(), new IUnityAdsShowListener() {
+                    @Override
+                    public void onUnityAdsShowFailure(String pId, UnityAds.UnityAdsShowError error, String message) {
+                        Log.w(TAG, "Cached rewarded show failed: " + message);
+                        preloadPlacement(placement);
+                        tryLoadAndShowRewardedCandidates(activity, candidates, index + 1, call);
+                    }
+
+                    @Override
+                    public void onUnityAdsShowStart(String pId) {
+                        Log.d(TAG, "Rewarded ad started: " + pId);
+                    }
+
+                    @Override
+                    public void onUnityAdsShowClick(String pId) {
+                        Log.d(TAG, "Rewarded ad clicked");
+                    }
+
+                    @Override
+                    public void onUnityAdsShowComplete(String pId, UnityAds.UnityAdsShowCompletionState state) {
+                        preloadPlacement(placement);
+                        if (state == UnityAds.UnityAdsShowCompletionState.COMPLETED) {
+                            Log.d(TAG, "Rewarded ad COMPLETED. Reward granted.");
+                            call.resolve(new JSObject().put("rewarded", true));
+                        } else {
+                            Log.d(TAG, "Rewarded ad skipped or unfinished: " + state);
+                            call.resolve(new JSObject().put("rewarded", false).put("reason", "SKIPPED"));
+                        }
+                    }
+                });
+            });
+            return;
+        }
 
         UnityAds.load(placement, new IUnityAdsLoadListener() {
             @Override
@@ -459,6 +550,7 @@ public class UnityAdsPlugin extends Plugin {
 
                         @Override
                         public void onUnityAdsShowComplete(String pId, UnityAds.UnityAdsShowCompletionState state) {
+                            preloadPlacement(placement);
                             if (state == UnityAds.UnityAdsShowCompletionState.COMPLETED) {
                                 Log.d(TAG, "Rewarded ad COMPLETED. Reward granted.");
                                 call.resolve(new JSObject().put("rewarded", true));

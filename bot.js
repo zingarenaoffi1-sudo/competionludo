@@ -269,27 +269,9 @@ function rollDice() {
     gameState = 'ROLLING';
     let currentColor = activePlayers[currentPlayerIndex];
     let diceEl = document.getElementById(`dice-${currentColor}`);
-    if (!diceEl.innerHTML.includes('dice-cube')) {
-        diceEl.innerHTML = '<div class="dice-cube-container"><div class="dice-cube"><div class="dice-face front"></div><div class="dice-face back"></div><div class="dice-face right"></div><div class="dice-face left"></div><div class="dice-face top"></div><div class="dice-face bottom"></div></div></div>';
-        diceEl.style.background = 'transparent';
-        diceEl.style.border = 'none';
-        diceEl.style.boxShadow = 'none';
-    }
-    let cube = diceEl.querySelector('.dice-cube');
-    let faces = cube.querySelectorAll('.dice-face');
-    let rx = (Math.floor(Math.random() * 4) + 1) * 360;
-    let ry = (Math.floor(Math.random() * 4) + 1) * 360;
-    cube.style.transition = 'transform 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
-    cube.style.transform = `rotateX(${rx}deg) rotateY(${ry}deg)`;
-    soundDice.currentTime = 0;
-    soundDice.play().catch(e => {});
-    setTimeout(() => {
-        currentDiceValue = generateFairDiceRoll(currentColor);
-        cube.style.transition = 'none';
-        cube.style.transform = 'rotateX(0deg) rotateY(0deg)';
-        faces[0].innerText = diceFaces[currentDiceValue];
-        faces[0].style.color = currentDiceValue === 6 ? "#ff3333" : "#111";
+    currentDiceValue = generateFairDiceRoll(currentColor);
 
+    const onRollFinished = () => {
         if (currentDiceValue === 6) {
             botConsecutiveSixes = (botConsecutiveSixes || 0) + 1;
         } else {
@@ -308,7 +290,17 @@ function rollDice() {
 
         gameState = 'WAITING_FOR_MOVE';
         checkAvailableMoves();
-    }, 650);
+    };
+
+    if (window.LudoAnimations && window.LudoAnimations.animateDiceRoll) {
+        window.LudoAnimations.animateDiceRoll(diceEl, currentDiceValue, onRollFinished);
+    } else {
+        if (diceEl) {
+            diceEl.innerText = diceFaces[currentDiceValue];
+            diceEl.style.color = currentDiceValue === 6 ? "#ff3333" : "#111";
+        }
+        onRollFinished();
+    }
 }
 function checkAvailableMoves() {
     let currentColor = activePlayers[currentPlayerIndex];
@@ -402,6 +394,9 @@ function moveToken(color, tokenIndex) {
     let targetStep = token.step + currentDiceValue;
     function doHop(currentStep) {
         if (currentStep > targetStep) {
+            if (window.LudoAnimations && window.LudoAnimations.animateTokenLanding) {
+                window.LudoAnimations.animateTokenLanding(token);
+            }
             isMoving = false;
             let extraTurn = (currentDiceValue === 6 || targetStep === 56);
             let cutEnemy = checkCapture(token);
@@ -414,10 +409,17 @@ function moveToken(color, tokenIndex) {
             return;
         }
         token.step = currentStep;
-        renderTokenPosition(token);
-        soundMove.currentTime = 0;
-        soundMove.play().catch(e => {});
-        setTimeout(() => doHop(currentStep + 1), 200);
+        if (window.LudoAnimations && window.LudoAnimations.animateTokenHopStep) {
+            window.LudoAnimations.animateTokenHopStep(token, renderTokenPosition, () => {
+                soundMove.currentTime = 0;
+                soundMove.play().catch(e => {});
+            });
+        } else {
+            renderTokenPosition(token);
+            soundMove.currentTime = 0;
+            soundMove.play().catch(e => {});
+        }
+        setTimeout(() => doHop(currentStep + 1), 170);
     }
     doHop(startStep + 1);
 }
@@ -435,11 +437,18 @@ function checkCapture(token) {
                     let enemyGlobal = (playersData[enemyColor].startOffset + eToken.step) % 52;
                     let enemyCoords = masterPath[enemyGlobal];
                     if (enemyCoords.r === currentCoords.r && enemyCoords.c === currentCoords.c) {
-                        eToken.step = -1;
-                        renderTokenPosition(eToken);
-                        soundCut.currentTime = 0;
-                        soundCut.play().catch(e => {});
                         captured = true;
+                        if (window.LudoAnimations && window.LudoAnimations.animateTokenCapture) {
+                            window.LudoAnimations.animateTokenCapture(eToken, renderTokenPosition, () => {
+                                soundCut.currentTime = 0;
+                                soundCut.play().catch(e => {});
+                            });
+                        } else {
+                            eToken.step = -1;
+                            renderTokenPosition(eToken);
+                            soundCut.currentTime = 0;
+                            soundCut.play().catch(e => {});
+                        }
                     }
                 }
             });
