@@ -3,7 +3,7 @@ const UnityAdsConfig = {
     bannerPlacement: 'BP_Banner_Android',
     interstitialPlacement: 'BP_Interstitial_Android',
     rewardedPlacement: 'BP_Rewarded_Android',
-    isTesting: false // Production live mode for release APK; native plugin handles test fallback
+    isTesting: false
 };
 
 window.UnityAdsConfig = UnityAdsConfig;
@@ -15,7 +15,6 @@ function getUnityAdsBridge() {
         return _unityBridgeInstance;
     }
     if (window.Capacitor) {
-        // 1. Standard Capacitor registerPlugin
         if (typeof window.Capacitor.registerPlugin === 'function') {
             try {
                 _unityBridgeInstance = window.Capacitor.registerPlugin('UnityAdsBridge');
@@ -24,12 +23,10 @@ function getUnityAdsBridge() {
                 console.warn('[UnityAds] registerPlugin failed, checking Plugins map:', err);
             }
         }
-        // 2. Plugins map check
         if (window.Capacitor.Plugins && window.Capacitor.Plugins.UnityAdsBridge) {
             _unityBridgeInstance = window.Capacitor.Plugins.UnityAdsBridge;
             return _unityBridgeInstance;
         }
-        // 3. Direct native bridge fallback wrapper
         if (typeof window.Capacitor.toNative === 'function') {
             _unityBridgeInstance = {
                 initialize: (opts) => window.Capacitor.toNative('UnityAdsBridge', 'initialize', opts),
@@ -156,7 +153,6 @@ async function playInterstitialAd() {
                 placementId: UnityAdsConfig.interstitialPlacement,
                 isTesting: UnityAdsConfig.isTesting
             });
-            // Give adequate 8s window for Unity video to load & show without cutting off
             const timeoutPromise = new Promise(resolve => setTimeout(resolve, 8000));
             await Promise.race([showPromise, timeoutPromise]);
         } catch (e) {
@@ -220,14 +216,14 @@ async function showZingRewardedAd({ onReward, onFail }) {
             }
         } catch (err) {
             console.warn('[UnityAds] Native Rewarded ad failed:', err);
-            const msg = (err && err.message) ? err.message : 'Ad load nahi ho saka';
-            showAdToast('⚠️ ' + msg + ' (Reward tabhi milega jab video pura dekhenge)');
+            const msg = (err && err.message) ? err.message : 'Ad could not be loaded';
+            showAdToast('⚠️ ' + msg + ' (Reward is granted after watching the full video)');
             if (typeof onFail === 'function') {
                 onFail({ reason: 'LOAD_FAILED', error: err });
             }
         }
     } else {
-        showAdToast('⚠️ Ads sirf Android APK par available hain.');
+        showAdToast('⚠️ Ads are only available in the Android app.');
         if (typeof onFail === 'function') {
             onFail({ reason: 'NOT_IN_NATIVE_APP' });
         }
@@ -246,6 +242,5 @@ if (document.readyState === 'loading') {
     autoBootstrapAds();
 }
 
-// In case Capacitor initializes after document load
 setTimeout(autoBootstrapAds, 1200);
 setTimeout(autoBootstrapAds, 3000);

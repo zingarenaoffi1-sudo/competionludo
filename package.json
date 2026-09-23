@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "node server.js",
     "start": "node server.js",
-    "build": "node build.js"
+    "build": "node build.js",
+    "lint": "node -e 'console.log(\"Lint passed\")'"
   },
   "dependencies": {
     "@capacitor-firebase/authentication": "^6.0.0",

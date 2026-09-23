@@ -132,24 +132,48 @@ async function botStartNormally() {
 function startBotMatchConfirmed(unlockOneToken = false) {
     const startupModal = document.getElementById("startup-modal");
     if (startupModal) startupModal.classList.add("hidden");
+
+    let pGreen = { name: "Player 2", tag: "Lvl 28 • 🇮🇳", avatar: "🧔" };
+    let pYellow = { name: "Player 3", tag: "Lvl 19 • 🇮🇳", avatar: "👩" };
+    let pBlue = { name: "Player 4", tag: "Lvl 34 • 🇮🇳", avatar: "👦" };
+
+    if (window.RealisticPersonas) {
+        RealisticPersonas.resetPool();
+        pGreen = RealisticPersonas.getRandomPlayer();
+        pYellow = RealisticPersonas.getRandomPlayer();
+        pBlue = RealisticPersonas.getRandomPlayer();
+    }
+
     if (botCount === 1) {
         activePlayers = ['red', 'yellow'];
         botColors = ['yellow'];
         playersData['red'].name = "You";
-        playersData['yellow'].name = "AI Bot";
+        playersData['yellow'].name = pYellow.name;
+        playersData['yellow'].tag = pYellow.tag;
+        playersData['yellow'].avatar = pYellow.avatar;
     } else if (botCount === 2) {
         activePlayers = ['red', 'green', 'yellow'];
         botColors = ['green', 'yellow'];
         playersData['red'].name = "You";
-        playersData['green'].name = "AI Bot 1";
-        playersData['yellow'].name = "AI Bot 2";
+        playersData['green'].name = pGreen.name;
+        playersData['green'].tag = pGreen.tag;
+        playersData['green'].avatar = pGreen.avatar;
+        playersData['yellow'].name = pYellow.name;
+        playersData['yellow'].tag = pYellow.tag;
+        playersData['yellow'].avatar = pYellow.avatar;
     } else {
         activePlayers = ['red', 'green', 'yellow', 'blue'];
         botColors = ['green', 'yellow', 'blue'];
         playersData['red'].name = "You";
-        playersData['green'].name = "AI Bot 1";
-        playersData['yellow'].name = "AI Bot 2";
-        playersData['blue'].name = "AI Bot 3";
+        playersData['green'].name = pGreen.name;
+        playersData['green'].tag = pGreen.tag;
+        playersData['green'].avatar = pGreen.avatar;
+        playersData['yellow'].name = pYellow.name;
+        playersData['yellow'].tag = pYellow.tag;
+        playersData['yellow'].avatar = pYellow.avatar;
+        playersData['blue'].name = pBlue.name;
+        playersData['blue'].tag = pBlue.tag;
+        playersData['blue'].avatar = pBlue.avatar;
     }
     winnersList = [];
     totalPlayersInGame = activePlayers.length;
@@ -158,6 +182,16 @@ function startBotMatchConfirmed(unlockOneToken = false) {
         let dice = document.getElementById(`dice-${c}`);
         let nameEl = document.getElementById(`name-${c}`);
         if (nameEl && playersData[c]) nameEl.innerText = playersData[c].name;
+        
+        let tagEl = card ? card.querySelector('.player-status-tag') : null;
+        if (tagEl && playersData[c].tag) {
+            tagEl.innerText = playersData[c].tag;
+        }
+        let avEl = card ? card.querySelector('.avatar') : null;
+        if (avEl && playersData[c].avatar && c !== 'red') {
+            avEl.innerText = playersData[c].avatar;
+        }
+
         if (activePlayers.includes(c)) {
             card.style.opacity = "0.5";
             dice.classList.add("visible");
@@ -240,8 +274,14 @@ function updateTurnUI() {
     let pData = playersData[currentColor];
     let isBot = botColors.includes(currentColor);
     let turnTextEl = document.getElementById("turn-text");
-    turnTextEl.innerText = isBot ? `${pData.name} is calculating move...` : `Your Turn! Tap dice to roll.`;
-    turnTextEl.className = `turn-indicator ${pData.class}`;
+    if (turnTextEl) {
+        turnTextEl.innerText = isBot ? `${pData.name}'s Turn` : `YOUR TURN! TAP DICE`;
+        turnTextEl.className = `turn-indicator ${pData.class}`;
+    }
+
+    if (window.LudoKingMenu && typeof LudoKingMenu.updateTurnPill === 'function') {
+        LudoKingMenu.updateTurnPill(pData.name, isBot ? "Rolling dice..." : "Tap dice to roll", !isBot);
+    }
     ['red', 'green', 'yellow', 'blue'].forEach(c => {
         let card = document.getElementById(`profile-${c}`);
         let dice = document.getElementById(`dice-${c}`);
@@ -269,27 +309,9 @@ function rollDice() {
     gameState = 'ROLLING';
     let currentColor = activePlayers[currentPlayerIndex];
     let diceEl = document.getElementById(`dice-${currentColor}`);
-    if (!diceEl.innerHTML.includes('dice-cube')) {
-        diceEl.innerHTML = '<div class="dice-cube-container"><div class="dice-cube"><div class="dice-face front"></div><div class="dice-face back"></div><div class="dice-face right"></div><div class="dice-face left"></div><div class="dice-face top"></div><div class="dice-face bottom"></div></div></div>';
-        diceEl.style.background = 'transparent';
-        diceEl.style.border = 'none';
-        diceEl.style.boxShadow = 'none';
-    }
-    let cube = diceEl.querySelector('.dice-cube');
-    let faces = cube.querySelectorAll('.dice-face');
-    let rx = (Math.floor(Math.random() * 4) + 1) * 360;
-    let ry = (Math.floor(Math.random() * 4) + 1) * 360;
-    cube.style.transition = 'transform 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
-    cube.style.transform = `rotateX(${rx}deg) rotateY(${ry}deg)`;
-    soundDice.currentTime = 0;
-    soundDice.play().catch(e => {});
-    setTimeout(() => {
-        currentDiceValue = generateFairDiceRoll(currentColor);
-        cube.style.transition = 'none';
-        cube.style.transform = 'rotateX(0deg) rotateY(0deg)';
-        faces[0].innerText = diceFaces[currentDiceValue];
-        faces[0].style.color = currentDiceValue === 6 ? "#ff3333" : "#111";
+    currentDiceValue = generateFairDiceRoll(currentColor);
 
+    const onRollFinished = () => {
         if (currentDiceValue === 6) {
             botConsecutiveSixes = (botConsecutiveSixes || 0) + 1;
         } else {
@@ -308,7 +330,17 @@ function rollDice() {
 
         gameState = 'WAITING_FOR_MOVE';
         checkAvailableMoves();
-    }, 650);
+    };
+
+    if (window.LudoAnimations && window.LudoAnimations.animateDiceRoll) {
+        window.LudoAnimations.animateDiceRoll(diceEl, currentDiceValue, onRollFinished);
+    } else {
+        if (diceEl) {
+            diceEl.innerText = diceFaces[currentDiceValue];
+            diceEl.style.color = currentDiceValue === 6 ? "#ff3333" : "#111";
+        }
+        onRollFinished();
+    }
 }
 function checkAvailableMoves() {
     let currentColor = activePlayers[currentPlayerIndex];
@@ -402,6 +434,9 @@ function moveToken(color, tokenIndex) {
     let targetStep = token.step + currentDiceValue;
     function doHop(currentStep) {
         if (currentStep > targetStep) {
+            if (window.LudoAnimations && window.LudoAnimations.animateTokenLanding) {
+                window.LudoAnimations.animateTokenLanding(token);
+            }
             isMoving = false;
             let extraTurn = (currentDiceValue === 6 || targetStep === 56);
             let cutEnemy = checkCapture(token);
@@ -414,10 +449,17 @@ function moveToken(color, tokenIndex) {
             return;
         }
         token.step = currentStep;
-        renderTokenPosition(token);
-        soundMove.currentTime = 0;
-        soundMove.play().catch(e => {});
-        setTimeout(() => doHop(currentStep + 1), 200);
+        if (window.LudoAnimations && window.LudoAnimations.animateTokenHopStep) {
+            window.LudoAnimations.animateTokenHopStep(token, renderTokenPosition, () => {
+                soundMove.currentTime = 0;
+                soundMove.play().catch(e => {});
+            });
+        } else {
+            renderTokenPosition(token);
+            soundMove.currentTime = 0;
+            soundMove.play().catch(e => {});
+        }
+        setTimeout(() => doHop(currentStep + 1), 170);
     }
     doHop(startStep + 1);
 }
@@ -435,11 +477,23 @@ function checkCapture(token) {
                     let enemyGlobal = (playersData[enemyColor].startOffset + eToken.step) % 52;
                     let enemyCoords = masterPath[enemyGlobal];
                     if (enemyCoords.r === currentCoords.r && enemyCoords.c === currentCoords.c) {
-                        eToken.step = -1;
-                        renderTokenPosition(eToken);
-                        soundCut.currentTime = 0;
-                        soundCut.play().catch(e => {});
                         captured = true;
+                        if (window.RealisticPersonas) {
+                            setTimeout(() => {
+                                RealisticPersonas.triggerBotChatReaction(token.color, 'capture');
+                            }, 500);
+                        }
+                        if (window.LudoAnimations && window.LudoAnimations.animateTokenCapture) {
+                            window.LudoAnimations.animateTokenCapture(eToken, renderTokenPosition, () => {
+                                soundCut.currentTime = 0;
+                                soundCut.play().catch(e => {});
+                            });
+                        } else {
+                            eToken.step = -1;
+                            renderTokenPosition(eToken);
+                            soundCut.currentTime = 0;
+                            soundCut.play().catch(e => {});
+                        }
                     }
                 }
             });

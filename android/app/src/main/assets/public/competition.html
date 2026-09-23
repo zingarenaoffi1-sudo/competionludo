@@ -181,21 +181,17 @@
         <button class="btn-google" style="background: #ef4444; color: white; border: 2px solid #ffd700;" onclick="cancelMatchmaking()">🔙 Cancel (Refund Coins)</button>
     </div>
     <div id="ludo-wrapper" class="hidden">
-        <div class="game-header" style="margin-top: 0;">
+        <div class="game-header" style="padding: 4px 10px; margin-bottom: 2px; min-height: 38px;">
             <div class="logo-container">
-                <span class="logo-crown">👑</span>
-                <span class="logo-text">PRO ARENA</span>
+                <span class="logo-crown" style="font-size: 16px;">👑</span>
+                <span class="logo-text" style="font-size: 14px;">PRO ARENA</span>
             </div>
             <div style="display: flex; gap: 8px; align-items: center;">
                 <div style="font-size: 13px; font-weight: 800; color: #4ade80;">🪙 <span id="in-game-wallet">0</span></div>
-                <button class="menu-btn" onclick="LudoBackHandler.handleBackPress()" style="padding: 4px 8px; font-size: 11px;">Lobby</button>
+                <div class="turn-indicator" id="turn-text" style="font-size: 12px; font-weight: 800; color: #ffd700;">WAITING...</div>
             </div>
         </div>
-        <div id="my-identity-badge" class="hidden" style="text-align: center; background: linear-gradient(90deg, #ffd700, #f59e0b); color: #0f172a; font-weight: 900; padding: 5px; margin-bottom: 6px; border-radius: 8px; font-size: 12px; letter-spacing: 0.5px;"></div>
-        <div class="turn-status-banner">
-            <div class="turn-indicator" id="turn-text">WAITING TO START...</div>
-            <div class="turn-timer-badge" id="timer-text">⏳ Time Left: 30s</div>
-        </div>
+        <div id="my-identity-badge" class="hidden" style="text-align: center; background: linear-gradient(90deg, #ffd700, #f59e0b); color: #0f172a; font-weight: 900; padding: 4px; margin-bottom: 4px; border-radius: 8px; font-size: 11px; letter-spacing: 0.5px;"></div>
         <div class="hud-row">
             <div class="player-corner" id="corner-red">
                 <div class="player-card" id="profile-red">
@@ -327,12 +323,15 @@
     </script>
     <script src="how-to-play.js"></script>
     <script src="game-features.js"></script>
+    <script src="realistic-names.js"></script>
+    <script src="ludo-king-menu.js"></script>
     <script src="ludo-splash.js"></script>
     <script src="ludo-music.js"></script>
     <script src="ludo-back-handler.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             LudoBackHandler.init({ mode: 'competition' });
+            LudoKingMenu.init({ mode: 'competition' });
         });
     </script>
     <script src="ludo-animations.js"></script>

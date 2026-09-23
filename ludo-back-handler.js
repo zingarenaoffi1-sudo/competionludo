@@ -1,14 +1,10 @@
-// ludo-back-handler.js - Unified Hardware & Navigation Back Handler
-// Handles Android hardware back button, web back navigation, and desktop Escape key.
-
 const LudoBackHandler = (function () {
-    let currentMode = 'dashboard'; // 'dashboard' | 'match' | 'competition'
+    let currentMode = 'dashboard';
     let isModalOpen = false;
 
     function init(options) {
         currentMode = (options && options.mode) || 'dashboard';
 
-        // 1. Capacitor Native Android Hardware Back Button
         if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App) {
             try {
                 window.Capacitor.Plugins.App.addListener('backButton', function () {
@@ -17,7 +13,6 @@ const LudoBackHandler = (function () {
             } catch (e) {}
         }
 
-        // 2. Browser / Android WebView History Back (popstate)
         try {
             history.pushState({ ludoNav: true }, '', window.location.href);
             window.addEventListener('popstate', function () {
@@ -26,7 +21,6 @@ const LudoBackHandler = (function () {
             });
         } catch (e) {}
 
-        // 3. Desktop Keyboard Escape Key
         window.addEventListener('keydown', function (e) {
             if (e.key === 'Escape') {
                 handleBackPress();
@@ -35,7 +29,6 @@ const LudoBackHandler = (function () {
     }
 
     function handleBackPress() {
-        // Priority 1: Dismiss any active gameplay overlay modals first
         const auxiliaryModalIds = [
             'how-to-play-modal',
             'match-history-modal',
@@ -57,21 +50,18 @@ const LudoBackHandler = (function () {
             }
         }
 
-        // Priority 2: If the back confirmation modal itself is open, dismiss it (cancel)
         const confirmModal = document.getElementById('ludo-back-confirm-modal');
         if (confirmModal && !confirmModal.classList.contains('hidden') && confirmModal.style.display !== 'none') {
             closeModal();
             return;
         }
 
-        // Priority 3: Victory Modal - back directly returns to Lobby
         const victoryModal = document.getElementById('victory-modal');
         if (victoryModal && !victoryModal.classList.contains('hidden') && victoryModal.style.display !== 'none') {
             window.location.href = 'index.html';
             return;
         }
 
-        // Priority 4: Online Multiplayer Lobby Back Navigation
         const onlineModal = document.getElementById('online-modal');
         if (onlineModal && !onlineModal.classList.contains('hidden') && onlineModal.style.display !== 'none') {
             const matchmakingSub = document.getElementById('matchmaking-sub');
@@ -118,12 +108,10 @@ const LudoBackHandler = (function () {
                 return;
             }
 
-            // In main online menu -> go back to index.html
             window.location.href = 'index.html';
             return;
         }
 
-        // Priority 5: Local & Bot Offline Pre-Game Modals
         const fastTrackModal = document.getElementById('fast-track-modal') || document.getElementById('bot-fast-track-modal');
         if (fastTrackModal && !fastTrackModal.classList.contains('hidden') && fastTrackModal.style.display !== 'none') {
             fastTrackModal.classList.add('hidden');
@@ -138,7 +126,6 @@ const LudoBackHandler = (function () {
             return;
         }
 
-        // Priority 6: Competition specific view transitions
         if (currentMode === 'competition') {
             const leaderboard = document.getElementById('leaderboard-view');
             if (leaderboard && !leaderboard.classList.contains('hidden') && leaderboard.style.display !== 'none') {
@@ -166,12 +153,10 @@ const LudoBackHandler = (function () {
                 return;
             }
 
-            // In Competition lobby tables screen -> navigate back to main dashboard
             window.location.href = 'index.html';
             return;
         }
 
-        // Priority 4: Dashboard vs Active Match
         if (currentMode === 'dashboard') {
             showDashboardExitModal();
         } else {
@@ -220,7 +205,6 @@ const LudoBackHandler = (function () {
                     }
                 } catch (e) {}
 
-                // Mid-game exit: Play Interstitial Ad
                 if (typeof playInterstitialAd === 'function') {
                     try {
                         await playInterstitialAd();

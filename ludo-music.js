@@ -1,6 +1,3 @@
-// ludo-music.js - Cheerful, Copyright-Free Background Music Engine for Ludo
-// Synthesizes a delightful, high-quality, buoyant marimba and acoustic percussion game soundtrack using Web Audio API.
-
 (function() {
     let audioCtx = null;
     let isPlaying = false;
@@ -9,11 +6,10 @@
     let nextNoteTime = 0;
     let currentStep = 0;
     let timerID = null;
-    const TEMPO = 114; // Beats per minute
+    const TEMPO = 114;
     const SECONDS_PER_BEAT = 60.0 / TEMPO;
-    const STEP_TIME = SECONDS_PER_BEAT / 2; // Eighth note resolution
+    const STEP_TIME = SECONDS_PER_BEAT / 2;
 
-    // Scale frequencies (C Major / Pentatonic for warm, cheerful, uplifting feel)
     const N = {
         C2: 65.41, E2: 82.41, F2: 87.31, G2: 98.00, A2: 110.00, B2: 123.47,
         C3: 130.81, D3: 146.83, E3: 164.81, F3: 174.61, G3: 196.00, A3: 220.00, B3: 246.94,
@@ -22,97 +18,70 @@
         C6: 1046.50
     };
 
-    // 16-bar cheerful loop pattern (32 eighth-note steps x 2 = 64 steps)
-    // Melody notes with duration (in eighth-note steps)
     const melodyPattern = [
-        // Bar 1 (C Major)
         { step: 0, f: N.E5, dur: 1, v: 0.7 },
         { step: 1, f: N.G5, dur: 1, v: 0.8 },
         { step: 2, f: N.C6, dur: 2, v: 0.9 },
-        // Bar 2 (C Major bounce)
         { step: 4, f: N.A5, dur: 1, v: 0.75 },
         { step: 5, f: N.G5, dur: 1, v: 0.7 },
         { step: 6, f: N.E5, dur: 2, v: 0.8 },
-        // Bar 3 (G Major)
         { step: 8, f: N.D5, dur: 1, v: 0.75 },
         { step: 9, f: N.G5, dur: 1, v: 0.8 },
         { step: 10, f: N.B5, dur: 2, v: 0.85 },
-        // Bar 4 (G Major answer)
         { step: 12, f: N.A5, dur: 1, v: 0.7 },
         { step: 13, f: N.G5, dur: 1, v: 0.75 },
         { step: 14, f: N.D5, dur: 2, v: 0.8 },
-
-        // Bar 5 (A Minor)
         { step: 16, f: N.C5, dur: 1, v: 0.75 },
         { step: 17, f: N.E5, dur: 1, v: 0.8 },
         { step: 18, f: N.A5, dur: 2, v: 0.85 },
-        // Bar 6 (F Major)
         { step: 20, f: N.F5, dur: 1, v: 0.75 },
         { step: 21, f: N.A5, dur: 1, v: 0.8 },
         { step: 22, f: N.C6, dur: 2, v: 0.9 },
-        // Bar 7 (G7 bouncy turnaround)
         { step: 24, f: N.B5, dur: 1, v: 0.75 },
         { step: 25, f: N.A5, dur: 1, v: 0.7 },
         { step: 26, f: N.G5, dur: 1, v: 0.8 },
         { step: 27, f: N.F5, dur: 1, v: 0.75 },
-        // Bar 8 (C Major home)
         { step: 28, f: N.E5, dur: 2, v: 0.85 },
         { step: 30, f: N.G5, dur: 2, v: 0.8 },
-
-        // Bar 9 (Variation: playful runs)
         { step: 32, f: N.C5, dur: 1, v: 0.8 },
         { step: 33, f: N.D5, dur: 1, v: 0.75 },
         { step: 34, f: N.E5, dur: 1, v: 0.85 },
         { step: 35, f: N.G5, dur: 1, v: 0.9 },
-        // Bar 10
         { step: 36, f: N.A5, dur: 1, v: 0.8 },
         { step: 37, f: N.G5, dur: 1, v: 0.75 },
         { step: 38, f: N.C6, dur: 2, v: 0.95 },
-        // Bar 11 (F Major joy)
         { step: 40, f: N.A5, dur: 1, v: 0.8 },
         { step: 41, f: N.C6, dur: 1, v: 0.85 },
         { step: 42, f: N.D6, dur: 2, v: 0.9 },
-        // Bar 12 (G Major high sparkle)
         { step: 44, f: N.B5, dur: 1, v: 0.8 },
         { step: 45, f: N.G5, dur: 1, v: 0.75 },
         { step: 46, f: N.A5, dur: 2, v: 0.8 },
-
-        // Bar 13 (Am - Em)
         { step: 48, f: N.C6, dur: 1, v: 0.85 },
         { step: 49, f: N.B5, dur: 1, v: 0.75 },
         { step: 50, f: N.A5, dur: 1, v: 0.8 },
         { step: 51, f: N.G5, dur: 1, v: 0.8 },
-        // Bar 14 (F - C)
         { step: 52, f: N.F5, dur: 1, v: 0.75 },
         { step: 53, f: N.A5, dur: 1, v: 0.8 },
         { step: 54, f: N.G5, dur: 2, v: 0.85 },
-        // Bar 15 (Dm7 - G7 turnaround)
         { step: 56, f: N.F5, dur: 1, v: 0.75 },
         { step: 57, f: N.E5, dur: 1, v: 0.75 },
         { step: 58, f: N.D5, dur: 1, v: 0.8 },
         { step: 59, f: N.G5, dur: 1, v: 0.85 },
-        // Bar 16 (C triumphant chime)
         { step: 60, f: N.C5, dur: 2, v: 0.9 },
         { step: 62, f: N.C6, dur: 2, v: 0.95 }
     ];
 
-    // Bouncy Walking Bassline (Step % 64)
     const bassPattern = [
-        // Bars 1-4 (C -> C -> G -> G)
         { step: 0, f: N.C3 }, { step: 2, f: N.G2 }, { step: 4, f: N.E3 }, { step: 6, f: N.G2 },
         { step: 8, f: N.G2 }, { step: 10, f: N.D3 }, { step: 12, f: N.B2 }, { step: 14, f: N.G2 },
-        // Bars 5-8 (Am -> F -> G -> C)
         { step: 16, f: N.A2 }, { step: 18, f: N.E3 }, { step: 20, f: N.F2 }, { step: 22, f: N.C3 },
         { step: 24, f: N.G2 }, { step: 26, f: N.D3 }, { step: 28, f: N.C3 }, { step: 30, f: N.G2 },
-        // Bars 9-12 (C -> C -> F -> G)
         { step: 32, f: N.C3 }, { step: 34, f: N.G2 }, { step: 36, f: N.E3 }, { step: 38, f: N.G2 },
         { step: 40, f: N.F2 }, { step: 42, f: N.C3 }, { step: 44, f: N.G2 }, { step: 46, f: N.D3 },
-        // Bars 13-16 (Am -> F -> G -> C)
         { step: 48, f: N.A2 }, { step: 50, f: N.E3 }, { step: 52, f: N.F2 }, { step: 54, f: N.C3 },
         { step: 56, f: N.D3 }, { step: 58, f: N.G2 }, { step: 60, f: N.C3 }, { step: 62, f: N.G2 }
     ];
 
-    // Soft Harmonic Chords (Staccato marimba chords on offbeats)
     const chordPattern = [
         { step: 2, notes: [N.E4, N.G4, N.C5] },
         { step: 6, notes: [N.E4, N.G4, N.C5] },
@@ -147,7 +116,6 @@
         }
     }
 
-    // Realistic Marimba synthesis: fundamental sine + overtone ping with exponential decay
     function playMarimba(freq, time, duration, velocity) {
         if (!audioCtx || isMuted) return;
         const osc = audioCtx.createOscillator();
@@ -159,15 +127,15 @@
         osc.frequency.setValueAtTime(freq, time);
 
         overtone.type = 'triangle';
-        overtone.frequency.setValueAtTime(freq * 3.01, time); // Marimba wooden overtone
+        overtone.frequency.setValueAtTime(freq * 3.01, time);
 
         const noteVol = (velocity || 0.8) * 0.45;
         gain.gain.setValueAtTime(0.0001, time);
-        gain.gain.linearRampToValueAtTime(noteVol, time + 0.004); // Instant strike
+        gain.gain.linearRampToValueAtTime(noteVol, time + 0.004);
         gain.gain.exponentialRampToValueAtTime(0.0001, time + duration * 0.28);
 
         overGain.gain.setValueAtTime(noteVol * 0.35, time);
-        overGain.gain.exponentialRampToValueAtTime(0.0001, time + 0.08); // Quick ping decay
+        overGain.gain.exponentialRampToValueAtTime(0.0001, time + 0.08);
 
         osc.connect(gain);
         overtone.connect(overGain);
@@ -180,7 +148,6 @@
         overtone.stop(time + 0.09);
     }
 
-    // Warm, rounded upright bass synthesis
     function playBass(freq, time) {
         if (!audioCtx || isMuted) return;
         const osc = audioCtx.createOscillator();
@@ -213,7 +180,6 @@
         subOsc.stop(time + 0.34);
     }
 
-    // Cheerful wooden percussion (conga / woodblock tap)
     function playWoodblock(pitch, time, vol) {
         if (!audioCtx || isMuted) return;
         const osc = audioCtx.createOscillator();
@@ -232,7 +198,6 @@
         osc.stop(time + 0.08);
     }
 
-    // Light shaker groove
     function playShaker(time, vol) {
         if (!audioCtx || isMuted) return;
         const bufferSize = audioCtx.sampleRate * 0.035;
@@ -265,7 +230,6 @@
         while (nextNoteTime < audioCtx.currentTime + 0.2) {
             const step = currentStep % 64;
 
-            // 1. Check melody notes
             for (let i = 0; i < melodyPattern.length; i++) {
                 const m = melodyPattern[i];
                 if (m.step === step) {
@@ -273,7 +237,6 @@
                 }
             }
 
-            // 2. Check bass notes
             for (let i = 0; i < bassPattern.length; i++) {
                 const b = bassPattern[i];
                 if (b.step === step) {
@@ -281,7 +244,6 @@
                 }
             }
 
-            // 3. Check chords
             for (let i = 0; i < chordPattern.length; i++) {
                 const c = chordPattern[i];
                 if (c.step === step) {
@@ -291,13 +253,12 @@
                 }
             }
 
-            // 4. Rhythm track (shaker & light conga)
             playShaker(nextNoteTime, (step % 2 === 0) ? 0.08 : 0.04);
             if (step % 4 === 2) {
-                playWoodblock(480, nextNoteTime, 0.22); // Offbeat tap
+                playWoodblock(480, nextNoteTime, 0.22);
             }
             if (step % 8 === 6) {
-                playWoodblock(320, nextNoteTime, 0.18); // Low bongo tap
+                playWoodblock(320, nextNoteTime, 0.18);
             }
 
             nextNoteTime += STEP_TIME;
@@ -357,7 +318,6 @@
         });
     }
 
-    // Autoplay trigger on first touch / tap anywhere
     function autoStartOnGesture() {
         if (!isMuted && !isPlaying) {
             startMusic();
@@ -371,7 +331,6 @@
     window.addEventListener('touchstart', autoStartOnGesture, { once: true });
     window.addEventListener('pointerdown', autoStartOnGesture, { once: true });
 
-    // Expose Global Controller
     window.LudoMusic = {
         start: startMusic,
         stop: stopMusic,

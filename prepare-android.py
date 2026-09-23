@@ -78,12 +78,17 @@ def main():
         perms = (
             '\n    <uses-permission android:name="android.permission.INTERNET"/>'
             '\n    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>'
+            '\n    <uses-permission android:name="android.permission.RECORD_AUDIO"/>'
+            '\n    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS"/>'
             '\n    <application'
         )
         if "android.permission.INTERNET" not in content:
             content = content.replace("<application", perms)
-        elif "android.permission.ACCESS_NETWORK_STATE" not in content:
-            content = content.replace("<application", '\n    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>\n    <application')
+        else:
+            if "android.permission.RECORD_AUDIO" not in content:
+                content = content.replace("<application", '\n    <uses-permission android:name="android.permission.RECORD_AUDIO"/>\n    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS"/>\n    <application')
+            if "android.permission.ACCESS_NETWORK_STATE" not in content:
+                content = content.replace("<application", '\n    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>\n    <application')
         if 'android:hardwareAccelerated' not in content:
             content = content.replace('<application', '<application android:hardwareAccelerated="true"')
         with open(manifest_path, "w", encoding="utf-8") as f:
@@ -118,18 +123,51 @@ def main():
         shutil.copyfile(plugin_src, plugin_dest)
         print("UnityAdsPlugin.java verified and copied to android package directory")
 
-    # Update MainActivity.java to register UnityAdsPlugin
+    # Update MainActivity.java to register UnityAdsPlugin and allow WebRTC mic
     main_act_path = os.path.join(pkg_dir, "MainActivity.java")
     main_act_content = """package com.zingarena.app;
 
+import android.Manifest;
+import android.content.pm.PackageManager;
 import android.os.Bundle;
+import android.webkit.PermissionRequest;
+import android.webkit.WebChromeClient;
+import android.webkit.WebView;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 import com.getcapacitor.BridgeActivity;
 
 public class MainActivity extends BridgeActivity {
+    private static final int RECORD_AUDIO_REQUEST_CODE = 1001;
+
     @Override
     public void onCreate(Bundle savedInstanceState) {
         registerPlugin(UnityAdsPlugin.class);
         super.onCreate(savedInstanceState);
+
+        try {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+                ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.RECORD_AUDIO}, RECORD_AUDIO_REQUEST_CODE);
+            }
+        } catch (Exception ignored) {}
+
+        try {
+            if (getBridge() != null && getBridge().getWebView() != null) {
+                WebView webView = getBridge().getWebView();
+                webView.setWebChromeClient(new WebChromeClient() {
+                    @Override
+                    public void onPermissionRequest(final PermissionRequest request) {
+                        runOnUiThread(() -> {
+                            try {
+                                request.grant(request.getResources());
+                            } catch (Exception e) {
+                                request.deny();
+                            }
+                        });
+                    }
+                });
+            }
+        } catch (Exception ignored) {}
     }
 }
 """

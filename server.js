@@ -215,7 +215,7 @@ function startTurnTimer(roomId) {
     if (!room || !room.active || !room.gameState) return;
     if (room.gameState.timerId) clearTimeout(room.gameState.timerId);
     if (room.gameState.pausedByAd) return;
-    // Exactly 30 seconds turn timer as requested
+
     room.gameState.timerId = setTimeout(() => {
         handleTurnTimeout(roomId);
     }, 30000);
@@ -232,7 +232,6 @@ function handleTurnTimeout(roomId) {
     let currentMissed = gs.missedTurns[currentColor];
 
     if (currentMissed >= 3) {
-        // Player missed 3 chances: remove from match
         gs.activePlayers = gs.activePlayers.filter(c => c !== currentColor);
         io.to(roomId).emit('player-eliminated', { 
             color: currentColor, 
@@ -240,7 +239,6 @@ function handleTurnTimeout(roomId) {
             missedTurns: gs.missedTurns 
         });
 
-        // If only 1 player remains, they immediately win the match
         if (gs.activePlayers.length <= 1) {
             room.active = false;
             if (gs.timerId) clearTimeout(gs.timerId);
@@ -272,12 +270,10 @@ function handleTurnTimeout(roomId) {
             return;
         }
 
-        // 3 or 4-player game with multiple players still active: continue match
         if (gs.turnIndex >= gs.activePlayers.length) {
             gs.turnIndex = 0;
         }
     } else {
-        // Skip this chance and pass to next player
         gs.turnIndex = (gs.turnIndex + 1) % gs.activePlayers.length;
     }
 
@@ -998,7 +994,6 @@ io.on('connection', (socket) => {
             if (pIndex === -1) continue;
 
             if (!room.active) {
-                // In custom room waiting lobby
                 if (room.hostId === socket.id) {
                     io.to(roomId).emit('room-closed', { message: 'The host disconnected.' });
                     delete rooms[roomId];
@@ -1014,7 +1009,6 @@ io.on('connection', (socket) => {
                     });
                 }
             } else if (room.active && room.gameState) {
-                // In an active match
                 const disconnectedColor = room.players[pIndex].color;
                 const gs = room.gameState;
                 if (gs.activePlayers.includes(disconnectedColor)) {

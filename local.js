@@ -183,8 +183,14 @@ function updateTurnUI() {
     let pData = playersData[currentColor];
     let isBot = botColors.includes(currentColor);
     let turnTextEl = document.getElementById("turn-text");
-    turnTextEl.innerText = isBot ? `${pData.name} is thinking...` : `${pData.name}'s Turn - Roll Dice!`;
-    turnTextEl.className = `turn-indicator ${pData.class}`;
+    if (turnTextEl) {
+        turnTextEl.innerText = isBot ? `${pData.name}'s Turn` : `${pData.name}'s Turn - Roll Dice!`;
+        turnTextEl.className = `turn-indicator ${pData.class}`;
+    }
+
+    if (window.LudoKingMenu && typeof LudoKingMenu.updateTurnPill === 'function') {
+        LudoKingMenu.updateTurnPill(pData.name, isBot ? "Rolling..." : "Tap dice to roll", !isBot);
+    }
     ['red', 'green', 'yellow', 'blue'].forEach(c => {
         let card = document.getElementById(`profile-${c}`);
         let dice = document.getElementById(`dice-${c}`);

@@ -93,6 +93,30 @@ function setOnlineGameMode(mode) {
             el.style.border = isActive ? '2px solid #ffd700' : '1px solid rgba(255,255,255,0.15)';
         }
     });
+
+    const isTeam = (mode === 'team2v2');
+    const qOpt = document.getElementById('quick-player-options');
+    const tqOpt = document.getElementById('team-quick-options');
+    if (qOpt && tqOpt) {
+        if (isTeam) {
+            qOpt.classList.add('hidden');
+            tqOpt.classList.remove('hidden');
+        } else {
+            qOpt.classList.remove('hidden');
+            tqOpt.classList.add('hidden');
+        }
+    }
+    const cOpt = document.getElementById('create-player-options');
+    const tcOpt = document.getElementById('team-create-options');
+    if (cOpt && tcOpt) {
+        if (isTeam) {
+            cOpt.classList.add('hidden');
+            tcOpt.classList.remove('hidden');
+        } else {
+            cOpt.classList.remove('hidden');
+            tcOpt.classList.add('hidden');
+        }
+    }
 }
 
 function showQuickMatch() {
@@ -560,24 +584,32 @@ function setupSocketListeners() {
         currentDiceValue = data.diceValue;
         const color = data.color || activePlayers[currentPlayerIndex];
         const diceEl = document.getElementById(`dice-${color}`);
-        if (diceEl) {
-            diceEl.classList.remove('rolling');
-            diceEl.innerText = diceFaces[currentDiceValue];
-            diceEl.style.color = currentDiceValue === 6 ? '#ff3333' : '#111';
-        }
-        soundDice.currentTime = 0;
-        soundDice.play().catch(() => {});
 
-        if (data.penaltyThreeSixes) {
-            showToast("⚠️ 3 Consecutive Sixes! Turn passed.");
-            gameState = 'WAITING_FOR_ROLL';
-            return;
-        }
+        const onRollComplete = () => {
+            if (data.penaltyThreeSixes) {
+                showToast("⚠️ 3 Consecutive Sixes! Turn passed.");
+                gameState = 'WAITING_FOR_ROLL';
+                return;
+            }
 
-        gameState = 'WAITING_FOR_MOVE';
-        startTurnTimer();
-        if (color === myAssignedColor) {
-            checkAvailableMovesOnline();
+            gameState = 'WAITING_FOR_MOVE';
+            startTurnTimer();
+            if (color === myAssignedColor) {
+                checkAvailableMovesOnline();
+            }
+        };
+
+        if (window.LudoAnimations && window.LudoAnimations.animateDiceRoll) {
+            window.LudoAnimations.animateDiceRoll(diceEl, currentDiceValue, onRollComplete);
+        } else {
+            if (diceEl) {
+                diceEl.classList.remove('rolling');
+                diceEl.innerText = diceFaces[currentDiceValue];
+                diceEl.style.color = currentDiceValue === 6 ? '#ff3333' : '#111';
+            }
+            soundDice.currentTime = 0;
+            soundDice.play().catch(() => {});
+            onRollComplete();
         }
     });
 
@@ -589,6 +621,17 @@ function setupSocketListeners() {
         currentPlayerIndex = activePlayers.indexOf(data.currentColor);
         gameState = 'WAITING_FOR_ROLL';
         isMoving = false;
+
+        // Alternate turn chance ad trigger flow
+        if (data.currentColor === myAssignedColor) {
+            onlineTurnChanceCount++;
+            if (onlineTurnChanceCount > 1 && onlineTurnChanceCount % 2 === 0) {
+                if (typeof window.showZingInterstitialAd === 'function' && navigator.onLine) {
+                    window.showZingInterstitialAd().catch(() => {});
+                }
+            }
+        }
+
         if (data.missedTurns) {
             updateStrikesUI(data.missedTurns);
         }
@@ -767,13 +810,18 @@ function updateTurnUIOnline() {
     if (!currentColor || !playersData[currentColor]) return;
     const pData = playersData[currentColor];
     const turnTextEl = document.getElementById('turn-text');
+    const isMyTurn = (currentColor === myAssignedColor);
     if (turnTextEl) {
-        if (currentColor === myAssignedColor) {
+        if (isMyTurn) {
             turnTextEl.innerText = "YOUR TURN! Roll your dice!";
         } else {
             turnTextEl.innerText = `${pData.name}'s Turn...`;
         }
         turnTextEl.className = `turn-indicator ${pData.class}`;
+    }
+
+    if (window.LudoKingMenu && typeof LudoKingMenu.updateTurnPill === 'function') {
+        LudoKingMenu.updateTurnPill(pData.name, isMyTurn ? "Roll your dice!" : "Waiting...", isMyTurn);
     }
     ['red', 'green', 'yellow', 'blue'].forEach(c => {
         const card = document.getElementById(`profile-${c}`);
@@ -874,36 +922,65 @@ function moveTokenOnline(color, tokenIndex) {
 }
 
 function moveTokenStepByStepRemote(color, tokenIndex, diceVal, cutDetails) {
-    const token = allTokens[color][tokenIndex];
+    const token = allTokens[color] ? allTokens[color][tokenIndex] : null;
+    if (!token) {
+        isMoving = false;
+        return;
+    }
     const startStep = token.step;
     if (startStep === -1 && diceVal === 6) {
         token.step = 0;
         soundMove.currentTime = 0;
         soundMove.play().catch(() => {});
         renderTokenPosition(token);
+        if (window.LudoAnimations && window.LudoAnimations.animateTokenLanding) {
+            window.LudoAnimations.animateTokenLanding(token);
+        }
         isMoving = false;
         return;
     }
     const targetStep = startStep + diceVal;
     let currentStep = startStep;
-    const moveInterval = setInterval(() => {
+
+    function hopNext() {
+        if (currentStep >= targetStep) {
+            if (window.LudoAnimations && window.LudoAnimations.animateTokenLanding) {
+                window.LudoAnimations.animateTokenLanding(token);
+            }
+            isMoving = false;
+            if (cutDetails && allTokens[cutDetails.color]) {
+                const enemyToken = allTokens[cutDetails.color][cutDetails.index];
+                if (enemyToken) {
+                    if (window.LudoAnimations && window.LudoAnimations.animateTokenCapture) {
+                        window.LudoAnimations.animateTokenCapture(enemyToken, renderTokenPosition, () => {
+                            soundCut.currentTime = 0;
+                            soundCut.play().catch(() => {});
+                        });
+                    } else {
+                        enemyToken.step = -1;
+                        renderTokenPosition(enemyToken);
+                        soundCut.currentTime = 0;
+                        soundCut.play().catch(() => {});
+                    }
+                }
+            }
+            return;
+        }
         currentStep++;
         token.step = currentStep;
-        renderTokenPosition(token);
-        soundMove.currentTime = 0;
-        soundMove.play().catch(() => {});
-        if (currentStep >= targetStep) {
-            clearInterval(moveInterval);
-            isMoving = false;
-            if (cutDetails) {
-                const enemyToken = allTokens[cutDetails.color][cutDetails.index];
-                enemyToken.step = -1;
-                renderTokenPosition(enemyToken);
-                soundCut.currentTime = 0;
-                soundCut.play().catch(() => {});
-            }
+        if (window.LudoAnimations && window.LudoAnimations.animateTokenHopStep) {
+            window.LudoAnimations.animateTokenHopStep(token, renderTokenPosition, () => {
+                soundMove.currentTime = 0;
+                soundMove.play().catch(() => {});
+            });
+        } else {
+            renderTokenPosition(token);
+            soundMove.currentTime = 0;
+            soundMove.play().catch(() => {});
         }
-    }, 180);
+        setTimeout(hopNext, 170);
+    }
+    hopNext();
 }
 
 function spawnTokensOnline() {
@@ -1072,16 +1149,38 @@ function startSimulatedOnlineMatch(playersCount) {
     }
     window.activePlayers = activePlayers;
 
-    const botNames = {
-        'green': 'Alex_Pro',
-        'yellow': 'Rahul99',
-        'blue': 'Sara_Star'
+    let pGreen = { name: 'Player 2', tag: 'Lvl 28 • 🇮🇳', avatar: '🧔' };
+    let pYellow = { name: 'Player 3', tag: 'Lvl 19 • 🇮🇳', avatar: '👩' };
+    let pBlue = { name: 'Player 4', tag: 'Lvl 34 • 🇮🇳', avatar: '👦' };
+
+    if (window.RealisticPersonas) {
+        RealisticPersonas.resetPool();
+        pGreen = RealisticPersonas.getRandomPlayer();
+        pYellow = RealisticPersonas.getRandomPlayer();
+        pBlue = RealisticPersonas.getRandomPlayer();
+    }
+
+    const botProfiles = {
+        'green': pGreen,
+        'yellow': pYellow,
+        'blue': pBlue
     };
+
     if (playersData['red']) playersData['red'].name = getMyPlayerName();
     ['green', 'yellow', 'blue'].forEach(c => {
-        if (playersData[c]) playersData[c].name = botNames[c];
+        if (playersData[c]) {
+            playersData[c].name = botProfiles[c].name;
+            playersData[c].tag = botProfiles[c].tag;
+            playersData[c].avatar = botProfiles[c].avatar;
+        }
         const cardName = document.querySelector(`#profile-${c} .player-name`);
-        if (cardName) cardName.innerText = botNames[c];
+        if (cardName) cardName.innerText = botProfiles[c].name;
+
+        const cardTag = document.querySelector(`#profile-${c} .player-status-tag`);
+        if (cardTag && botProfiles[c].tag) cardTag.innerText = botProfiles[c].tag;
+
+        const cardAvatar = document.querySelector(`#profile-${c} .avatar`);
+        if (cardAvatar && botProfiles[c].avatar) cardAvatar.innerText = botProfiles[c].avatar;
     });
 
     showMyIdentity('red');
@@ -1098,23 +1197,31 @@ function handleSimulatedDiceRoll() {
 function handleSimulatedDiceRolled(color, diceVal) {
     currentDiceValue = diceVal;
     const diceEl = document.getElementById(`dice-${color}`);
-    if (diceEl) {
-        diceEl.classList.remove('rolling');
-        diceEl.innerText = diceFaces[currentDiceValue];
-        diceEl.style.color = currentDiceValue === 6 ? '#ff3333' : '#111';
-    }
-    try {
-        soundDice.currentTime = 0;
-        soundDice.play().catch(() => {});
-    } catch (e) {}
 
-    gameState = 'WAITING_FOR_MOVE';
-    startTurnTimer();
+    const onComplete = () => {
+        gameState = 'WAITING_FOR_MOVE';
+        startTurnTimer();
 
-    if (color === myAssignedColor) {
-        checkAvailableMovesOnline();
+        if (color === myAssignedColor) {
+            checkAvailableMovesOnline();
+        } else {
+            setTimeout(() => executeSimulatedBotMove(color, diceVal), 500);
+        }
+    };
+
+    if (window.LudoAnimations && window.LudoAnimations.animateDiceRoll) {
+        window.LudoAnimations.animateDiceRoll(diceEl, diceVal, onComplete);
     } else {
-        setTimeout(() => executeSimulatedBotMove(color, diceVal), 700);
+        if (diceEl) {
+            diceEl.classList.remove('rolling');
+            diceEl.innerText = diceFaces[currentDiceValue];
+            diceEl.style.color = currentDiceValue === 6 ? '#ff3333' : '#111';
+        }
+        try {
+            soundDice.currentTime = 0;
+            soundDice.play().catch(() => {});
+        } catch (e) {}
+        onComplete();
     }
 }
 

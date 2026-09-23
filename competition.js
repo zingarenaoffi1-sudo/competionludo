@@ -499,7 +499,6 @@ let compTurnChanceCount = 0;
         gameState = "WAITING_FOR_ROLL";
         isMoving = false;
 
-        // Alternate turn chance ad trigger flow
         if (data.currentColor === myAssignedColor) {
             competitionTurnChanceCount++;
             if (competitionTurnChanceCount > 1 && competitionTurnChanceCount % 2 === 0) {
@@ -526,7 +525,6 @@ let compTurnChanceCount = 0;
     socket.on("player-eliminated", (data) => {
         activePlayers = activePlayers.filter(c => c !== data.color);
 
-        // 1. Hide all tokens of this player from board completely
         if (allTokens[data.color]) {
             allTokens[data.color].forEach(t => {
                 if (t.element) {
@@ -536,7 +534,6 @@ let compTurnChanceCount = 0;
             });
         }
 
-        // 2. Mark player card with "LEFT"
         const card = document.getElementById(`profile-${data.color}`);
         if (card) {
             card.classList.add("player-left");
@@ -551,7 +548,6 @@ let compTurnChanceCount = 0;
             }
         }
 
-        // 3. Hide their corner dice
         const dice = document.getElementById(`dice-${data.color}`);
         if (dice) {
             dice.classList.remove("visible", "active-dice", "rolling");
@@ -678,7 +674,6 @@ async function joinMatch(stake, playerCount) {
     const statusText = document.getElementById("matchmaking-status-text");
     if (statusText) statusText.innerText = "⏳ Loading sponsored ad...";
 
-    // 1. Play interstitial ad non-blockingly
     if (typeof playInterstitialAd === 'function') {
         playInterstitialAd().catch(() => {});
     } else if (typeof window.showZingInterstitialAd === 'function') {
@@ -687,7 +682,6 @@ async function joinMatch(stake, playerCount) {
 
     if (statusText) statusText.innerText = `Searching for ${playerCount} Players (Stake: ${stake})...`;
 
-    // 2. Request matchmaking from socket
     if (socket && socket.connected) {
         socket.emit("request-matchmaking", {
             userId: currentUser.uid,
@@ -778,12 +772,19 @@ function updateTurnUIOnline() {
     let currentColor = activePlayers[currentPlayerIndex];
     let pData = playersData[currentColor];
     let turnTextEl = document.getElementById("turn-text");
-    if (currentColor === myAssignedColor) {
-        turnTextEl.innerText = "YOUR TURN! Roll your dice!";
-    } else {
-        turnTextEl.innerText = `${pData.name}'s Turn...`;
+    let isMyTurn = (currentColor === myAssignedColor);
+    if (turnTextEl) {
+        if (isMyTurn) {
+            turnTextEl.innerText = "YOUR TURN! Roll your dice!";
+        } else {
+            turnTextEl.innerText = `${pData.name}'s Turn...`;
+        }
+        turnTextEl.className = `turn-indicator ${pData.class}`;
     }
-    turnTextEl.className = `turn-indicator ${pData.class}`;
+
+    if (window.LudoKingMenu && typeof LudoKingMenu.updateTurnPill === 'function') {
+        LudoKingMenu.updateTurnPill(pData.name, isMyTurn ? "Roll your dice!" : "Waiting...", isMyTurn);
+    }
     ['red', 'green', 'yellow', 'blue'].forEach(c => {
         let card = document.getElementById(`profile-${c}`);
         let dice = document.getElementById(`dice-${c}`);

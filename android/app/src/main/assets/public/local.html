@@ -8,18 +8,12 @@
 </head>
 <body style="margin: 0; background: #080d1a;">
     <div id="game-wrapper">
-        <div class="game-header">
+        <div class="game-header" style="padding: 4px 10px; margin-bottom: 2px; min-height: 38px;">
             <div class="logo-container">
-                <span class="logo-crown">👑</span>
-                <span class="logo-text" id="game-mode-title">PASS & PLAY</span>
+                <span class="logo-crown" style="font-size: 16px;">👑</span>
+                <span class="logo-text" id="game-mode-title" style="font-size: 14px;">PASS & PLAY</span>
             </div>
-            <div style="display: flex; gap: 6px; align-items: center;">
-                <button class="ludo-music-toggle-btn" onclick="LudoMusic.toggleMute()">🎵 Music ON</button>
-                <button class="menu-btn" onclick="LudoBackHandler.handleBackPress()">Lobby</button>
-            </div>
-        </div>
-        <div class="turn-status-banner">
-            <div class="turn-indicator" id="turn-text">SELECT MODE TO START</div>
+            <div class="turn-indicator" id="turn-text" style="font-size: 12px; font-weight: 800; color: #ffd700;">SELECT PLAYERS</div>
         </div>
         <div class="hud-row">
             <div class="player-corner" id="corner-red">
@@ -120,6 +114,7 @@
             </div>
         </div>
     </div>
+    <script src="capacitor.js"></script>
     <script src="unity-ads-config.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
@@ -138,12 +133,15 @@
     </script>
     <script src="how-to-play.js"></script>
     <script src="ludo-music.js"></script>
+    <script src="ludo-king-menu.js"></script>
     <script src="ludo-back-handler.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             LudoBackHandler.init({ mode: 'match' });
+            LudoKingMenu.init({ mode: 'local' });
         });
     </script>
+    <script src="ludo-animations.js"></script>
     <script src="local.js"></script>
 </body>
 </html>

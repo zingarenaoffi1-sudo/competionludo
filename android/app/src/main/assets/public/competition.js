@@ -778,12 +778,19 @@ function updateTurnUIOnline() {
     let currentColor = activePlayers[currentPlayerIndex];
     let pData = playersData[currentColor];
     let turnTextEl = document.getElementById("turn-text");
-    if (currentColor === myAssignedColor) {
-        turnTextEl.innerText = "YOUR TURN! Roll your dice!";
-    } else {
-        turnTextEl.innerText = `${pData.name}'s Turn...`;
+    let isMyTurn = (currentColor === myAssignedColor);
+    if (turnTextEl) {
+        if (isMyTurn) {
+            turnTextEl.innerText = "YOUR TURN! Roll your dice!";
+        } else {
+            turnTextEl.innerText = `${pData.name}'s Turn...`;
+        }
+        turnTextEl.className = `turn-indicator ${pData.class}`;
     }
-    turnTextEl.className = `turn-indicator ${pData.class}`;
+
+    if (window.LudoKingMenu && typeof LudoKingMenu.updateTurnPill === 'function') {
+        LudoKingMenu.updateTurnPill(pData.name, isMyTurn ? "Roll your dice!" : "Waiting...", isMyTurn);
+    }
     ['red', 'green', 'yellow', 'blue'].forEach(c => {
         let card = document.getElementById(`profile-${c}`);
         let dice = document.getElementById(`dice-${c}`);

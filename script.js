@@ -93,6 +93,30 @@ function setOnlineGameMode(mode) {
             el.style.border = isActive ? '2px solid #ffd700' : '1px solid rgba(255,255,255,0.15)';
         }
     });
+
+    const isTeam = (mode === 'team2v2');
+    const qOpt = document.getElementById('quick-player-options');
+    const tqOpt = document.getElementById('team-quick-options');
+    if (qOpt && tqOpt) {
+        if (isTeam) {
+            qOpt.classList.add('hidden');
+            tqOpt.classList.remove('hidden');
+        } else {
+            qOpt.classList.remove('hidden');
+            tqOpt.classList.add('hidden');
+        }
+    }
+    const cOpt = document.getElementById('create-player-options');
+    const tcOpt = document.getElementById('team-create-options');
+    if (cOpt && tcOpt) {
+        if (isTeam) {
+            cOpt.classList.add('hidden');
+            tcOpt.classList.remove('hidden');
+        } else {
+            cOpt.classList.remove('hidden');
+            tcOpt.classList.add('hidden');
+        }
+    }
 }
 
 function showQuickMatch() {
@@ -145,7 +169,6 @@ async function findOnlineMatch(playersCount) {
     isMatchmakingActive = true;
     isSimulatedOnline = false;
 
-    // 1. Instantly switch UI to searching screen so user gets immediate visual feedback
     document.getElementById('quick-match-sub').classList.add('hidden');
     document.getElementById('matchmaking-sub').classList.remove('hidden');
 
@@ -154,14 +177,12 @@ async function findOnlineMatch(playersCount) {
         matchText.innerText = `Searching for ${playersCount} Players (${currentOnlineGameMode.toUpperCase()})...`;
     }
 
-    // 2. Play interstitial ad without blocking the user
     if (typeof playInterstitialAd === 'function') {
         playInterstitialAd().catch(() => {});
     } else if (typeof window.showZingInterstitialAd === 'function') {
         window.showZingInterstitialAd().catch(() => {});
     }
 
-    // 3. Connect to server & emit find-match
     let socketHandled = false;
     try {
         const s = ensureSocket();
@@ -187,7 +208,6 @@ async function findOnlineMatch(playersCount) {
         console.warn('Socket connection error:', e);
     }
 
-    // 4. Robust auto-fallback: if server doesn't pair within 3.8s, start instant simulation match!
     if (matchSearchTimeout) clearTimeout(matchSearchTimeout);
     matchSearchTimeout = setTimeout(() => {
         if (isMatchmakingActive && !isSimulatedOnline) {
@@ -217,14 +237,12 @@ async function createPrivateRoom(playersCount) {
     const statusEl = document.getElementById('room-created-display');
     if (statusEl) statusEl.innerText = "⚡ Generating Room ID...";
 
-    // 1. Play interstitial ad non-blockingly
     if (typeof playInterstitialAd === 'function') {
         playInterstitialAd().catch(() => {});
     } else if (typeof window.showZingInterstitialAd === 'function') {
         window.showZingInterstitialAd().catch(() => {});
     }
 
-    // 2. Request room creation from server
     let s = null;
     try {
         s = ensureSocket();
@@ -246,7 +264,6 @@ async function createPrivateRoom(playersCount) {
         s.once('connect', sendCreate);
     }
 
-    // Fallback: If server is offline/slow, generate room locally within 2.5s
     if (privateRoomTimeout) clearTimeout(privateRoomTimeout);
     privateRoomTimeout = setTimeout(() => {
         if (isCreatingRoom && !currentOnlineRoomId) {
@@ -296,7 +313,6 @@ function joinPrivateRoom() {
         });
     } else {
         setTimeout(() => {
-            // Instant join fallback
             currentOnlineRoomId = roomId;
             startSimulatedOnlineMatch(2);
         }, 1800);
@@ -524,7 +540,6 @@ function setupSocketListeners() {
             modal.style.display = 'none';
         }
 
-        // Reset all online sub panels
         const mainOpts = document.getElementById('online-main-options');
         if (mainOpts) mainOpts.classList.remove('hidden');
         ['quick-match-sub', 'create-room-sub', 'join-room-sub', 'matchmaking-sub', 'custom-room-lobby'].forEach(id => {
@@ -598,7 +613,6 @@ function setupSocketListeners() {
         gameState = 'WAITING_FOR_ROLL';
         isMoving = false;
 
-        // Alternate turn chance ad trigger flow
         if (data.currentColor === myAssignedColor) {
             onlineTurnChanceCount++;
             if (onlineTurnChanceCount > 1 && onlineTurnChanceCount % 2 === 0) {
@@ -627,7 +641,6 @@ function setupSocketListeners() {
         activePlayers = activePlayers.filter(c => c !== data.color);
         window.activePlayers = activePlayers;
 
-        // 1. Hide all tokens of this player from board completely
         if (allTokens[data.color]) {
             allTokens[data.color].forEach(t => {
                 if (t.element) {
@@ -637,7 +650,6 @@ function setupSocketListeners() {
             });
         }
 
-        // 2. Mark player card as LEFT
         const card = document.getElementById(`profile-${data.color}`);
         if (card) {
             card.classList.add('player-left');
@@ -652,7 +664,6 @@ function setupSocketListeners() {
             }
         }
 
-        // 3. Hide their corner dice
         const dice = document.getElementById(`dice-${data.color}`);
         if (dice) {
             dice.classList.remove('visible', 'active-dice', 'rolling');
@@ -786,13 +797,18 @@ function updateTurnUIOnline() {
     if (!currentColor || !playersData[currentColor]) return;
     const pData = playersData[currentColor];
     const turnTextEl = document.getElementById('turn-text');
+    const isMyTurn = (currentColor === myAssignedColor);
     if (turnTextEl) {
-        if (currentColor === myAssignedColor) {
+        if (isMyTurn) {
             turnTextEl.innerText = "YOUR TURN! Roll your dice!";
         } else {
             turnTextEl.innerText = `${pData.name}'s Turn...`;
         }
         turnTextEl.className = `turn-indicator ${pData.class}`;
+    }
+
+    if (window.LudoKingMenu && typeof LudoKingMenu.updateTurnPill === 'function') {
+        LudoKingMenu.updateTurnPill(pData.name, isMyTurn ? "Roll your dice!" : "Waiting...", isMyTurn);
     }
     ['red', 'green', 'yellow', 'blue'].forEach(c => {
         const card = document.getElementById(`profile-${c}`);
@@ -859,7 +875,6 @@ function checkAvailableMovesOnline() {
         if (isSimulatedOnline) {
             setTimeout(() => {
                 if (currentDiceValue === 6) {
-                    // Bonus roll on 6
                     gameState = 'WAITING_FOR_ROLL';
                     updateTurnUIOnline();
                 } else {
@@ -1075,10 +1090,6 @@ function createBoard() {
     }
 }
 
-// ==========================================
-// SIMULATED MULTIPLAYER ENGINE FOR STABILITY
-// ==========================================
-
 function startSimulatedOnlineMatch(playersCount) {
     isSimulatedOnline = true;
     isMatchmakingActive = false;
@@ -1094,7 +1105,6 @@ function startSimulatedOnlineMatch(playersCount) {
         modal.style.display = 'none';
     }
 
-    // Reset sub panels
     const mainOpts = document.getElementById('online-main-options');
     if (mainOpts) mainOpts.classList.remove('hidden');
     ['quick-match-sub', 'create-room-sub', 'join-room-sub', 'matchmaking-sub', 'custom-room-lobby'].forEach(id => {
@@ -1120,16 +1130,38 @@ function startSimulatedOnlineMatch(playersCount) {
     }
     window.activePlayers = activePlayers;
 
-    const botNames = {
-        'green': 'Alex_Pro',
-        'yellow': 'Rahul99',
-        'blue': 'Sara_Star'
+    let pGreen = { name: 'Player 2', tag: 'Lvl 28 • 🇮🇳', avatar: '🧔' };
+    let pYellow = { name: 'Player 3', tag: 'Lvl 19 • 🇮🇳', avatar: '👩' };
+    let pBlue = { name: 'Player 4', tag: 'Lvl 34 • 🇮🇳', avatar: '👦' };
+
+    if (window.RealisticPersonas) {
+        RealisticPersonas.resetPool();
+        pGreen = RealisticPersonas.getRandomPlayer();
+        pYellow = RealisticPersonas.getRandomPlayer();
+        pBlue = RealisticPersonas.getRandomPlayer();
+    }
+
+    const botProfiles = {
+        'green': pGreen,
+        'yellow': pYellow,
+        'blue': pBlue
     };
+
     if (playersData['red']) playersData['red'].name = getMyPlayerName();
     ['green', 'yellow', 'blue'].forEach(c => {
-        if (playersData[c]) playersData[c].name = botNames[c];
+        if (playersData[c]) {
+            playersData[c].name = botProfiles[c].name;
+            playersData[c].tag = botProfiles[c].tag;
+            playersData[c].avatar = botProfiles[c].avatar;
+        }
         const cardName = document.querySelector(`#profile-${c} .player-name`);
-        if (cardName) cardName.innerText = botNames[c];
+        if (cardName) cardName.innerText = botProfiles[c].name;
+
+        const cardTag = document.querySelector(`#profile-${c} .player-status-tag`);
+        if (cardTag && botProfiles[c].tag) cardTag.innerText = botProfiles[c].tag;
+
+        const cardAvatar = document.querySelector(`#profile-${c} .avatar`);
+        if (cardAvatar && botProfiles[c].avatar) cardAvatar.innerText = botProfiles[c].avatar;
     });
 
     showMyIdentity('red');
@@ -1212,7 +1244,6 @@ function executeSimulatedTokenMove(color, tokenIndex, diceVal) {
     setTimeout(() => {
         isMoving = false;
 
-        // Check victory
         const tokensHome = allTokens[color].filter(t => t.step >= 56).length;
         const neededToWin = currentOnlineGameMode === 'quick' ? 2 : 4;
         if (tokensHome >= neededToWin) {
@@ -1221,7 +1252,6 @@ function executeSimulatedTokenMove(color, tokenIndex, diceVal) {
             return;
         }
 
-        // Bonus turn on 6 or cut
         if (diceVal === 6 || cutDetails) {
             gameState = 'WAITING_FOR_ROLL';
             startTurnTimer();

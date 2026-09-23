@@ -464,21 +464,31 @@ let compTurnChanceCount = 0;
         showMyIdentity(myAssignedColor);
         initGameSessionOnline();
     });
+    let competitionTurnChanceCount = 0;
     socket.on("remote-dice-rolled", (data) => {
         currentDiceValue = data.diceValue;
         let color = data.color || activePlayers[currentPlayerIndex];
         let diceEl = document.getElementById(`dice-${color}`);
-        if (diceEl) {
-            diceEl.classList.remove("rolling");
-            diceEl.innerText = diceFaces[currentDiceValue];
-            diceEl.style.color = currentDiceValue === 6 ? "#ff3333" : "#111";
-        }
-        soundDice.currentTime = 0;
-        soundDice.play().catch(e => {});
-        gameState = "WAITING_FOR_MOVE";
-        startTurnTimer();
-        if (color === myAssignedColor) {
-            checkAvailableMovesOnline();
+
+        const onComplete = () => {
+            gameState = "WAITING_FOR_MOVE";
+            startTurnTimer();
+            if (color === myAssignedColor) {
+                checkAvailableMovesOnline();
+            }
+        };
+
+        if (window.LudoAnimations && window.LudoAnimations.animateDiceRoll) {
+            window.LudoAnimations.animateDiceRoll(diceEl, currentDiceValue, onComplete);
+        } else {
+            if (diceEl) {
+                diceEl.classList.remove("rolling");
+                diceEl.innerText = diceFaces[currentDiceValue];
+                diceEl.style.color = currentDiceValue === 6 ? "#ff3333" : "#111";
+            }
+            soundDice.currentTime = 0;
+            soundDice.play().catch(e => {});
+            onComplete();
         }
     });
     socket.on("remote-token-moved", (data) => {
@@ -488,6 +498,17 @@ let compTurnChanceCount = 0;
         currentPlayerIndex = activePlayers.indexOf(data.currentColor);
         gameState = "WAITING_FOR_ROLL";
         isMoving = false;
+
+        // Alternate turn chance ad trigger flow
+        if (data.currentColor === myAssignedColor) {
+            competitionTurnChanceCount++;
+            if (competitionTurnChanceCount > 1 && competitionTurnChanceCount % 2 === 0) {
+                if (typeof window.showZingInterstitialAd === 'function' && navigator.onLine) {
+                    window.showZingInterstitialAd().catch(() => {});
+                }
+            }
+        }
+
         if (data.missedTurns) {
             updateStrikesUI(data.missedTurns);
         }
@@ -757,12 +778,19 @@ function updateTurnUIOnline() {
     let currentColor = activePlayers[currentPlayerIndex];
     let pData = playersData[currentColor];
     let turnTextEl = document.getElementById("turn-text");
-    if (currentColor === myAssignedColor) {
-        turnTextEl.innerText = "YOUR TURN! Roll your dice!";
-    } else {
-        turnTextEl.innerText = `${pData.name}'s Turn...`;
+    let isMyTurn = (currentColor === myAssignedColor);
+    if (turnTextEl) {
+        if (isMyTurn) {
+            turnTextEl.innerText = "YOUR TURN! Roll your dice!";
+        } else {
+            turnTextEl.innerText = `${pData.name}'s Turn...`;
+        }
+        turnTextEl.className = `turn-indicator ${pData.class}`;
     }
-    turnTextEl.className = `turn-indicator ${pData.class}`;
+
+    if (window.LudoKingMenu && typeof LudoKingMenu.updateTurnPill === 'function') {
+        LudoKingMenu.updateTurnPill(pData.name, isMyTurn ? "Roll your dice!" : "Waiting...", isMyTurn);
+    }
     ['red', 'green', 'yellow', 'blue'].forEach(c => {
         let card = document.getElementById(`profile-${c}`);
         let dice = document.getElementById(`dice-${c}`);
@@ -831,36 +859,65 @@ function moveTokenOnline(color, tokenIndex) {
     });
 }
 function moveTokenStepByStepRemote(color, tokenIndex, diceVal, cutDetails) {
-    let token = allTokens[color][tokenIndex];
+    let token = allTokens[color] ? allTokens[color][tokenIndex] : null;
+    if (!token) {
+        isMoving = false;
+        return;
+    }
     let startStep = token.step;
     if (startStep === -1 && diceVal === 6) {
         token.step = 0;
         soundMove.currentTime = 0;
         soundMove.play().catch(e => {});
         renderTokenPosition(token);
+        if (window.LudoAnimations && window.LudoAnimations.animateTokenLanding) {
+            window.LudoAnimations.animateTokenLanding(token);
+        }
         isMoving = false;
         return;
     }
     let targetStep = startStep + diceVal;
     let currentStep = startStep;
-    let moveInterval = setInterval(() => {
+
+    function hopNext() {
+        if (currentStep >= targetStep) {
+            if (window.LudoAnimations && window.LudoAnimations.animateTokenLanding) {
+                window.LudoAnimations.animateTokenLanding(token);
+            }
+            isMoving = false;
+            if (cutDetails && allTokens[cutDetails.color]) {
+                let enemyToken = allTokens[cutDetails.color][cutDetails.index];
+                if (enemyToken) {
+                    if (window.LudoAnimations && window.LudoAnimations.animateTokenCapture) {
+                        window.LudoAnimations.animateTokenCapture(enemyToken, renderTokenPosition, () => {
+                            soundCut.currentTime = 0;
+                            soundCut.play().catch(e => {});
+                        });
+                    } else {
+                        enemyToken.step = -1;
+                        renderTokenPosition(enemyToken);
+                        soundCut.currentTime = 0;
+                        soundCut.play().catch(e => {});
+                    }
+                }
+            }
+            return;
+        }
         currentStep++;
         token.step = currentStep;
-        renderTokenPosition(token);
-        soundMove.currentTime = 0;
-        soundMove.play().catch(e => {});
-        if (currentStep >= targetStep) {
-            clearInterval(moveInterval);
-            isMoving = false;
-            if (cutDetails) {
-                let enemyToken = allTokens[cutDetails.color][cutDetails.index];
-                enemyToken.step = -1;
-                renderTokenPosition(enemyToken);
-                soundCut.currentTime = 0;
-                soundCut.play().catch(e => {});
-            }
+        if (window.LudoAnimations && window.LudoAnimations.animateTokenHopStep) {
+            window.LudoAnimations.animateTokenHopStep(token, renderTokenPosition, () => {
+                soundMove.currentTime = 0;
+                soundMove.play().catch(e => {});
+            });
+        } else {
+            renderTokenPosition(token);
+            soundMove.currentTime = 0;
+            soundMove.play().catch(e => {});
         }
-    }, 180);
+        setTimeout(hopNext, 170);
+    }
+    hopNext();
 }
 function spawnTokensOnline() {
     const board = document.getElementById("ludo-board");

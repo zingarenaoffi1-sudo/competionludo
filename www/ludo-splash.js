@@ -77,6 +77,9 @@
 
         setTimeout(() => {
             hideSplash();
+            if (window.initZingBannerAd) {
+                window.initZingBannerAd({ delay: 300 });
+            }
         }, 1100);
     }
 

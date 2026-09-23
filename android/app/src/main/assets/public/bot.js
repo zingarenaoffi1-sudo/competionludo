@@ -132,24 +132,48 @@ async function botStartNormally() {
 function startBotMatchConfirmed(unlockOneToken = false) {
     const startupModal = document.getElementById("startup-modal");
     if (startupModal) startupModal.classList.add("hidden");
+
+    let pGreen = { name: "Player 2", tag: "Lvl 28 • 🇮🇳", avatar: "🧔" };
+    let pYellow = { name: "Player 3", tag: "Lvl 19 • 🇮🇳", avatar: "👩" };
+    let pBlue = { name: "Player 4", tag: "Lvl 34 • 🇮🇳", avatar: "👦" };
+
+    if (window.RealisticPersonas) {
+        RealisticPersonas.resetPool();
+        pGreen = RealisticPersonas.getRandomPlayer();
+        pYellow = RealisticPersonas.getRandomPlayer();
+        pBlue = RealisticPersonas.getRandomPlayer();
+    }
+
     if (botCount === 1) {
         activePlayers = ['red', 'yellow'];
         botColors = ['yellow'];
         playersData['red'].name = "You";
-        playersData['yellow'].name = "AI Bot";
+        playersData['yellow'].name = pYellow.name;
+        playersData['yellow'].tag = pYellow.tag;
+        playersData['yellow'].avatar = pYellow.avatar;
     } else if (botCount === 2) {
         activePlayers = ['red', 'green', 'yellow'];
         botColors = ['green', 'yellow'];
         playersData['red'].name = "You";
-        playersData['green'].name = "AI Bot 1";
-        playersData['yellow'].name = "AI Bot 2";
+        playersData['green'].name = pGreen.name;
+        playersData['green'].tag = pGreen.tag;
+        playersData['green'].avatar = pGreen.avatar;
+        playersData['yellow'].name = pYellow.name;
+        playersData['yellow'].tag = pYellow.tag;
+        playersData['yellow'].avatar = pYellow.avatar;
     } else {
         activePlayers = ['red', 'green', 'yellow', 'blue'];
         botColors = ['green', 'yellow', 'blue'];
         playersData['red'].name = "You";
-        playersData['green'].name = "AI Bot 1";
-        playersData['yellow'].name = "AI Bot 2";
-        playersData['blue'].name = "AI Bot 3";
+        playersData['green'].name = pGreen.name;
+        playersData['green'].tag = pGreen.tag;
+        playersData['green'].avatar = pGreen.avatar;
+        playersData['yellow'].name = pYellow.name;
+        playersData['yellow'].tag = pYellow.tag;
+        playersData['yellow'].avatar = pYellow.avatar;
+        playersData['blue'].name = pBlue.name;
+        playersData['blue'].tag = pBlue.tag;
+        playersData['blue'].avatar = pBlue.avatar;
     }
     winnersList = [];
     totalPlayersInGame = activePlayers.length;
@@ -158,6 +182,16 @@ function startBotMatchConfirmed(unlockOneToken = false) {
         let dice = document.getElementById(`dice-${c}`);
         let nameEl = document.getElementById(`name-${c}`);
         if (nameEl && playersData[c]) nameEl.innerText = playersData[c].name;
+        
+        let tagEl = card ? card.querySelector('.player-status-tag') : null;
+        if (tagEl && playersData[c].tag) {
+            tagEl.innerText = playersData[c].tag;
+        }
+        let avEl = card ? card.querySelector('.avatar') : null;
+        if (avEl && playersData[c].avatar && c !== 'red') {
+            avEl.innerText = playersData[c].avatar;
+        }
+
         if (activePlayers.includes(c)) {
             card.style.opacity = "0.5";
             dice.classList.add("visible");
@@ -240,8 +274,14 @@ function updateTurnUI() {
     let pData = playersData[currentColor];
     let isBot = botColors.includes(currentColor);
     let turnTextEl = document.getElementById("turn-text");
-    turnTextEl.innerText = isBot ? `${pData.name} is calculating move...` : `Your Turn! Tap dice to roll.`;
-    turnTextEl.className = `turn-indicator ${pData.class}`;
+    if (turnTextEl) {
+        turnTextEl.innerText = isBot ? `${pData.name}'s Turn` : `YOUR TURN! TAP DICE`;
+        turnTextEl.className = `turn-indicator ${pData.class}`;
+    }
+
+    if (window.LudoKingMenu && typeof LudoKingMenu.updateTurnPill === 'function') {
+        LudoKingMenu.updateTurnPill(pData.name, isBot ? "Rolling dice..." : "Tap dice to roll", !isBot);
+    }
     ['red', 'green', 'yellow', 'blue'].forEach(c => {
         let card = document.getElementById(`profile-${c}`);
         let dice = document.getElementById(`dice-${c}`);
@@ -438,6 +478,11 @@ function checkCapture(token) {
                     let enemyCoords = masterPath[enemyGlobal];
                     if (enemyCoords.r === currentCoords.r && enemyCoords.c === currentCoords.c) {
                         captured = true;
+                        if (window.RealisticPersonas) {
+                            setTimeout(() => {
+                                RealisticPersonas.triggerBotChatReaction(token.color, 'capture');
+                            }, 500);
+                        }
                         if (window.LudoAnimations && window.LudoAnimations.animateTokenCapture) {
                             window.LudoAnimations.animateTokenCapture(eToken, renderTokenPosition, () => {
                                 soundCut.currentTime = 0;

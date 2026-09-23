@@ -1,3 +1,8 @@
+/**
+ * Ludo Pro Animations Engine
+ * Provides glitch-free 3D physics dice tumble and high-fidelity goti hopping/settling
+ */
+
 (function (window) {
     'use strict';
 
@@ -59,6 +64,7 @@
         const safeVal = Math.min(Math.max(parseInt(rolledVal) || 1, 1), 6);
         const target = DICE_TARGET_ANGLES[safeVal] || { x: 0, y: 0 };
 
+        // 3 full 360-degree rotations on both axes + exact landing angle
         const spinsX = 3 * 360;
         const spinsY = 3 * 360;
 
@@ -70,7 +76,7 @@
 
         if (container) {
             container.classList.remove('dice-tumble-bounce');
-            void container.offsetWidth;
+            void container.offsetWidth; // Trigger reflow
             container.classList.add('dice-tumble-bounce');
         }
 
@@ -79,6 +85,7 @@
             cube.style.transform = `rotateX(${nextX}deg) rotateY(${nextY}deg)`;
         }
 
+        // Play rolling audio
         try {
             if (window.soundDice) {
                 window.soundDice.currentTime = 0;
@@ -96,9 +103,9 @@
 
     function animateTokenHopStep(token, renderFn, onStepSound) {
         if (!token || !token.element) return;
-        token.element.classList.remove('token-hop', 'goti-hop', 'hopping');
-        void token.element.offsetWidth;
-        token.element.classList.add('token-hop');
+        token.element.classList.remove('goti-hop', 'hopping');
+        void token.element.offsetWidth; // Reflow
+        token.element.classList.add('goti-hop');
 
         if (typeof renderFn === 'function') {
             renderFn(token);
@@ -111,11 +118,11 @@
 
     function animateTokenLanding(token) {
         if (!token || !token.element) return;
-        token.element.classList.remove('token-hop', 'goti-hop', 'hopping');
-        token.element.classList.add('token-settle');
+        token.element.classList.remove('goti-hop', 'hopping');
+        token.element.classList.add('goti-settle');
         setTimeout(() => {
             if (token && token.element) {
-                token.element.classList.remove('token-settle', 'goti-settle');
+                token.element.classList.remove('goti-settle');
             }
         }, 340);
     }
@@ -130,9 +137,9 @@
             onCutSound();
         }
 
-        token.element.classList.add('token-captured');
+        token.element.classList.add('goti-captured');
         setTimeout(() => {
-            token.element.classList.remove('token-captured', 'goti-captured');
+            token.element.classList.remove('goti-captured');
             token.step = -1;
             if (typeof renderFn === 'function') {
                 renderFn(token);

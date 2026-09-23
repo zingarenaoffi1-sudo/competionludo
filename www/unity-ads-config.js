@@ -3,7 +3,7 @@ const UnityAdsConfig = {
     bannerPlacement: 'BP_Banner_Android',
     interstitialPlacement: 'BP_Interstitial_Android',
     rewardedPlacement: 'BP_Rewarded_Android',
-    isTesting: true
+    isTesting: false // Production live mode for release APK; native plugin handles test fallback
 };
 
 window.UnityAdsConfig = UnityAdsConfig;
@@ -15,20 +15,29 @@ function getUnityAdsBridge() {
         return _unityBridgeInstance;
     }
     if (window.Capacitor) {
-        // 1. Standard Capacitor 3/4/5/6 method to bind native custom plugin
+        // 1. Standard Capacitor registerPlugin
         if (typeof window.Capacitor.registerPlugin === 'function') {
             try {
                 _unityBridgeInstance = window.Capacitor.registerPlugin('UnityAdsBridge');
-                if (_unityBridgeInstance) {
-                    return _unityBridgeInstance;
-                }
+                if (_unityBridgeInstance) return _unityBridgeInstance;
             } catch (err) {
                 console.warn('[UnityAds] registerPlugin failed, checking Plugins map:', err);
             }
         }
-        // 2. Fallback to direct Plugins map if already populated
+        // 2. Plugins map check
         if (window.Capacitor.Plugins && window.Capacitor.Plugins.UnityAdsBridge) {
             _unityBridgeInstance = window.Capacitor.Plugins.UnityAdsBridge;
+            return _unityBridgeInstance;
+        }
+        // 3. Direct native bridge fallback wrapper
+        if (typeof window.Capacitor.toNative === 'function') {
+            _unityBridgeInstance = {
+                initialize: (opts) => window.Capacitor.toNative('UnityAdsBridge', 'initialize', opts),
+                showBanner: (opts) => window.Capacitor.toNative('UnityAdsBridge', 'showBanner', opts),
+                hideBanner: (opts) => window.Capacitor.toNative('UnityAdsBridge', 'hideBanner', opts),
+                showInterstitial: (opts) => window.Capacitor.toNative('UnityAdsBridge', 'showInterstitial', opts),
+                showRewarded: (opts) => window.Capacitor.toNative('UnityAdsBridge', 'showRewarded', opts)
+            };
             return _unityBridgeInstance;
         }
     }
@@ -147,7 +156,8 @@ async function playInterstitialAd() {
                 placementId: UnityAdsConfig.interstitialPlacement,
                 isTesting: UnityAdsConfig.isTesting
             });
-            const timeoutPromise = new Promise(resolve => setTimeout(resolve, 3000));
+            // Give adequate 8s window for Unity video to load & show without cutting off
+            const timeoutPromise = new Promise(resolve => setTimeout(resolve, 8000));
             await Promise.race([showPromise, timeoutPromise]);
         } catch (e) {
             console.warn('[UnityAds] Interstitial error:', e);

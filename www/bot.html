@@ -8,20 +8,12 @@
 </head>
 <body style="margin: 0; background: #080d1a;">
     <div id="game-wrapper">
-        <div class="game-header">
+        <div class="game-header" style="padding: 4px 10px; margin-bottom: 2px; min-height: 38px;">
             <div class="logo-container">
-                <span class="logo-crown">👑</span>
-                <span class="logo-text" id="game-mode-title">VS COMPUTER (AI)</span>
+                <span class="logo-crown" style="font-size: 16px;">👑</span>
+                <span class="logo-text" id="game-mode-title" style="font-size: 14px;">PRO LUDO MATCH</span>
             </div>
-            <div style="display: flex; gap: 6px; align-items: center;">
-                <button class="ludo-music-toggle-btn" onclick="LudoMusic.toggleMute()">🎵 Music ON</button>
-                <button class="menu-btn" onclick="HowToPlayGuide.openModal()" style="padding: 6px 10px;">📖 Rules</button>
-                <button class="menu-btn" onclick="LudoBackHandler.handleBackPress()">Lobby</button>
-            </div>
-        </div>
-        <div class="turn-status-banner">
-            <div class="turn-indicator" id="turn-text">Choose Bots to Begin!</div>
-            <div class="turn-timer-badge" id="timer-text">🤖 Smart AI Active</div>
+            <div class="turn-indicator" id="turn-text" style="font-size: 12px; font-weight: 800; color: #ffd700;">CHOOSE PLAYERS</div>
         </div>
         <div class="hud-row">
             <div class="player-corner" id="corner-red">
@@ -29,7 +21,7 @@
                     <div class="avatar red-bg">1</div>
                     <div class="player-info">
                         <div class="player-name" id="name-red">You</div>
-                        <div class="player-status-tag red-text">Human</div>
+                        <div class="player-status-tag red-text">You</div>
                     </div>
                 </div>
                 <div class="corner-dice" id="dice-red" onclick="handleCornerDiceClick('red')">🎲</div>
@@ -38,8 +30,8 @@
                 <div class="player-card" id="profile-green">
                     <div class="avatar green-bg">2</div>
                     <div class="player-info">
-                        <div class="player-name" id="name-green">AI Bot 1</div>
-                        <div class="player-status-tag green-text">Computer</div>
+                        <div class="player-name" id="name-green">Player 2</div>
+                        <div class="player-status-tag green-text">Lvl 28 • 🇮🇳</div>
                     </div>
                 </div>
                 <div class="corner-dice" id="dice-green" onclick="handleCornerDiceClick('green')">🎲</div>
@@ -53,8 +45,8 @@
                 <div class="player-card" id="profile-blue">
                     <div class="avatar blue-bg">4</div>
                     <div class="player-info">
-                        <div class="player-name" id="name-blue">AI Bot 3</div>
-                        <div class="player-status-tag blue-text">Computer</div>
+                        <div class="player-name" id="name-blue">Player 4</div>
+                        <div class="player-status-tag blue-text">Lvl 34 • 🇮🇳</div>
                     </div>
                 </div>
                 <div class="corner-dice" id="dice-blue" onclick="handleCornerDiceClick('blue')">🎲</div>
@@ -63,8 +55,8 @@
                 <div class="player-card" id="profile-yellow">
                     <div class="avatar yellow-bg">3</div>
                     <div class="player-info">
-                        <div class="player-name" id="name-yellow">AI Bot 2</div>
-                        <div class="player-status-tag yellow-text">Computer</div>
+                        <div class="player-name" id="name-yellow">Player 3</div>
+                        <div class="player-status-tag yellow-text">Lvl 19 • 🇮🇳</div>
                     </div>
                 </div>
                 <div class="corner-dice" id="dice-yellow" onclick="handleCornerDiceClick('yellow')">🎲</div>
@@ -131,6 +123,7 @@
             </div>
         </div>
     </div>
+    <script src="capacitor.js"></script>
     <script src="unity-ads-config.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
@@ -149,12 +142,16 @@
     </script>
     <script src="how-to-play.js"></script>
     <script src="ludo-music.js"></script>
+    <script src="realistic-names.js"></script>
+    <script src="ludo-king-menu.js"></script>
     <script src="ludo-back-handler.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             LudoBackHandler.init({ mode: 'match' });
+            LudoKingMenu.init({ mode: 'bot' });
         });
     </script>
+    <script src="ludo-animations.js"></script>
     <script src="bot.js"></script>
 </body>
 </html>
