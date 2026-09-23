@@ -197,21 +197,17 @@ async function showZingRewardedAd({ onReward, onFail }) {
             }
         } catch (err) {
             console.warn('[UnityAds] Native Rewarded ad failed:', err);
-            const msg = (err && err.message) ? err.message : 'Ad failed to load';
-
-            if (UnityAdsConfig.isTesting) {
-                showAdToast('🎬 Playing fallback test ad...', true);
-                simulateRewardFlow(onReward);
-            } else {
-                showAdToast('⚠️ ' + msg + '. Please try again later.');
-                if (typeof onFail === 'function') {
-                    onFail({ reason: 'LOAD_FAILED', error: err });
-                }
+            const msg = (err && err.message) ? err.message : 'Ad load nahi ho saka';
+            showAdToast('⚠️ ' + msg + ' (Reward tabhi milega jab video pura dekhenge)');
+            if (typeof onFail === 'function') {
+                onFail({ reason: 'LOAD_FAILED', error: err });
             }
         }
     } else {
-        showAdToast('🎬 Browser Test: Simulating video ad (3s)...', true);
-        simulateRewardFlow(onReward);
+        showAdToast('⚠️ Ads sirf Android APK par available hain.');
+        if (typeof onFail === 'function') {
+            onFail({ reason: 'NOT_IN_NATIVE_APP' });
+        }
     }
 }
 window.showZingRewardedAd = showZingRewardedAd;

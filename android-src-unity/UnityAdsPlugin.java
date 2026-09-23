@@ -84,44 +84,22 @@ public class UnityAdsPlugin extends Plugin {
 
         isInitializing = true;
         final String targetGameId = (gameId != null && !gameId.trim().isEmpty()) ? gameId.trim() : DEFAULT_GAME_ID;
-        Log.d(TAG, "Initializing Unity Ads with Game ID: " + targetGameId + ", testMode=" + testing);
+        Log.i(TAG, "Initializing Unity Ads SDK with Game ID: [" + targetGameId + "], testMode=" + testing);
 
         UnityAds.initialize(activity.getApplicationContext(), targetGameId, testing, new IUnityAdsInitializationListener() {
             @Override
             public void onInitializationComplete() {
                 isInitializing = false;
-                Log.d(TAG, "Unity Ads initialized successfully with Game ID: " + targetGameId);
+                Log.i(TAG, "Unity Ads initialized successfully for Game ID: " + targetGameId);
                 preloadDefaultAds();
                 dispatchInitSuccess();
             }
 
             @Override
             public void onInitializationFailed(UnityAds.UnityAdsInitializationError error, String message) {
-                Log.w(TAG, "Unity Ads init failed for " + targetGameId + ": " + error + " (" + message + ")");
-                
-                // If custom Game ID failed in test mode, fall back to official Unity test Game ID
-                if (testing && !TEST_FALLBACK_GAME_ID.equals(targetGameId)) {
-                    Log.i(TAG, "Attempting fallback init with Unity Test Game ID: " + TEST_FALLBACK_GAME_ID);
-                    UnityAds.initialize(activity.getApplicationContext(), TEST_FALLBACK_GAME_ID, true, new IUnityAdsInitializationListener() {
-                        @Override
-                        public void onInitializationComplete() {
-                            isInitializing = false;
-                            Log.d(TAG, "Unity Ads initialized successfully via fallback Game ID: " + TEST_FALLBACK_GAME_ID);
-                            preloadDefaultAds();
-                            dispatchInitSuccess();
-                        }
-
-                        @Override
-                        public void onInitializationFailed(UnityAds.UnityAdsInitializationError err2, String msg2) {
-                            isInitializing = false;
-                            Log.e(TAG, "Fallback Unity Ads init also failed: " + err2 + " (" + msg2 + ")");
-                            dispatchInitFailure("Init failed: " + msg2);
-                        }
-                    });
-                } else {
-                    isInitializing = false;
-                    dispatchInitFailure("Init failed: " + message);
-                }
+                isInitializing = false;
+                Log.e(TAG, "Unity Ads init failed for Game ID [" + targetGameId + "]: " + error + " (" + message + ")");
+                dispatchInitFailure("Unity Ads init failed: " + error + " - " + message);
             }
         });
     }
@@ -229,58 +207,65 @@ public class UnityAdsPlugin extends Plugin {
         }
 
         final String placement = candidates.get(index);
-        Log.d(TAG, "Attempting banner load with placement: " + placement + " (" + (index + 1) + "/" + candidates.size() + ")");
+        Log.i(TAG, "Attempting banner load with placement: " + placement + " (" + (index + 1) + "/" + candidates.size() + ")");
 
-        if (bannerView != null) {
-            if (bannerLayout != null) bannerLayout.removeAllViews();
-            bannerView.destroy();
-            bannerView = null;
-        }
+        activity.runOnUiThread(() -> {
+            if (bannerView != null) {
+                if (bannerLayout != null) bannerLayout.removeAllViews();
+                bannerView.destroy();
+                bannerView = null;
+            }
 
-        bannerView = new BannerView(activity, placement, new UnityBannerSize(320, 50));
-        bannerView.setListener(new BannerView.Listener() {
-            @Override
-            public void onBannerLoaded(BannerView bannerAdView) {
-                Log.d(TAG, "Banner loaded successfully: " + placement);
-                activity.runOnUiThread(() -> {
-                    if (bannerLayout != null) {
-                        bannerLayout.removeAllViews();
-                        int gravity = "top".equalsIgnoreCase(position) ? (Gravity.TOP | Gravity.CENTER_HORIZONTAL) : (Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
-                        FrameLayout.LayoutParams childParams = new FrameLayout.LayoutParams(
-                                ViewGroup.LayoutParams.WRAP_CONTENT,
-                                ViewGroup.LayoutParams.WRAP_CONTENT,
-                                gravity
-                        );
-                        bannerLayout.addView(bannerAdView, childParams);
-                        bannerLayout.setVisibility(View.VISIBLE);
-                        bannerLayout.bringToFront();
-                        bannerLayout.requestLayout();
+            bannerView = new BannerView(activity, placement, new UnityBannerSize(320, 50));
+            if (bannerLayout != null) {
+                bannerLayout.removeAllViews();
+                int gravity = "top".equalsIgnoreCase(position) ? (Gravity.TOP | Gravity.CENTER_HORIZONTAL) : (Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
+                FrameLayout.LayoutParams childParams = new FrameLayout.LayoutParams(
+                        ViewGroup.LayoutParams.WRAP_CONTENT,
+                        ViewGroup.LayoutParams.WRAP_CONTENT,
+                        gravity
+                );
+                bannerLayout.addView(bannerView, childParams);
+                bannerLayout.setVisibility(View.VISIBLE);
+                bannerLayout.bringToFront();
+            }
+
+            bannerView.setListener(new BannerView.Listener() {
+                @Override
+                public void onBannerLoaded(BannerView bannerAdView) {
+                    Log.i(TAG, "Banner ad successfully loaded and showing for placement: " + placement);
+                    activity.runOnUiThread(() -> {
+                        if (bannerLayout != null) {
+                            bannerLayout.setVisibility(View.VISIBLE);
+                            bannerLayout.bringToFront();
+                            bannerLayout.requestLayout();
+                        }
+                    });
+                    if (call != null && !call.isKeptAlive()) {
+                        call.resolve(new JSObject().put("loaded", true).put("placementId", placement));
                     }
-                });
-                if (call != null && !call.isKeptAlive()) {
-                    call.resolve(new JSObject().put("loaded", true).put("placementId", placement));
                 }
-            }
 
-            @Override
-            public void onBannerClick(BannerView bannerAdView) {
-                Log.d(TAG, "Banner clicked");
-            }
+                @Override
+                public void onBannerClick(BannerView bannerAdView) {
+                    Log.d(TAG, "Banner clicked: " + placement);
+                }
 
-            @Override
-            public void onBannerFailedToLoad(BannerView bannerAdView, BannerErrorInfo errorInfo) {
-                String errorMsg = errorInfo != null ? errorInfo.errorMessage : "Unknown";
-                Log.w(TAG, "Banner placement " + placement + " failed: " + errorMsg);
-                activity.runOnUiThread(() -> tryLoadBannerCandidates(activity, candidates, index + 1, position, call));
-            }
+                @Override
+                public void onBannerFailedToLoad(BannerView bannerAdView, BannerErrorInfo errorInfo) {
+                    String errorMsg = errorInfo != null ? errorInfo.errorMessage : "Unknown";
+                    Log.w(TAG, "Banner placement " + placement + " failed to load: " + errorMsg);
+                    activity.runOnUiThread(() -> tryLoadBannerCandidates(activity, candidates, index + 1, position, call));
+                }
 
-            @Override
-            public void onBannerLeftApplication(BannerView bannerAdView) {
-                Log.d(TAG, "Banner left application");
-            }
+                @Override
+                public void onBannerLeftApplication(BannerView bannerAdView) {
+                    Log.d(TAG, "Banner left application");
+                }
+            });
+
+            bannerView.load();
         });
-
-        bannerView.load();
     }
 
     @PluginMethod
@@ -399,7 +384,7 @@ public class UnityAdsPlugin extends Plugin {
     private void tryLoadAndShowRewardedCandidates(Activity activity, List<String> candidates, int index, PluginCall call) {
         if (index >= candidates.size()) {
             Log.w(TAG, "All rewarded placement candidates failed to load");
-            call.reject("Load failed: No ad inventory available for rewarded placements");
+            call.reject("Ad failed to load: No ad inventory available. Unity Dashboard me 'Force test mode ON' check karein.");
             return;
         }
 
