@@ -30,48 +30,6 @@ body {
     min-height: 100vh; 
     overflow-x: hidden; 
 }
-.dummy-banner {
-    position: fixed;
-    top: 0; 
-    left: 50%; 
-    transform: translateX(-50%);
-    width: 320px; 
-    height: 48px;
-    background: linear-gradient(90deg, #ffd700, #ff9900); 
-    color: #111;
-    display: none; 
-    align-items: center; 
-    justify-content: space-between;
-    padding: 0 12px;
-    font-weight: 900; 
-    font-size: 12px;
-    letter-spacing: 0.5px;
-    z-index: 2000; 
-    border: 2px solid #222; 
-    border-top: none;
-    border-bottom-left-radius: 10px; 
-    border-bottom-right-radius: 10px;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.6);
-}
-.banner-close-btn {
-    background: rgba(0, 0, 0, 0.2);
-    border: none;
-    color: #111;
-    font-size: 13px;
-    font-weight: 900;
-    width: 22px;
-    height: 22px;
-    border-radius: 50%;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: background 0.2s;
-}
-.banner-close-btn:hover {
-    background: rgba(0, 0, 0, 0.4);
-    color: #fff;
-}
 #game-wrapper { 
     width: 100%; 
     max-width: 440px; 
@@ -118,13 +76,21 @@ body {
     background: linear-gradient(180deg, #334155, #1e293b); 
     color: #e2e8f0; 
     border: 1px solid rgba(255, 255, 255, 0.2); 
-    padding: 6px 12px; 
-    border-radius: 8px; 
+    padding: 10px 14px; 
+    border-radius: 10px; 
     cursor: pointer; 
-    font-size: 12px; 
+    font-size: 13px; 
     font-weight: 700;
     transition: all 0.2s;
     box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+    min-height: 48px;
+    min-width: 48px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    touch-action: manipulation;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
 }
 .menu-btn:active {
     transform: scale(0.96);
@@ -196,8 +162,10 @@ body {
     100% { transform: scale(1.04); box-shadow: 0 0 18px var(--gold-glow); }
 }
 .corner-dice {
-    width: 44px;
-    height: 44px;
+    width: 48px;
+    height: 48px;
+    min-width: 48px;
+    min-height: 48px;
     background: #ffffff;
     border-radius: 10px;
     display: flex;
@@ -211,6 +179,9 @@ body {
     transition: all 0.2s;
     visibility: hidden;
     opacity: 0;
+    touch-action: manipulation;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
 }
 .corner-dice.visible {
     visibility: visible;
@@ -496,6 +467,14 @@ body {
     box-shadow: 0 4px 12px rgba(217, 119, 6, 0.4), inset 0 2px 2px rgba(255, 255, 255, 0.4);
     letter-spacing: 0.5px;
     transition: all 0.2s;
+    min-height: 48px;
+    min-width: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    touch-action: manipulation;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
 }
 .ultra-roll-btn:active {
     transform: scale(0.97);
@@ -517,6 +496,7 @@ body {
     color: #94a3b8;
     margin-bottom: 24px;
 }
+.arena-grid,
 .ludo-king-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -525,6 +505,7 @@ body {
     max-width: 380px;
     margin: 0 auto;
 }
+.arena-card,
 .ludo-king-card {
     display: flex;
     flex-direction: column;
@@ -540,31 +521,40 @@ body {
     position: relative;
     user-select: none;
     min-height: 120px;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
 }
+.arena-card:active,
 .ludo-king-card:active {
     transform: scale(0.95) translateY(2px);
 }
+.arena-card.online,
 .ludo-king-card.online {
     background: linear-gradient(180deg, #2563eb, #1d4ed8 60%, #1e40af);
     border-color: #60a5fa;
 }
+.arena-card.computer,
 .ludo-king-card.computer {
     background: linear-gradient(180deg, #7c3aed, #6d28d9 60%, #4c1d95);
     border-color: #c084fc;
 }
+.arena-card.local,
 .ludo-king-card.local {
     background: linear-gradient(180deg, #16a34a, #15803d 60%, #14532d);
     border-color: #4ade80;
 }
+.arena-card.comp,
 .ludo-king-card.comp {
     background: linear-gradient(180deg, #dc2626, #b91c1c 60%, #7f1d1d);
     border-color: #f87171;
 }
+.arena-card .card-icon,
 .ludo-king-card .card-icon {
     font-size: 38px;
     margin-bottom: 6px;
     filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.6));
 }
+.arena-card .card-title,
 .ludo-king-card .card-title {
     font-size: 13px;
     font-weight: 900;
@@ -574,12 +564,14 @@ body {
     line-height: 1.2;
     text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
 }
+.arena-card .card-sub,
 .ludo-king-card .card-sub {
     font-size: 10px;
     font-weight: 600;
     color: rgba(255, 255, 255, 0.85);
     margin-top: 3px;
 }
+.arena-card .badge-corner,
 .ludo-king-card .badge-corner {
     position: absolute;
     top: 6px;

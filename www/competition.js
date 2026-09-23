@@ -501,16 +501,6 @@ let compTurnChanceCount = 0;
         }
         startTurnTimer();
         updateTurnUIOnline();
-
-        if (data.currentColor === myAssignedColor && navigator.onLine) {
-            compTurnChanceCount++;
-            // 1st chance: ad, 2nd chance: no ad, 3rd chance: ad, 4th chance: no ad...
-            if (compTurnChanceCount % 2 !== 0) {
-                if (typeof playInterstitialAd === "function") {
-                    playInterstitialAd();
-                }
-            }
-        }
     });
     socket.on("player-eliminated", (data) => {
         activePlayers = activePlayers.filter(c => c !== data.color);
@@ -582,7 +572,7 @@ function showRewardedAdForTokens() {
         if (typeof window.showAdToast === 'function') {
             window.showAdToast("⚠️ No internet connection! Please connect to internet to watch video and claim tokens.");
         } else {
-            alert("⚠️ Internet is required to watch video ad and claim tokens!");
+            showToast("⚠️ Internet is required to watch video ad and claim tokens!");
         }
         return;
     }
@@ -656,16 +646,44 @@ function renderLeaderboard(list) {
         `;
     });
 }
-function joinMatch(stake, playerCount) {
+async function joinMatch(stake, playerCount) {
     if (!currentUser || currentUser.tokens < stake) {
+        showToast("⚠️ Insufficient tokens! Watch video ads to earn tokens.");
         return;
     }
-    socket.emit("request-matchmaking", {
-        userId: currentUser.uid,
-        name: currentUser.displayName,
-        stake: stake,
-        playerCount: playerCount
-    });
+
+    const matchmakingSection = document.getElementById("matchmaking-section");
+    if (matchmakingSection) matchmakingSection.classList.remove("hidden");
+    const statusText = document.getElementById("matchmaking-status-text");
+    if (statusText) statusText.innerText = "⏳ Loading sponsored ad...";
+
+    // 1. Play interstitial ad non-blockingly
+    if (typeof playInterstitialAd === 'function') {
+        playInterstitialAd().catch(() => {});
+    } else if (typeof window.showZingInterstitialAd === 'function') {
+        window.showZingInterstitialAd().catch(() => {});
+    }
+
+    if (statusText) statusText.innerText = `Searching for ${playerCount} Players (Stake: ${stake})...`;
+
+    // 2. Request matchmaking from socket
+    if (socket && socket.connected) {
+        socket.emit("request-matchmaking", {
+            userId: currentUser.uid,
+            name: currentUser.displayName,
+            stake: stake,
+            playerCount: playerCount
+        });
+    } else if (socket) {
+        socket.once("connect", () => {
+            socket.emit("request-matchmaking", {
+                userId: currentUser.uid,
+                name: currentUser.displayName,
+                stake: stake,
+                playerCount: playerCount
+            });
+        });
+    }
 }
 function cancelMatchmaking() {
     if (currentUser) {

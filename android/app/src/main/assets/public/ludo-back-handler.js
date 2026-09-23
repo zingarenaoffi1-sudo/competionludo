@@ -210,7 +210,7 @@ const LudoBackHandler = (function () {
             primaryBg: "linear-gradient(135deg, #ef4444, #b91c1c)",
             primaryBorder: "#f87171",
             secondaryText: "Continue Playing",
-            onPrimary: function () {
+            onPrimary: async function () {
                 try {
                     if (window.ZingFeatures && window.ZingFeatures.leaveVoiceRoom) {
                         window.ZingFeatures.leaveVoiceRoom();
@@ -219,6 +219,18 @@ const LudoBackHandler = (function () {
                         window.socket.emit('leave-room', { roomId: window.currentOnlineRoomId });
                     }
                 } catch (e) {}
+
+                // Mid-game exit: Play Interstitial Ad
+                if (typeof playInterstitialAd === 'function') {
+                    try {
+                        await playInterstitialAd();
+                    } catch (err) {}
+                } else if (typeof window.showZingInterstitialAd === 'function') {
+                    try {
+                        await window.showZingInterstitialAd();
+                    } catch (err) {}
+                }
+
                 window.location.href = 'index.html';
             },
             onSecondary: closeModal

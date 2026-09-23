@@ -97,9 +97,31 @@ public class UnityAdsPlugin extends Plugin {
 
             @Override
             public void onInitializationFailed(UnityAds.UnityAdsInitializationError error, String message) {
-                isInitializing = false;
                 Log.e(TAG, "Unity Ads init failed for Game ID [" + targetGameId + "]: " + error + " (" + message + ")");
-                dispatchInitFailure("Unity Ads init failed: " + error + " - " + message);
+                
+                // If custom Game ID failed in test mode, fall back to official Unity test Game ID
+                if (testing && !TEST_FALLBACK_GAME_ID.equals(targetGameId)) {
+                    Log.i(TAG, "Attempting fallback init with official Unity Test Game ID: " + TEST_FALLBACK_GAME_ID);
+                    UnityAds.initialize(activity.getApplicationContext(), TEST_FALLBACK_GAME_ID, true, new IUnityAdsInitializationListener() {
+                        @Override
+                        public void onInitializationComplete() {
+                            isInitializing = false;
+                            Log.i(TAG, "Unity Ads initialized successfully via official test Game ID: " + TEST_FALLBACK_GAME_ID);
+                            preloadDefaultAds();
+                            dispatchInitSuccess();
+                        }
+
+                        @Override
+                        public void onInitializationFailed(UnityAds.UnityAdsInitializationError err2, String msg2) {
+                            isInitializing = false;
+                            Log.e(TAG, "Fallback Unity Ads init also failed: " + err2 + " (" + msg2 + ")");
+                            dispatchInitFailure("Init failed: " + msg2);
+                        }
+                    });
+                } else {
+                    isInitializing = false;
+                    dispatchInitFailure("Unity Ads init failed: " + error + " - " + message);
+                }
             }
         });
     }
@@ -169,22 +191,30 @@ public class UnityAdsPlugin extends Plugin {
         initSdk(activity, gameId, testMode, () -> {
             new Handler(Looper.getMainLooper()).post(() -> {
                 try {
+                    int gravity = "top".equalsIgnoreCase(position) ? (Gravity.TOP | Gravity.CENTER_HORIZONTAL) : (Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
+                    int heightPx = Math.round(50 * activity.getResources().getDisplayMetrics().density);
+                    FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(
+                            ViewGroup.LayoutParams.MATCH_PARENT,
+                            heightPx,
+                            gravity
+                    );
+
                     if (bannerLayout == null) {
                         bannerLayout = new FrameLayout(activity);
                         bannerLayout.setBackgroundColor(Color.TRANSPARENT);
-                        int gravity = "top".equalsIgnoreCase(position) ? (Gravity.TOP | Gravity.CENTER_HORIZONTAL) : (Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
-                        FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(
-                                ViewGroup.LayoutParams.MATCH_PARENT,
-                                ViewGroup.LayoutParams.WRAP_CONTENT,
-                                gravity
-                        );
-                        activity.addContentView(bannerLayout, params);
+                        bannerLayout.setClickable(false);
+                        bannerLayout.setFocusable(false);
                     }
 
-                    bannerLayout.setVisibility(View.VISIBLE);
-                    bannerLayout.bringToFront();
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                        bannerLayout.setElevation(9999f);
+                    bannerLayout.setVisibility(View.GONE);
+
+                    if (bannerLayout.getParent() == null) {
+                        FrameLayout content = activity.findViewById(android.R.id.content);
+                        if (content != null) {
+                            content.addView(bannerLayout, params);
+                        } else {
+                            activity.addContentView(bannerLayout, params);
+                        }
                     }
 
                     List<String> candidates = buildCandidateList(requestedPlacement, new String[]{"BP_Banner_Android", "Banner_Android", "banner", "bannerAndroid"});
@@ -200,6 +230,11 @@ public class UnityAdsPlugin extends Plugin {
     private void tryLoadBannerCandidates(Activity activity, List<String> candidates, int index, String position, PluginCall call) {
         if (index >= candidates.size()) {
             Log.w(TAG, "All banner placement candidates failed to load.");
+            activity.runOnUiThread(() -> {
+                if (bannerLayout != null) {
+                    bannerLayout.setVisibility(View.GONE);
+                }
+            });
             if (call != null && !call.isKeptAlive()) {
                 call.resolve(new JSObject().put("loaded", false).put("error", "No fill across candidate placements"));
             }
@@ -216,18 +251,23 @@ public class UnityAdsPlugin extends Plugin {
                 bannerView = null;
             }
 
+            int widthPx = Math.round(320 * activity.getResources().getDisplayMetrics().density);
+            int heightPx = Math.round(50 * activity.getResources().getDisplayMetrics().density);
+
             bannerView = new BannerView(activity, placement, new UnityBannerSize(320, 50));
+            bannerView.setMinimumWidth(widthPx);
+            bannerView.setMinimumHeight(heightPx);
+
             if (bannerLayout != null) {
                 bannerLayout.removeAllViews();
                 int gravity = "top".equalsIgnoreCase(position) ? (Gravity.TOP | Gravity.CENTER_HORIZONTAL) : (Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
                 FrameLayout.LayoutParams childParams = new FrameLayout.LayoutParams(
-                        ViewGroup.LayoutParams.WRAP_CONTENT,
-                        ViewGroup.LayoutParams.WRAP_CONTENT,
+                        widthPx,
+                        heightPx,
                         gravity
                 );
                 bannerLayout.addView(bannerView, childParams);
-                bannerLayout.setVisibility(View.VISIBLE);
-                bannerLayout.bringToFront();
+                bannerLayout.setVisibility(View.GONE);
             }
 
             bannerView.setListener(new BannerView.Listener() {
@@ -255,7 +295,12 @@ public class UnityAdsPlugin extends Plugin {
                 public void onBannerFailedToLoad(BannerView bannerAdView, BannerErrorInfo errorInfo) {
                     String errorMsg = errorInfo != null ? errorInfo.errorMessage : "Unknown";
                     Log.w(TAG, "Banner placement " + placement + " failed to load: " + errorMsg);
-                    activity.runOnUiThread(() -> tryLoadBannerCandidates(activity, candidates, index + 1, position, call));
+                    activity.runOnUiThread(() -> {
+                        if (bannerLayout != null) {
+                            bannerLayout.setVisibility(View.GONE);
+                        }
+                        tryLoadBannerCandidates(activity, candidates, index + 1, position, call);
+                    });
                 }
 
                 @Override

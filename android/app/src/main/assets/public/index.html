@@ -42,8 +42,8 @@
     <div id="ludo-royal-splash" class="ludo-splash-overlay">
         <div class="ludo-splash-card">
             <div class="ludo-emblem-wrap">
-                <div class="ludo-crown-icon">
-                    <svg width="68" height="52" viewBox="0 0 64 50" fill="none">
+                <div class="ludo-crown-icon" style="display:flex; justify-content:center; align-items:center; margin-bottom: 6px;">
+                    <svg width="68" height="54" viewBox="0 0 64 50" fill="none">
                         <defs>
                             <linearGradient id="splash-gold-grad" x1="0%" y1="0%" x2="100%" y2="100%">
                                 <stop offset="0%" stop-color="#fffbeb"/>
@@ -56,11 +56,9 @@
                                 <feComposite in="SourceGraphic" in2="blur" operator="over"/>
                             </filter>
                         </defs>
-                        <path d="M6 38C6 36.5 7.5 35 9 35H55C56.5 35 58 36.5 58 38V42C58 43.5 56.5 45 55 45H9C7.5 45 6 43.5 6 42V38Z" fill="#92400e"/>
-                        <path d="M8 35L14 17L25 27L32 9L39 27L50 17L56 35H8Z" fill="url(#splash-gold-grad)" filter="url(#gold-glow)"/>
-                        <circle cx="14" cy="15" r="4" fill="#ffffff" stroke="#eab308" stroke-width="1.5"/>
-                        <circle cx="32" cy="7" r="5" fill="#ef4444" stroke="#ffffff" stroke-width="2"/>
-                        <circle cx="50" cy="15" r="4" fill="#ffffff" stroke="#eab308" stroke-width="1.5"/>
+                        <polygon points="32,4 36,15 48,16 39,24 42,36 32,29 22,36 25,24 16,16 28,15" fill="url(#splash-gold-grad)" filter="url(#gold-glow)"/>
+                        <circle cx="32" cy="20" r="3.5" fill="#ef4444" stroke="#ffffff" stroke-width="1.5"/>
+                        <path d="M12 40h40v4c0 3-3 6-6 6H18c-3 0-6-3-6-6v-4z" fill="#b45309"/>
                     </svg>
                 </div>
                 <div class="ludo-emblem-disc">
@@ -72,7 +70,7 @@
                 </div>
             </div>
             <div class="splash-brand-title">LUDO</div>
-            <div class="splash-brand-subtitle" id="splash-status-title">ROYAL ARENA</div>
+            <div class="splash-brand-subtitle" id="splash-status-title">ZING ARENA</div>
             <div class="splash-dice-scene">
                 <div class="splash-dice-cube" id="splash-dice-cube">
                     <div class="s-face s-front">⚄</div>
@@ -86,20 +84,17 @@
             <div class="splash-progress-track">
                 <div class="splash-progress-fill" id="splash-progress-bar" style="width: 20%;"></div>
             </div>
-            <div class="splash-status-text" id="splash-status-text">Starting Game Engine...</div>
+            <div class="splash-status-text" id="splash-status-text">Starting Zing Arena...</div>
         </div>
     </div>
     <div id="game-wrapper" style="justify-content: flex-start; min-height: 100vh; padding: 65px 14px 24px 14px;">
         <div style="width: 100%; max-width: 380px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
             <div style="display: flex; align-items: center; gap: 8px;">
-                <svg width="22" height="18" viewBox="0 0 64 50" fill="none" style="filter: drop-shadow(0 0 6px rgba(255,215,0,0.8));">
-                    <path d="M6 38C6 36.5 7.5 35 9 35H55C56.5 35 58 36.5 58 38V42C58 43.5 56.5 45 55 45H9C7.5 45 6 43.5 6 42V38Z" fill="#d97706"/>
-                    <path d="M8 35L14 18L25 28L32 10L39 28L50 18L56 35H8Z" fill="#ffd700"/>
-                    <circle cx="14" cy="16" r="3.5" fill="#ffffff"/>
-                    <circle cx="32" cy="8" r="4.5" fill="#ef4444"/>
-                    <circle cx="50" cy="16" r="3.5" fill="#ffffff"/>
+                <svg width="24" height="20" viewBox="0 0 32 28" fill="none" style="filter: drop-shadow(0 0 6px rgba(255,215,0,0.8));">
+                    <polygon points="16,2 19,9 27,10 21,15 23,23 16,19 9,23 11,15 5,10 13,9" fill="#ffd700"/>
+                    <circle cx="16" cy="12" r="2.5" fill="#ef4444"/>
                 </svg>
-                <span style="font-size: 13px; font-weight: 900; color: #ffd700; letter-spacing: 0.5px;">LUDO</span>
+                <span style="font-size: 14px; font-weight: 900; color: #ffd700; letter-spacing: 1px;">ZING ARENA</span>
             </div>
             <div style="display: flex; align-items: center; gap: 8px;">
                 <button class="ludo-music-toggle-btn" onclick="LudoMusic.toggleMute()">🎵 Music ON</button>
@@ -111,7 +106,7 @@
         </div>
         <div class="lobby-hero" style="margin-bottom: 22px;">
             <div style="margin-bottom: 6px;">
-                <svg width="60" height="48" viewBox="0 0 64 50" fill="none" style="filter: drop-shadow(0 0 16px rgba(255,215,0,0.85));">
+                <svg width="64" height="52" viewBox="0 0 64 50" fill="none" style="filter: drop-shadow(0 0 16px rgba(255,215,0,0.85));">
                     <defs>
                         <linearGradient id="hero-gold-grad" x1="0%" y1="0%" x2="100%" y2="100%">
                             <stop offset="0%" stop-color="#fff59d"/>
@@ -119,21 +114,16 @@
                             <stop offset="100%" stop-color="#f59e0b"/>
                         </linearGradient>
                     </defs>
-                    <path d="M6 38C6 36.5 7.5 35 9 35H55C56.5 35 58 36.5 58 38V42C58 43.5 56.5 45 55 45H9C7.5 45 6 43.5 6 42V38Z" fill="#b45309"/>
-                    <circle cx="16" cy="40" r="2.5" fill="#ef4444"/>
-                    <circle cx="32" cy="40" r="3" fill="#38bdf8"/>
-                    <circle cx="48" cy="40" r="2.5" fill="#10b981"/>
-                    <path d="M8 35L14 17L25 27L32 9L39 27L50 17L56 35H8Z" fill="url(#hero-gold-grad)"/>
-                    <circle cx="14" cy="15" r="3.5" fill="#fff" stroke="#ffd700" stroke-width="1.5"/>
-                    <circle cx="32" cy="7" r="4.5" fill="#ef4444" stroke="#fff" stroke-width="2"/>
-                    <circle cx="50" cy="15" r="3.5" fill="#fff" stroke="#ffd700" stroke-width="1.5"/>
+                    <polygon points="32,4 37,16 50,17 40,26 43,39 32,32 21,39 24,26 14,17 27,16" fill="url(#hero-gold-grad)"/>
+                    <circle cx="32" cy="22" r="4.5" fill="#ef4444" stroke="#ffffff" stroke-width="2"/>
+                    <path d="M14 42h36v3c0 2-2 4-4 4H18c-2 0-4-2-4-4v-3z" fill="#d97706"/>
                 </svg>
             </div>
-            <h1 class="lobby-title">LUDO</h1>
-            <p class="lobby-subtitle">The Royal Multiplayer Board Experience</p>
+            <h1 class="lobby-title" style="margin: 0; font-size: 30px; font-weight: 900; color: #ffd700; text-shadow: 0 0 20px rgba(255,215,0,0.6); letter-spacing: 2px;">ZING ARENA</h1>
+            <p class="lobby-subtitle" style="font-size: 12px; color: #94a3b8; margin-top: 4px; font-weight: 700; letter-spacing: 0.5px;">FAST 4-PLAYER DICE BOARD GAME</p>
         </div>
-        <div class="ludo-king-grid">
-            <div class="ludo-king-card computer" onclick="window.location.href='bot.html'">
+        <div class="arena-grid">
+            <div class="arena-card computer" onclick="window.location.href='bot.html'">
                 <div class="card-icon" style="display: flex; justify-content: center; align-items: center;">
                     <svg width="44" height="44" viewBox="0 0 48 48" fill="none">
                         <rect x="8" y="14" width="32" height="26" rx="8" fill="url(#grad-bot)" stroke="#c084fc" stroke-width="2"/>
@@ -154,7 +144,7 @@
                 <div class="card-title">VS COMPUTER</div>
                 <div class="card-sub">Smart AI Bots</div>
             </div>
-            <div class="ludo-king-card local" onclick="window.location.href='local.html'">
+            <div class="arena-card local" onclick="window.location.href='local.html'">
                 <div class="card-icon" style="display: flex; justify-content: center; align-items: center;">
                     <svg width="44" height="44" viewBox="0 0 48 48" fill="none">
                         <circle cx="18" cy="18" r="7" fill="url(#grad-user1)" stroke="#86efac" stroke-width="2"/>
@@ -176,7 +166,7 @@
                 <div class="card-title">PASS & PLAY</div>
                 <div class="card-sub">Same Device</div>
             </div>
-            <div class="ludo-king-card online" onclick="window.location.href='online.html'">
+            <div class="arena-card online" onclick="window.location.href='online.html'">
                 <div class="badge-corner">LIVE</div>
                 <div class="card-icon" style="display: flex; justify-content: center; align-items: center;">
                     <svg width="44" height="44" viewBox="0 0 48 48" fill="none">
@@ -197,7 +187,7 @@
                 <div class="card-title">ONLINE LUDO</div>
                 <div class="card-sub">Voice & Chat</div>
             </div>
-            <div class="ludo-king-card comp" onclick="window.location.href='competition.html'">
+            <div class="arena-card comp" onclick="window.location.href='competition.html'">
                 <div class="badge-corner" style="background: #ef4444; color: #fff;">ESPORTS</div>
                 <div class="card-icon" style="display: flex; justify-content: center; align-items: center;">
                     <svg width="44" height="44" viewBox="0 0 48 48" fill="none">

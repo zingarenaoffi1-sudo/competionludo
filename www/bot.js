@@ -13,6 +13,22 @@ const soundDice = new Audio('sounds/board game dice_2.mp3');
 const soundMove = new Audio('sounds/ui pop_2.mp3');
 const soundCut = new Audio('sounds/cartoon bonk.mp3');
 const soundWin = new Audio('sounds/success chime_2.mp3');
+
+function showToast(msg) {
+    let toast = document.getElementById("toast-msg");
+    if (!toast) {
+        toast = document.createElement("div");
+        toast.id = "toast-msg";
+        toast.className = "toast-message";
+        document.body.appendChild(toast);
+    }
+    toast.innerText = msg;
+    toast.style.display = 'block';
+    if (window._botToastTimer) clearTimeout(window._botToastTimer);
+    window._botToastTimer = setTimeout(() => {
+        toast.style.display = 'none';
+    }, 3000);
+}
 const playersData = {
     'red': { name: "You", label: "Player 1", class: "red-text", startOffset: 0 },
     'green': { name: "AI Bot 1", label: "Player 2", class: "green-text", startOffset: 13 },
@@ -69,7 +85,7 @@ function botUnlockTokenViaAd() {
         if (typeof window.showAdToast === 'function') {
             window.showAdToast("⚠️ No internet connection! Please connect to internet to watch video and unlock token.");
         } else {
-            alert("⚠️ Internet connection required to watch video and unlock token!");
+            showToast("⚠️ Internet connection required to watch video and unlock token!");
         }
         return;
     }
@@ -99,9 +115,18 @@ function botUnlockTokenViaAd() {
         setTimeout(() => startBotMatchConfirmed(true), 50);
     }
 }
-function botStartNormally() {
+async function botStartNormally() {
     const modal = document.getElementById("bot-fast-track-modal");
     if (modal) modal.classList.add("hidden");
+    if (typeof playInterstitialAd === 'function') {
+        try {
+            await playInterstitialAd();
+        } catch (e) {}
+    } else if (typeof window.showZingInterstitialAd === 'function') {
+        try {
+            await window.showZingInterstitialAd();
+        } catch (e) {}
+    }
     setTimeout(() => startBotMatchConfirmed(false), 50);
 }
 function startBotMatchConfirmed(unlockOneToken = false) {
@@ -264,6 +289,23 @@ function rollDice() {
         cube.style.transform = 'rotateX(0deg) rotateY(0deg)';
         faces[0].innerText = diceFaces[currentDiceValue];
         faces[0].style.color = currentDiceValue === 6 ? "#ff3333" : "#111";
+
+        if (currentDiceValue === 6) {
+            botConsecutiveSixes = (botConsecutiveSixes || 0) + 1;
+        } else {
+            botConsecutiveSixes = 0;
+        }
+
+        if (botConsecutiveSixes >= 3) {
+            botConsecutiveSixes = 0;
+            if (typeof showToast === 'function') {
+                showToast("⚠️ 3 Consecutive Sixes! Turn passed.");
+            }
+            clearBotWatchdog();
+            setTimeout(() => switchTurn(false), 800);
+            return;
+        }
+
         gameState = 'WAITING_FOR_MOVE';
         checkAvailableMoves();
     }, 650);
@@ -449,6 +491,7 @@ function switchTurn(extraTurn) {
     if (activePlayers.length === 0) return;
     if (!extraTurn) {
         currentPlayerIndex = (currentPlayerIndex + 1) % activePlayers.length;
+        botConsecutiveSixes = 0;
         consecutiveSixes = 0;
     } else {
         currentPlayerIndex = currentPlayerIndex % activePlayers.length;

@@ -1,6 +1,6 @@
-// ludo-splash.js - Royal Ludo King Style Instant App Startup Engine
+// ludo-splash.js - Zing Arena Instant App Startup Engine
 // Displays ONLY on initial app boot/first launch (never on mode clicks).
-// Prevents any white screen during cold start and gives authentic Ludo King startup feel.
+// Prevents any white screen during cold start and gives fast native startup feel.
 
 (function() {
     // Hide native Capacitor splash screen immediately if available
@@ -72,7 +72,7 @@
 
         setTimeout(() => {
             if (bar) bar.style.width = '100%';
-            if (statusEl) statusEl.innerText = 'Welcome to Ludo!';
+            if (statusEl) statusEl.innerText = 'Welcome to Zing Arena!';
         }, 750);
 
         setTimeout(() => {

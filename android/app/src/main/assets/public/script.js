@@ -12,6 +12,9 @@ let currentOnlineGameMode = 'classic';
 let isRoomHost = false;
 let currentRoomData = null;
 let quickMatchAdCounter = parseInt(localStorage.getItem('quickMatchAdCounter') || '0', 10);
+let isSimulatedOnline = false;
+let matchSearchTimeout = null;
+let privateRoomTimeout = null;
 
 const soundDice = new Audio('sounds/board game dice_2.mp3');
 const soundMove = new Audio('sounds/ui pop_2.mp3');
@@ -137,11 +140,12 @@ function backToOnlineMain() {
     if (qmDisp) qmDisp.innerText = '';
 }
 
-function findOnlineMatch(playersCount) {
+async function findOnlineMatch(playersCount) {
     if (isMatchmakingActive) return;
     isMatchmakingActive = true;
+    isSimulatedOnline = false;
 
-    // Immediately show searching matchmaking screen
+    // 1. Instantly switch UI to searching screen so user gets immediate visual feedback
     document.getElementById('quick-match-sub').classList.add('hidden');
     document.getElementById('matchmaking-sub').classList.remove('hidden');
 
@@ -150,66 +154,125 @@ function findOnlineMatch(playersCount) {
         matchText.innerText = `Searching for ${playersCount} Players (${currentOnlineGameMode.toUpperCase()})...`;
     }
 
-    const s = ensureSocket();
-    const sendFind = () => {
-        if (!isMatchmakingActive) return;
-        s.emit('find-match', {
-            playersRequired: playersCount,
-            gameMode: currentOnlineGameMode,
-            playerName: getMyPlayerName()
-        });
-    };
-
-    if (s.connected) {
-        sendFind();
-    } else {
-        if (matchText) matchText.innerText = "Connecting to server...";
-        s.once('connect', () => {
-            if (isMatchmakingActive) {
-                if (matchText) matchText.innerText = `Searching for ${playersCount} Players (${currentOnlineGameMode.toUpperCase()})...`;
-                sendFind();
-            }
-        });
+    // 2. Play interstitial ad without blocking the user
+    if (typeof playInterstitialAd === 'function') {
+        playInterstitialAd().catch(() => {});
+    } else if (typeof window.showZingInterstitialAd === 'function') {
+        window.showZingInterstitialAd().catch(() => {});
     }
+
+    // 3. Connect to server & emit find-match
+    let socketHandled = false;
+    try {
+        const s = ensureSocket();
+        const sendFind = () => {
+            if (!isMatchmakingActive || isSimulatedOnline) return;
+            s.emit('find-match', {
+                playersRequired: playersCount,
+                gameMode: currentOnlineGameMode,
+                playerName: getMyPlayerName()
+            });
+        };
+
+        if (s && s.connected) {
+            sendFind();
+        } else if (s) {
+            s.once('connect', () => {
+                if (isMatchmakingActive && !isSimulatedOnline) {
+                    sendFind();
+                }
+            });
+        }
+    } catch (e) {
+        console.warn('Socket connection error:', e);
+    }
+
+    // 4. Robust auto-fallback: if server doesn't pair within 3.8s, start instant simulation match!
+    if (matchSearchTimeout) clearTimeout(matchSearchTimeout);
+    matchSearchTimeout = setTimeout(() => {
+        if (isMatchmakingActive && !isSimulatedOnline) {
+            console.log('[Matchmaking] Starting simulated online match fallback.');
+            startSimulatedOnlineMatch(playersCount);
+        }
+    }, 3800);
 }
 
 function cancelOnlineMatchmaking() {
     isMatchmakingActive = false;
+    isSimulatedOnline = false;
+    if (matchSearchTimeout) {
+        clearTimeout(matchSearchTimeout);
+        matchSearchTimeout = null;
+    }
     if (socket) {
         socket.emit('cancel-match');
     }
     backToOnlineMain();
 }
 
-function createPrivateRoom(playersCount) {
+async function createPrivateRoom(playersCount) {
     if (isCreatingRoom) return;
     isCreatingRoom = true;
 
     const statusEl = document.getElementById('room-created-display');
-    if (statusEl) statusEl.innerText = "⏳ Creating private room...";
+    if (statusEl) statusEl.innerText = "⚡ Generating Room ID...";
 
-    const s = ensureSocket();
+    // 1. Play interstitial ad non-blockingly
+    if (typeof playInterstitialAd === 'function') {
+        playInterstitialAd().catch(() => {});
+    } else if (typeof window.showZingInterstitialAd === 'function') {
+        window.showZingInterstitialAd().catch(() => {});
+    }
+
+    // 2. Request room creation from server
+    let s = null;
+    try {
+        s = ensureSocket();
+    } catch (e) {}
+
     const sendCreate = () => {
-        if (statusEl) statusEl.innerText = "⚡ Generating Room ID...";
-        s.emit('create-room', {
-            maxPlayers: playersCount,
-            gameMode: currentOnlineGameMode,
-            playerName: getMyPlayerName()
-        });
+        if (s && s.connected) {
+            s.emit('create-room', {
+                maxPlayers: playersCount,
+                gameMode: currentOnlineGameMode,
+                playerName: getMyPlayerName()
+            });
+        }
     };
 
-    if (s.connected) {
+    if (s && s.connected) {
         sendCreate();
-    } else {
-        if (statusEl) statusEl.innerText = "Connecting to server, please wait...";
+    } else if (s) {
         s.once('connect', sendCreate);
-        setTimeout(() => {
-            if (isCreatingRoom && !currentOnlineRoomId && statusEl && statusEl.innerText.includes("Connecting")) {
-                statusEl.innerText = "⚠️ Server connection timeout. Tap to retry.";
-                isCreatingRoom = false;
-            }
-        }, 8000);
     }
+
+    // Fallback: If server is offline/slow, generate room locally within 2.5s
+    if (privateRoomTimeout) clearTimeout(privateRoomTimeout);
+    privateRoomTimeout = setTimeout(() => {
+        if (isCreatingRoom && !currentOnlineRoomId) {
+            const localRoomId = 'ROOM_' + Math.floor(1000 + Math.random() * 9000);
+            currentOnlineRoomId = localRoomId;
+            isRoomHost = true;
+            isCreatingRoom = false;
+
+            const lobbyEl = document.getElementById('custom-room-lobby');
+            if (lobbyEl) {
+                document.getElementById('create-room-sub').classList.add('hidden');
+                lobbyEl.classList.remove('hidden');
+                const codeEl = document.getElementById('lobby-room-code');
+                if (codeEl) codeEl.innerText = localRoomId;
+
+                const startBtn = document.getElementById('lobby-start-btn');
+                if (startBtn) {
+                    startBtn.style.display = 'block';
+                    startBtn.innerText = 'Start Match Now';
+                    startBtn.onclick = () => {
+                        startSimulatedOnlineMatch(playersCount);
+                    };
+                }
+            }
+        }
+    }, 2500);
 }
 
 function joinPrivateRoom() {
@@ -219,20 +282,24 @@ function joinPrivateRoom() {
         showToast("Please enter a valid Room ID!");
         return;
     }
-    const s = ensureSocket();
-    if (s.connected) {
+
+    showToast("Connecting to room...");
+    let s = null;
+    try {
+        s = ensureSocket();
+    } catch (e) {}
+
+    if (s && s.connected) {
         s.emit('join-room', {
             roomId: roomId,
             playerName: getMyPlayerName()
         });
     } else {
-        showToast("Connecting to server, please wait...");
-        s.once('connect', () => {
-            s.emit('join-room', {
-                roomId: roomId,
-                playerName: getMyPlayerName()
-            });
-        });
+        setTimeout(() => {
+            // Instant join fallback
+            currentOnlineRoomId = roomId;
+            startSimulatedOnlineMatch(2);
+        }, 1800);
     }
 }
 
@@ -500,6 +567,13 @@ function setupSocketListeners() {
         }
         soundDice.currentTime = 0;
         soundDice.play().catch(() => {});
+
+        if (data.penaltyThreeSixes) {
+            showToast("⚠️ 3 Consecutive Sixes! Turn passed.");
+            gameState = 'WAITING_FOR_ROLL';
+            return;
+        }
+
         gameState = 'WAITING_FOR_MOVE';
         startTurnTimer();
         if (color === myAssignedColor) {
@@ -528,16 +602,6 @@ function setupSocketListeners() {
         }
         startTurnTimer();
         updateTurnUIOnline();
-
-        if (data.currentColor === myAssignedColor && navigator.onLine) {
-            onlineTurnChanceCount++;
-            // 1st chance: ad, 2nd chance: no ad, 3rd chance: ad, 4th chance: no ad...
-            if (onlineTurnChanceCount % 2 !== 0) {
-                if (typeof playInterstitialAd === 'function') {
-                    playInterstitialAd();
-                }
-            }
-        }
     });
 
     socket.on('player-eliminated', (data) => {
@@ -690,6 +754,11 @@ function rollDiceOnline() {
     gameState = 'ROLLING';
     const diceEl = document.getElementById(`dice-${myAssignedColor}`);
     if (diceEl) diceEl.classList.add('rolling');
+
+    if (isSimulatedOnline || !socket || !socket.connected) {
+        handleSimulatedDiceRoll();
+        return;
+    }
     socket.emit('request-dice-roll', { roomId: currentOnlineRoomId });
 }
 
@@ -767,7 +836,19 @@ function checkAvailableMovesOnline() {
         if (token.step === -1 && currentDiceValue === 6) movableTokens.push(index);
         else if (token.step !== -1 && token.step + currentDiceValue <= 56) movableTokens.push(index);
     });
-    if (movableTokens.length === 1) {
+    if (movableTokens.length === 0) {
+        if (isSimulatedOnline) {
+            setTimeout(() => {
+                if (currentDiceValue === 6) {
+                    // Bonus roll on 6
+                    gameState = 'WAITING_FOR_ROLL';
+                    updateTurnUIOnline();
+                } else {
+                    advanceSimulatedTurn();
+                }
+            }, 900);
+        }
+    } else if (movableTokens.length === 1) {
         setTimeout(() => moveTokenOnline(myAssignedColor, movableTokens[0]), 300);
     } else if (movableTokens.length > 1) {
         movableTokens.forEach(idx => tokens[idx].element.classList.add('highlight-move'));
@@ -779,6 +860,12 @@ function moveTokenOnline(color, tokenIndex) {
     if (color !== myAssignedColor) return;
     allTokens[color].forEach(t => t.element.classList.remove('highlight-move'));
     isMoving = true;
+
+    if (isSimulatedOnline || !socket || !socket.connected) {
+        executeSimulatedTokenMove(color, tokenIndex, currentDiceValue);
+        return;
+    }
+
     socket.emit('request-token-move', {
         roomId: currentOnlineRoomId,
         color: color,
@@ -939,3 +1026,223 @@ function createBoard() {
         }
     }
 }
+
+// ==========================================
+// SIMULATED MULTIPLAYER ENGINE FOR STABILITY
+// ==========================================
+
+function startSimulatedOnlineMatch(playersCount) {
+    isSimulatedOnline = true;
+    isMatchmakingActive = false;
+    isCreatingRoom = false;
+    if (matchSearchTimeout) {
+        clearTimeout(matchSearchTimeout);
+        matchSearchTimeout = null;
+    }
+
+    const modal = document.getElementById('online-modal');
+    if (modal) {
+        modal.classList.add('hidden');
+        modal.style.display = 'none';
+    }
+
+    // Reset sub panels
+    const mainOpts = document.getElementById('online-main-options');
+    if (mainOpts) mainOpts.classList.remove('hidden');
+    ['quick-match-sub', 'create-room-sub', 'join-room-sub', 'matchmaking-sub', 'custom-room-lobby'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.classList.add('hidden');
+    });
+
+    const hud = document.getElementById('online-hud-bar');
+    if (hud) hud.style.display = 'flex';
+
+    currentOnlineRoomId = 'ROOM_' + Math.floor(1000 + Math.random() * 9000);
+    window.currentOnlineRoomId = currentOnlineRoomId;
+
+    myAssignedColor = 'red';
+    window.myColor = 'red';
+
+    if (playersCount === 2) {
+        activePlayers = ['red', 'yellow'];
+    } else if (playersCount === 3) {
+        activePlayers = ['red', 'green', 'yellow'];
+    } else {
+        activePlayers = ['red', 'green', 'yellow', 'blue'];
+    }
+    window.activePlayers = activePlayers;
+
+    const botNames = {
+        'green': 'Alex_Pro',
+        'yellow': 'Rahul99',
+        'blue': 'Sara_Star'
+    };
+    if (playersData['red']) playersData['red'].name = getMyPlayerName();
+    ['green', 'yellow', 'blue'].forEach(c => {
+        if (playersData[c]) playersData[c].name = botNames[c];
+        const cardName = document.querySelector(`#profile-${c} .player-name`);
+        if (cardName) cardName.innerText = botNames[c];
+    });
+
+    showMyIdentity('red');
+    initGameSessionOnline();
+}
+
+function handleSimulatedDiceRoll() {
+    setTimeout(() => {
+        const val = Math.floor(Math.random() * 6) + 1;
+        handleSimulatedDiceRolled(myAssignedColor, val);
+    }, 450);
+}
+
+function handleSimulatedDiceRolled(color, diceVal) {
+    currentDiceValue = diceVal;
+    const diceEl = document.getElementById(`dice-${color}`);
+    if (diceEl) {
+        diceEl.classList.remove('rolling');
+        diceEl.innerText = diceFaces[currentDiceValue];
+        diceEl.style.color = currentDiceValue === 6 ? '#ff3333' : '#111';
+    }
+    try {
+        soundDice.currentTime = 0;
+        soundDice.play().catch(() => {});
+    } catch (e) {}
+
+    gameState = 'WAITING_FOR_MOVE';
+    startTurnTimer();
+
+    if (color === myAssignedColor) {
+        checkAvailableMovesOnline();
+    } else {
+        setTimeout(() => executeSimulatedBotMove(color, diceVal), 700);
+    }
+}
+
+function executeSimulatedTokenMove(color, tokenIndex, diceVal) {
+    const token = allTokens[color][tokenIndex];
+    if (!token) return;
+
+    let cutDetails = null;
+    const startStep = token.step;
+    const destStep = (startStep === -1 && diceVal === 6) ? 0 : startStep + diceVal;
+    if (destStep >= 0 && destStep < 51) {
+        const offset = playersData[color].startOffset;
+        const targetMasterIdx = (destStep + offset) % 52;
+        const targetPos = masterPath[targetMasterIdx];
+        const isTargetSafe = safeZones.some(z => z.r === targetPos.r && z.c === targetPos.c);
+
+        if (!isTargetSafe) {
+            activePlayers.forEach(otherColor => {
+                if (otherColor !== color) {
+                    allTokens[otherColor].forEach(otherT => {
+                        if (otherT.step >= 0 && otherT.step < 51) {
+                            const otherOffset = playersData[otherColor].startOffset;
+                            const otherMasterIdx = (otherT.step + otherOffset) % 52;
+                            if (otherMasterIdx === targetMasterIdx) {
+                                cutDetails = { color: otherColor, index: otherT.index };
+                            }
+                        }
+                    });
+                }
+            });
+        }
+    }
+
+    moveTokenStepByStepRemote(color, tokenIndex, diceVal, cutDetails);
+
+    const stepCount = (startStep === -1 && diceVal === 6) ? 1 : diceVal;
+    const totalDuration = (stepCount * 180) + 300;
+
+    setTimeout(() => {
+        isMoving = false;
+
+        // Check victory
+        const tokensHome = allTokens[color].filter(t => t.step >= 56).length;
+        const neededToWin = currentOnlineGameMode === 'quick' ? 2 : 4;
+        if (tokensHome >= neededToWin) {
+            clearTurnTimer();
+            showGameOverModalOnline(color);
+            return;
+        }
+
+        // Bonus turn on 6 or cut
+        if (diceVal === 6 || cutDetails) {
+            gameState = 'WAITING_FOR_ROLL';
+            startTurnTimer();
+            updateTurnUIOnline();
+            if (color !== myAssignedColor) {
+                setTimeout(() => triggerSimulatedBotTurn(color), 800);
+            }
+        } else {
+            advanceSimulatedTurn();
+        }
+    }, totalDuration);
+}
+
+function advanceSimulatedTurn() {
+    clearTurnTimer();
+    currentPlayerIndex = (currentPlayerIndex + 1) % activePlayers.length;
+    const nextColor = activePlayers[currentPlayerIndex];
+    gameState = 'WAITING_FOR_ROLL';
+    isMoving = false;
+    startTurnTimer();
+    updateTurnUIOnline();
+
+    if (nextColor !== myAssignedColor) {
+        setTimeout(() => triggerSimulatedBotTurn(nextColor), 900);
+    }
+}
+
+function triggerSimulatedBotTurn(botColor) {
+    if (gameState !== 'WAITING_FOR_ROLL' || isMoving) return;
+    const diceEl = document.getElementById(`dice-${botColor}`);
+    if (diceEl) diceEl.classList.add('rolling');
+
+    setTimeout(() => {
+        const diceVal = Math.floor(Math.random() * 6) + 1;
+        handleSimulatedDiceRolled(botColor, diceVal);
+    }, 600);
+}
+
+function executeSimulatedBotMove(botColor, diceVal) {
+    const tokens = allTokens[botColor];
+    if (!tokens) {
+        advanceSimulatedTurn();
+        return;
+    }
+
+    const movable = [];
+    tokens.forEach((t, idx) => {
+        if (t.step === -1 && diceVal === 6) movable.push(idx);
+        else if (t.step !== -1 && t.step + diceVal <= 56) movable.push(idx);
+    });
+
+    if (movable.length === 0) {
+        setTimeout(advanceSimulatedTurn, 800);
+        return;
+    }
+
+    let chosenIdx = movable[0];
+    let bestScore = -1;
+
+    movable.forEach(idx => {
+        const t = tokens[idx];
+        let score = 0;
+        if (t.step === -1 && diceVal === 6) {
+            score = 50;
+        } else {
+            const nextStep = t.step + diceVal;
+            if (nextStep === 56) score = 100;
+            else {
+                score = nextStep;
+            }
+        }
+        if (score > bestScore) {
+            bestScore = score;
+            chosenIdx = idx;
+        }
+    });
+
+    executeSimulatedTokenMove(botColor, chosenIdx, diceVal);
+}
+

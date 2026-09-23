@@ -391,7 +391,11 @@ const ZingFeatures = (function () {
                 }
                 socket.emit('voice-join-room', { roomId });
             } catch (err) {
-                alert('Microphone permission required for Voice Chat! Please allow mic access in your browser settings.');
+                if (typeof showToast === 'function') {
+                    showToast('⚠️ Microphone permission required for Voice Chat.');
+                } else if (typeof showAdToast === 'function') {
+                    showAdToast('⚠️ Microphone permission required for Voice Chat.');
+                }
                 console.warn("Microphone access error:", err);
             }
         } else {

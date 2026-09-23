@@ -8,6 +8,34 @@ const UnityAdsConfig = {
 
 window.UnityAdsConfig = UnityAdsConfig;
 
+let _unityBridgeInstance = null;
+
+function getUnityAdsBridge() {
+    if (_unityBridgeInstance) {
+        return _unityBridgeInstance;
+    }
+    if (window.Capacitor) {
+        // 1. Standard Capacitor 3/4/5/6 method to bind native custom plugin
+        if (typeof window.Capacitor.registerPlugin === 'function') {
+            try {
+                _unityBridgeInstance = window.Capacitor.registerPlugin('UnityAdsBridge');
+                if (_unityBridgeInstance) {
+                    return _unityBridgeInstance;
+                }
+            } catch (err) {
+                console.warn('[UnityAds] registerPlugin failed, checking Plugins map:', err);
+            }
+        }
+        // 2. Fallback to direct Plugins map if already populated
+        if (window.Capacitor.Plugins && window.Capacitor.Plugins.UnityAdsBridge) {
+            _unityBridgeInstance = window.Capacitor.Plugins.UnityAdsBridge;
+            return _unityBridgeInstance;
+        }
+    }
+    return null;
+}
+window.getUnityAdsBridge = getUnityAdsBridge;
+
 function showAdToast(msg, isSuccess = false) {
     let toast = document.getElementById('ad-toast-msg');
     if (!toast) {
@@ -29,13 +57,14 @@ function showAdToast(msg, isSuccess = false) {
 window.showAdToast = showAdToast;
 
 async function initZingAds() {
-    if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.UnityAdsBridge) {
+    const bridge = getUnityAdsBridge();
+    if (bridge) {
         try {
-            await window.Capacitor.Plugins.UnityAdsBridge.initialize({
+            await bridge.initialize({
                 gameId: UnityAdsConfig.gameId,
                 isTesting: UnityAdsConfig.isTesting
             });
-            console.log('[UnityAds] SDK initialized.');
+            console.log('[UnityAds] SDK initialized successfully.');
         } catch (e) {
             console.warn('[UnityAds] SDK init notice:', e);
         }
@@ -53,9 +82,9 @@ function initZingBannerAd(options = {}) {
         }
 
         try {
-            if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.UnityAdsBridge) {
-                const { UnityAdsBridge } = window.Capacitor.Plugins;
-                const res = await UnityAdsBridge.showBanner({
+            const bridge = getUnityAdsBridge();
+            if (bridge) {
+                const res = await bridge.showBanner({
                     gameId: UnityAdsConfig.gameId,
                     placementId: UnityAdsConfig.bannerPlacement,
                     isTesting: UnityAdsConfig.isTesting,
@@ -90,9 +119,9 @@ function _handleNetworkOffline() {
 
 async function hideZingBannerAd() {
     try {
-        if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.UnityAdsBridge) {
-            const { UnityAdsBridge } = window.Capacitor.Plugins;
-            await UnityAdsBridge.hideBanner();
+        const bridge = getUnityAdsBridge();
+        if (bridge) {
+            await bridge.hideBanner();
         }
     } catch (e) {}
 }
@@ -105,20 +134,20 @@ async function playInterstitialAd() {
         return;
     }
 
-    if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.UnityAdsBridge) {
-        const { UnityAdsBridge } = window.Capacitor.Plugins;
+    const bridge = getUnityAdsBridge();
+    if (bridge) {
         try {
             if (window.socket && (window.currentOnlineRoomId || window.currentRoomId)) {
                 const rId = window.currentOnlineRoomId || window.currentRoomId;
                 window.socket.emit('ad-playback-status', { roomId: rId, isShowing: true });
             }
 
-            const showPromise = UnityAdsBridge.showInterstitial({
+            const showPromise = bridge.showInterstitial({
                 gameId: UnityAdsConfig.gameId,
                 placementId: UnityAdsConfig.interstitialPlacement,
                 isTesting: UnityAdsConfig.isTesting
             });
-            const timeoutPromise = new Promise(resolve => setTimeout(resolve, 14000));
+            const timeoutPromise = new Promise(resolve => setTimeout(resolve, 3000));
             await Promise.race([showPromise, timeoutPromise]);
         } catch (e) {
             console.warn('[UnityAds] Interstitial error:', e);
@@ -135,22 +164,6 @@ async function playInterstitialAd() {
 window.playInterstitialAd = playInterstitialAd;
 window.showZingInterstitialAd = playInterstitialAd;
 
-function simulateRewardFlow(onReward) {
-    let count = 3;
-    const interval = setInterval(() => {
-        count--;
-        if (count > 0) {
-            showAdToast(`🎬 Watching ad... ${count}s`, true);
-        } else {
-            clearInterval(interval);
-            showAdToast('✅ Video completed! Reward unlocked.', true);
-            if (typeof onReward === 'function') {
-                onReward();
-            }
-        }
-    }, 1000);
-}
-
 async function showZingRewardedAd({ onReward, onFail }) {
     if (!navigator.onLine) {
         showAdToast('⚠️ No internet connection! Please connect to internet to watch the ad.');
@@ -160,19 +173,19 @@ async function showZingRewardedAd({ onReward, onFail }) {
         return;
     }
 
-    if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.UnityAdsBridge) {
-        const { UnityAdsBridge } = window.Capacitor.Plugins;
+    const bridge = getUnityAdsBridge();
+    if (bridge) {
         try {
             showAdToast('⏳ Loading video ad, please wait...', true);
 
-            const adPromise = UnityAdsBridge.showRewarded({
+            const adPromise = bridge.showRewarded({
                 gameId: UnityAdsConfig.gameId,
                 placementId: UnityAdsConfig.rewardedPlacement,
                 isTesting: UnityAdsConfig.isTesting
             });
 
             const timeoutPromise = new Promise((_, reject) => {
-                setTimeout(() => reject(new Error('Ad load timed out')), 16000);
+                setTimeout(() => reject(new Error('Ad load timed out')), 22000);
             });
 
             const result = await Promise.race([adPromise, timeoutPromise]);
@@ -212,13 +225,17 @@ async function showZingRewardedAd({ onReward, onFail }) {
 }
 window.showZingRewardedAd = showZingRewardedAd;
 
-// Auto-initialize when script loads
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => {
-        initZingAds();
-        initZingBannerAd({ delay: 1000 });
-    });
-} else {
+function autoBootstrapAds() {
     initZingAds();
     initZingBannerAd({ delay: 1000 });
 }
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', autoBootstrapAds);
+} else {
+    autoBootstrapAds();
+}
+
+// In case Capacitor initializes after document load
+setTimeout(autoBootstrapAds, 1200);
+setTimeout(autoBootstrapAds, 3000);

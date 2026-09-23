@@ -13,6 +13,22 @@ const soundDice = new Audio('sounds/board game dice_2.mp3');
 const soundMove = new Audio('sounds/ui pop_2.mp3');
 const soundCut = new Audio('sounds/cartoon bonk.mp3');
 const soundWin = new Audio('sounds/success chime_2.mp3');
+
+function showToast(msg) {
+    let toast = document.getElementById("toast-msg");
+    if (!toast) {
+        toast = document.createElement("div");
+        toast.id = "toast-msg";
+        toast.className = "toast-message";
+        document.body.appendChild(toast);
+    }
+    toast.innerText = msg;
+    toast.style.display = 'block';
+    if (window._localToastTimer) clearTimeout(window._localToastTimer);
+    window._localToastTimer = setTimeout(() => {
+        toast.style.display = 'none';
+    }, 3000);
+}
 const playersData = {
     'red': { name: "Red", label: "Player 1", class: "red-text", startOffset: 0 },
     'green': { name: "Green", label: "Player 2", class: "green-text", startOffset: 13 },
@@ -75,7 +91,7 @@ function unlockTokenViaAd() {
         if (typeof window.showAdToast === 'function') {
             window.showAdToast("⚠️ No internet connection! Please connect to internet to watch video and unlock token.");
         } else {
-            alert("⚠️ Internet connection required to watch video and unlock token!");
+            showToast("⚠️ Internet connection required to watch video and unlock token!");
         }
         return;
     }
